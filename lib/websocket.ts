@@ -1,0 +1,26 @@
+import { getApiUrl } from "./query-client";
+
+export function getWsUrl(): string {
+  const apiUrl = getApiUrl();
+  const wsUrl = apiUrl.replace(/^https?:\/\//, "wss://");
+  return wsUrl.replace(/\/$/, "") + "/ws";
+}
+
+export type SessionState = {
+  code: string;
+  hostId: string;
+  status: "lobby" | "swiping" | "matched";
+  members: { id: string; name: string }[];
+  matchedRestaurant?: string;
+  matchedDish?: import("./food-data").Dish;
+};
+
+export type WsMessage =
+  | { type: "joined"; session: SessionState; dishes: import("./food-data").Dish[]; isHost: boolean }
+  | { type: "member_joined"; session: SessionState }
+  | { type: "member_left"; memberId: string; session: SessionState }
+  | { type: "game_started"; session: SessionState; dishes: import("./food-data").Dish[] }
+  | { type: "swipe_update"; memberId: string; dishId: string; vote: "like" | "pass" }
+  | { type: "match"; session: SessionState; dish: import("./food-data").Dish }
+  | { type: "error"; message: string }
+  | { type: "pong" };
