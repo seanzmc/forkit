@@ -133,12 +133,24 @@ function DishCard({
           <Text style={styles.cuisineText}>{dish.cuisine}</Text>
         </View>
         <Text style={styles.dishName}>{dish.name}</Text>
-        <Text style={styles.restaurantName}>
-          <Ionicons name="location" size={13} color={Colors.accent} /> {dish.restaurant}
-        </Text>
+        {dish.address ? (
+          <Text style={styles.restaurantName} numberOfLines={1}>
+            <Ionicons name="location" size={13} color={Colors.accent} /> {dish.address}
+          </Text>
+        ) : (
+          <Text style={styles.restaurantName}>
+            <Ionicons name="location" size={13} color={Colors.accent} /> {dish.restaurant}
+          </Text>
+        )}
         <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>
         <View style={styles.priceRow}>
           <Text style={styles.price}>{dish.price}</Text>
+          {!!dish.rating && dish.rating > 0 && (
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={13} color={Colors.accentGold} />
+              <Text style={styles.ratingText}>{dish.rating.toFixed(1)}</Text>
+            </View>
+          )}
         </View>
       </View>
     </Animated.View>
@@ -613,5 +625,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Poppins_600SemiBold",
     color: Colors.textSecondary,
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,179,71,0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginLeft: 8,
+  },
+  ratingText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accentGold,
   },
 });

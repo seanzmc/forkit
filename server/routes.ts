@@ -1,7 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import { DISHES, shuffleDishes } from "../lib/food-data";
+import type { Dish } from "../lib/food-data";
+import { shuffleDishes } from "../lib/food-data";
+
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
+const PLACES_API_BASE = "https://places.googleapis.com/v1";
 
 interface SessionMember {
   id: string;
@@ -14,10 +18,10 @@ interface Session {
   code: string;
   hostId: string;
   members: Map<string, SessionMember>;
-  dishes: typeof DISHES;
+  dishes: Dish[];
   status: "lobby" | "swiping" | "matched";
   matchedRestaurant?: string;
-  matchedDish?: (typeof DISHES)[0];
+  matchedDish?: Dish;
   createdAt: number;
 }
 
@@ -60,7 +64,7 @@ function checkForMatch(session: Session): boolean {
   const majority = Math.ceil(memberCount / 2);
 
   const restaurantLikes = new Map<string, Set<string>>();
-  const dishMatches = new Map<string, { dish: typeof DISHES[0]; likers: Set<string> }>();
+  const dishMatches = new Map<string, { dish: Dish; likers: Set<string> }>();
 
   session.members.forEach((member) => {
     Object.entries(member.swipes).forEach(([dishId, vote]) => {
@@ -83,7 +87,7 @@ function checkForMatch(session: Session): boolean {
 
   for (const [restaurant, likers] of restaurantLikes) {
     if (likers.size >= majority) {
-      let bestDish: typeof DISHES[0] | undefined;
+      let bestDish: Dish | undefined;
       let bestLikers = 0;
 
       dishMatches.forEach(({ dish, likers: dl }) => {
@@ -114,29 +118,208 @@ function cleanupStaleSessions() {
   });
 }
 
+const PRICE_MAP: Record<string, string> = {
+  PRICE_LEVEL_FREE: "Free",
+  PRICE_LEVEL_INEXPENSIVE: "$",
+  PRICE_LEVEL_MODERATE: "$$",
+  PRICE_LEVEL_EXPENSIVE: "$$$",
+  PRICE_LEVEL_VERY_EXPENSIVE: "$$$$",
+};
+
+function extractCuisine(types: string[]): string {
+  const cuisineMap: Record<string, string> = {
+    italian_restaurant: "Italian",
+    chinese_restaurant: "Chinese",
+    japanese_restaurant: "Japanese",
+    mexican_restaurant: "Mexican",
+    indian_restaurant: "Indian",
+    thai_restaurant: "Thai",
+    french_restaurant: "French",
+    korean_restaurant: "Korean",
+    vietnamese_restaurant: "Vietnamese",
+    greek_restaurant: "Greek",
+    mediterranean_restaurant: "Mediterranean",
+    turkish_restaurant: "Turkish",
+    american_restaurant: "American",
+    hamburger_restaurant: "Burgers",
+    pizza_restaurant: "Pizza",
+    seafood_restaurant: "Seafood",
+    steak_house: "Steakhouse",
+    sushi_restaurant: "Sushi",
+    ramen_restaurant: "Ramen",
+    barbecue_restaurant: "BBQ",
+    breakfast_restaurant: "Breakfast",
+    brunch_restaurant: "Brunch",
+    cafe: "Cafe",
+    coffee_shop: "Coffee",
+    bakery: "Bakery",
+    ice_cream_shop: "Ice Cream",
+    sandwich_shop: "Sandwiches",
+    vegetarian_restaurant: "Vegetarian",
+    vegan_restaurant: "Vegan",
+  };
+
+  for (const type of types) {
+    if (cuisineMap[type]) return cuisineMap[type];
+  }
+  return "Restaurant";
+}
+
+async function resolvePhotoUrl(photoName: string): Promise<string> {
+  const url = `${PLACES_API_BASE}/${photoName}/media?maxHeightPx=600&maxWidthPx=800&key=${GOOGLE_API_KEY}`;
+  try {
+    const res = await fetch(url, { redirect: "manual" });
+    const location = res.headers.get("location");
+    if (location) return location;
+    return url;
+  } catch {
+    return "";
+  }
+}
+
+async function fetchNearbyRestaurants(
+  lat: number,
+  lng: number,
+  radiusMeters: number
+): Promise<Dish[]> {
+  if (!GOOGLE_API_KEY) {
+    console.warn("No Google Places API key set, using fallback dishes");
+    return shuffleDishes();
+  }
+
+  try {
+    const response = await fetch(`${PLACES_API_BASE}/places:searchNearby`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_API_KEY,
+        "X-Goog-FieldMask":
+          "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName",
+      },
+      body: JSON.stringify({
+        includedPrimaryTypes: ["restaurant"],
+        maxResultCount: 20,
+        locationRestriction: {
+          circle: {
+            center: { latitude: lat, longitude: lng },
+            radius: radiusMeters,
+          },
+        },
+        rankPreference: "POPULARITY",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Google Places API error:", response.status, errorText);
+      return shuffleDishes();
+    }
+
+    const data = await response.json();
+    const places = data.places || [];
+
+    if (places.length === 0) {
+      console.warn("No restaurants found, using fallback dishes");
+      return shuffleDishes();
+    }
+
+    const dishes: Dish[] = [];
+
+    for (const place of places) {
+      const photos = place.photos || [];
+      if (photos.length === 0) continue;
+
+      const photoName = photos[0].name;
+      const imageUrl = await resolvePhotoUrl(photoName);
+      if (!imageUrl) continue;
+
+      const types = place.types || [];
+      const cuisine = place.primaryTypeDisplayName?.text || extractCuisine(types);
+      const price = PRICE_MAP[place.priceLevel] || "$$";
+      const name = place.displayName?.text || "Unknown";
+      const summary =
+        place.editorialSummary?.text || `${cuisine} dining with ${place.userRatingCount || 0} reviews`;
+
+      dishes.push({
+        id: place.id,
+        name,
+        restaurant: name,
+        cuisine,
+        description: summary,
+        image: imageUrl,
+        price,
+        rating: place.rating || 0,
+        address: place.formattedAddress || "",
+        placeId: place.id,
+      });
+
+      if (photos.length > 1) {
+        const secondPhotoUrl = await resolvePhotoUrl(photos[1].name);
+        if (secondPhotoUrl) {
+          dishes.push({
+            id: `${place.id}_2`,
+            name: `${name} - More`,
+            restaurant: name,
+            cuisine,
+            description: summary,
+            image: secondPhotoUrl,
+            price,
+            rating: place.rating || 0,
+            address: place.formattedAddress || "",
+            placeId: place.id,
+          });
+        }
+      }
+    }
+
+    if (dishes.length === 0) {
+      return shuffleDishes();
+    }
+
+    return dishes.sort(() => Math.random() - 0.5);
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    return shuffleDishes();
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   setInterval(cleanupStaleSessions, 300000);
 
-  app.post("/api/sessions", (req, res) => {
+  app.post("/api/sessions", async (req, res) => {
     let code = generateCode();
     while (sessions.has(code)) {
       code = generateCode();
+    }
+
+    const { lat, lng, radius } = req.body || {};
+    let dishes: Dish[];
+
+    if (lat && lng && radius) {
+      const radiusMeters = Math.min(Math.max(radius, 500), 50000);
+      console.log(
+        `Fetching restaurants near ${lat},${lng} within ${radiusMeters}m`
+      );
+      dishes = await fetchNearbyRestaurants(lat, lng, radiusMeters);
+      console.log(`Found ${dishes.length} dishes from nearby restaurants`);
+    } else {
+      dishes = shuffleDishes();
     }
 
     const session: Session = {
       code,
       hostId: "",
       members: new Map(),
-      dishes: shuffleDishes(),
+      dishes,
       status: "lobby",
       createdAt: Date.now(),
     };
 
     sessions.set(code, session);
-    res.json({ code });
+    res.json({ code, dishCount: dishes.length });
   });
 
   app.get("/api/sessions/:code", (req, res) => {
@@ -158,16 +341,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (msg.type === "join") {
           const session = sessions.get(msg.code?.toUpperCase());
           if (!session) {
-            ws.send(JSON.stringify({ type: "error", message: "Session not found" }));
+            ws.send(
+              JSON.stringify({ type: "error", message: "Session not found" })
+            );
             return;
           }
 
           if (session.status === "matched") {
-            ws.send(JSON.stringify({
-              type: "match",
-              session: getSessionState(session),
-              dish: session.matchedDish,
-            }));
+            ws.send(
+              JSON.stringify({
+                type: "match",
+                session: getSessionState(session),
+                dish: session.matchedDish,
+              })
+            );
             return;
           }
 

@@ -17,12 +17,19 @@ A Tinder-style food decision app where groups swipe on dishes and get matched wh
 
 ## Key Features
 
+- **Google Places API integration** - Fetches real nearby restaurants based on user location
+- **Location permissions** - expo-location for device GPS, web geolocation API fallback
+- **Search radius selector** - 1mi / 3mi / 5mi / 10mi / 25mi options
 - Real-time WebSocket sync between group members
 - Majority-rules matching (>50% of group must like same restaurant)
-- 15 curated food dishes from diverse cuisines with Unsplash images
+- Fallback to 15 curated dishes when location unavailable
 - Shareable 6-character session codes
-- Animated swipe cards with YUMMY/NOPE stamps
+- Animated swipe cards with YUMMY/NOPE stamps, ratings, addresses
 - Confetti celebration on match
+
+## Environment Variables
+
+- `GOOGLE_PLACES_API_KEY` - Required for nearby restaurant search (secret)
 
 ## Design
 
@@ -36,7 +43,9 @@ A Tinder-style food decision app where groups swipe on dishes and get matched wh
 - react-native-reanimated (animations)
 - @tanstack/react-query (API calls)
 - WebSocket (ws) for real-time sync
-- AsyncStorage for user name persistence
+- Google Places API (New) for restaurant data
+- expo-location for GPS
+- AsyncStorage for user preferences
 - expo-haptics for haptic feedback
 - expo-linear-gradient for visual polish
 

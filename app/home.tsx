@@ -3,22 +3,31 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   Platform,
   Pressable,
   ScrollView,
   Alert,
+  Linking,
 } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import * as Location from "expo-location";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest } from "@/lib/query-client";
+
+const RADIUS_OPTIONS = [
+  { label: "1 mi", value: 1609 },
+  { label: "3 mi", value: 4828 },
+  { label: "5 mi", value: 8047 },
+  { label: "10 mi", value: 16093 },
+  { label: "25 mi", value: 40234 },
+];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -27,19 +36,81 @@ export default function HomeScreen() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [tab, setTab] = useState<"create" | "join">("create");
+  const [selectedRadius, setSelectedRadius] = useState(2);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
+  const [locationPermission, requestPermission] = Location.useForegroundPermissions();
 
   useEffect(() => {
     AsyncStorage.getItem("userName").then((n) => {
       if (n) setUserName(n);
       else router.replace("/");
     });
+    AsyncStorage.getItem("selectedRadius").then((r) => {
+      if (r) setSelectedRadius(parseInt(r, 10));
+    });
   }, []);
+
+  useEffect(() => {
+    if (locationPermission?.granted) {
+      setLocationStatus("granted");
+      getLocation();
+    } else if (locationPermission?.status === "denied") {
+      setLocationStatus("denied");
+    }
+  }, [locationPermission]);
+
+  const getLocation = async () => {
+    try {
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+    } catch {
+      console.warn("Could not get location");
+    }
+  };
+
+  const handleRequestLocation = async () => {
+    if (Platform.OS === "web") {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocationStatus("granted");
+      } catch {
+        setLocationStatus("denied");
+      }
+      return;
+    }
+
+    const result = await requestPermission();
+    if (result?.granted) {
+      setLocationStatus("granted");
+      getLocation();
+    } else {
+      setLocationStatus("denied");
+    }
+  };
+
+  const handleRadiusChange = (index: number) => {
+    setSelectedRadius(index);
+    AsyncStorage.setItem("selectedRadius", index.toString());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
 
   const handleCreate = async () => {
     setCreating(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const res = await apiRequest("POST", "/api/sessions");
+      const body: Record<string, number> = {};
+      if (location) {
+        body.lat = location.lat;
+        body.lng = location.lng;
+        body.radius = RADIUS_OPTIONS[selectedRadius].value;
+      }
+      const res = await apiRequest("POST", "/api/sessions", body);
       const { code } = await res.json();
       router.push(`/session/${code}`);
     } catch {
@@ -92,29 +163,82 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.heroCard}>
-          <LinearGradient
-            colors={["rgba(255,107,53,0.15)", "rgba(255,107,53,0.03)"]}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroIconRow}>
-              <View style={styles.heroIcon}>
-                <Ionicons name="restaurant" size={28} color={Colors.accent} />
+        <Animated.View entering={FadeInDown.delay(150)} style={styles.locationCard}>
+          {locationStatus === "granted" && location ? (
+            <View style={styles.locationGranted}>
+              <View style={styles.locationDot}>
+                <Ionicons name="location" size={18} color={Colors.green} />
               </View>
-              <Ionicons name="heart" size={20} color={Colors.accent} style={{ marginTop: 4 }} />
-              <View style={styles.heroIcon}>
-                <Ionicons name="people" size={28} color={Colors.accent} />
+              <View style={styles.locationTextCol}>
+                <Text style={styles.locationLabel}>Location active</Text>
+                <Text style={styles.locationCoords}>
+                  Restaurants near you will be used
+                </Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+            </View>
+          ) : locationStatus === "denied" ? (
+            <View style={styles.locationDenied}>
+              <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
+              <View style={styles.locationDeniedContent}>
+                <Text style={styles.locationDeniedText}>
+                  Location denied — using curated picks instead.
+                </Text>
+                {Platform.OS !== "web" && locationPermission?.canAskAgain ? (
+                  <Pressable onPress={handleRequestLocation} style={styles.retryBtn}>
+                    <Text style={styles.retryBtnText}>Try Again</Text>
+                  </Pressable>
+                ) : Platform.OS !== "web" ? (
+                  <Pressable onPress={() => Linking.openSettings()} style={styles.retryBtn}>
+                    <Text style={styles.retryBtnText}>Open Settings</Text>
+                  </Pressable>
+                ) : null}
               </View>
             </View>
-            <Text style={styles.heroTitle}>Swipe together,{"\n"}eat together</Text>
-            <Text style={styles.heroSubtitle}>
-              Create a room and invite your crew. Swipe right on dishes you love.
-              When enough people agree — that's dinner.
-            </Text>
-          </LinearGradient>
+          ) : (
+            <Pressable onPress={handleRequestLocation} style={styles.locationRequest}>
+              <View style={styles.locationDot}>
+                <Ionicons name="location-outline" size={18} color={Colors.accent} />
+              </View>
+              <View style={styles.locationTextCol}>
+                <Text style={styles.locationRequestTitle}>Enable Location</Text>
+                <Text style={styles.locationRequestSub}>
+                  Find restaurants near you
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+            </Pressable>
+          )}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(300)} style={styles.tabs}>
+        {locationStatus === "granted" && (
+          <Animated.View entering={FadeInDown.delay(200)} style={styles.radiusSection}>
+            <Text style={styles.radiusSectionTitle}>Search Radius</Text>
+            <View style={styles.radiusOptions}>
+              {RADIUS_OPTIONS.map((opt, i) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => handleRadiusChange(i)}
+                  style={[
+                    styles.radiusChip,
+                    selectedRadius === i && styles.radiusChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.radiusChipText,
+                      selectedRadius === i && styles.radiusChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
+        )}
+
+        <Animated.View entering={FadeInDown.delay(250)} style={styles.tabs}>
           <Pressable
             style={[styles.tabBtn, tab === "create" && styles.tabBtnActive]}
             onPress={() => setTab("create")}
@@ -138,7 +262,9 @@ export default function HomeScreen() {
             <MaterialCommunityIcons name="door-open" size={40} color={Colors.accent} style={styles.panelIcon} />
             <Text style={styles.panelTitle}>Host a Session</Text>
             <Text style={styles.panelDesc}>
-              Get a unique room code to share with your group. You'll control when the swiping starts.
+              {location
+                ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
+                : "Share a room code with your group. Using curated restaurant picks."}
             </Text>
             <Pressable
               onPress={handleCreate}
@@ -155,7 +281,7 @@ export default function HomeScreen() {
                 style={styles.actionBtnGradient}
               >
                 {creating ? (
-                  <Text style={styles.actionBtnText}>Creating...</Text>
+                  <Text style={styles.actionBtnText}>Finding restaurants...</Text>
                 ) : (
                   <>
                     <Ionicons name="add-circle" size={22} color="#fff" />
@@ -220,7 +346,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    gap: 20,
+    gap: 16,
   },
   header: {
     flexDirection: "row",
@@ -252,40 +378,116 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_700Bold",
     color: Colors.accent,
   },
-  heroCard: {
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,107,53,0.2)",
-  },
-  heroGradient: {
-    padding: 24,
-    gap: 12,
-  },
-  heroIconRow: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  heroIcon: {
-    width: 52,
-    height: 52,
+  locationCard: {
+    backgroundColor: Colors.surface,
     borderRadius: 16,
-    backgroundColor: "rgba(255,107,53,0.12)",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+  },
+  locationGranted: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+  },
+  locationDot: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(76,175,80,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  heroTitle: {
-    fontSize: 24,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.text,
-    lineHeight: 32,
+  locationTextCol: {
+    flex: 1,
+    gap: 2,
   },
-  heroSubtitle: {
-    fontSize: 14,
+  locationLabel: {
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.text,
+  },
+  locationCoords: {
+    fontSize: 12,
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,
-    lineHeight: 22,
+  },
+  locationDenied: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+  },
+  locationDeniedContent: {
+    flex: 1,
+    gap: 8,
+  },
+  locationDeniedText: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textMuted,
+  },
+  retryBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,107,53,0.12)",
+  },
+  retryBtnText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accent,
+  },
+  locationRequest: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+  },
+  locationRequestTitle: {
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.text,
+  },
+  locationRequestSub: {
+    fontSize: 12,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textSecondary,
+  },
+  radiusSection: {
+    gap: 10,
+  },
+  radiusSectionTitle: {
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.text,
+  },
+  radiusOptions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  radiusChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+  },
+  radiusChipActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  radiusChipText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.textSecondary,
+  },
+  radiusChipTextActive: {
+    color: "#fff",
   },
   tabs: {
     flexDirection: "row",

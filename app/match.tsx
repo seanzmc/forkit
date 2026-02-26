@@ -153,10 +153,24 @@ export default function MatchScreen() {
               </View>
               <Text style={styles.restaurantName}>{dish.restaurant}</Text>
             </View>
+            {!!dish.address && (
+              <View style={styles.addressRow}>
+                <Ionicons name="navigate-outline" size={14} color={Colors.textMuted} />
+                <Text style={styles.addressText}>{dish.address}</Text>
+              </View>
+            )}
             <Text style={styles.dishDesc}>{dish.description}</Text>
-            <View style={styles.priceCard}>
-              <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
-              <Text style={styles.priceText}>{dish.price}</Text>
+            <View style={styles.metaRow}>
+              <View style={styles.priceCard}>
+                <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
+                <Text style={styles.priceText}>{dish.price}</Text>
+              </View>
+              {!!dish.rating && dish.rating > 0 && (
+                <View style={styles.priceCard}>
+                  <Ionicons name="star" size={16} color={Colors.accentGold} />
+                  <Text style={styles.priceText}>{dish.rating.toFixed(1)}</Text>
+                </View>
+              )}
             </View>
           </Animated.View>
         )}
@@ -335,11 +349,26 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_600SemiBold",
     color: Colors.textSecondary,
   },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  addressText: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textMuted,
+    flex: 1,
+  },
   dishDesc: {
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,
     lineHeight: 22,
+  },
+  metaRow: {
+    flexDirection: "row",
+    gap: 10,
   },
   priceCard: {
     flexDirection: "row",

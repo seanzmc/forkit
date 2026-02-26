@@ -6,6 +6,9 @@ export interface Dish {
   description: string;
   image: string;
   price: string;
+  rating?: number;
+  address?: string;
+  placeId?: string;
 }
 
 export const DISHES: Dish[] = [
