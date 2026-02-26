@@ -133,13 +133,12 @@ function DishCard({
           <Text style={styles.cuisineText}>{dish.cuisine}</Text>
         </View>
         <Text style={styles.dishName}>{dish.name}</Text>
-        {dish.address ? (
-          <Text style={styles.restaurantName} numberOfLines={1}>
-            <Ionicons name="location" size={13} color={Colors.accent} /> {dish.address}
-          </Text>
-        ) : (
-          <Text style={styles.restaurantName}>
-            <Ionicons name="location" size={13} color={Colors.accent} /> {dish.restaurant}
+        <Text style={styles.restaurantName} numberOfLines={1}>
+          <Ionicons name="restaurant-outline" size={13} color={Colors.accent} /> {dish.restaurant}
+        </Text>
+        {!!dish.address && dish.address !== dish.restaurant && (
+          <Text style={styles.addressLine} numberOfLines={1}>
+            <Ionicons name="location-outline" size={12} color={Colors.textMuted} /> {dish.address}
           </Text>
         )}
         <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>
@@ -531,6 +530,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Poppins_500Medium",
     color: "rgba(255,255,255,0.8)",
+  },
+  addressLine: {
+    fontSize: 12,
+    fontFamily: "Poppins_400Regular",
+    color: "rgba(255,255,255,0.5)",
   },
   dishDesc: {
     fontSize: 13,
