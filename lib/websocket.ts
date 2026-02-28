@@ -1,4 +1,5 @@
 import { getApiUrl } from "./query-client";
+import type { SessionMode } from "./food-data";
 
 export function getWsUrl(): string {
   const apiUrl = getApiUrl();
@@ -10,6 +11,7 @@ export type SessionState = {
   code: string;
   hostId: string;
   status: "lobby" | "swiping" | "matched";
+  mode: SessionMode;
   members: { id: string; name: string }[];
   matchedRestaurant?: string;
   matchedDish?: import("./food-data").Dish;

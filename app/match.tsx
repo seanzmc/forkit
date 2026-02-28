@@ -116,7 +116,9 @@ export default function MatchScreen() {
             <Text style={styles.matchBadgeText}>IT'S A MATCH</Text>
             <Ionicons name="flame" size={16} color={Colors.accent} />
           </View>
-          <Text style={styles.matchTitle}>Dinner is decided!</Text>
+          <Text style={styles.matchTitle}>
+            {dish?.mode === "cook-in" ? "Tonight's recipe!" : "Dinner is decided!"}
+          </Text>
           <Text style={styles.matchSubtitle}>Your group agrees on this one</Text>
         </Animated.View>
 
@@ -147,31 +149,63 @@ export default function MatchScreen() {
               <Text style={styles.cuisineTagText}>{dish.cuisine}</Text>
             </View>
             <Text style={styles.dishName}>{dish.name}</Text>
-            <View style={styles.restaurantRow}>
-              <View style={styles.restaurantIcon}>
-                <Ionicons name="restaurant" size={16} color={Colors.accent} />
-              </View>
-              <Text style={styles.restaurantName}>{dish.restaurant}</Text>
-            </View>
-            {!!dish.address && (
-              <View style={styles.addressRow}>
-                <Ionicons name="navigate-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.addressText}>{dish.address}</Text>
-              </View>
-            )}
-            <Text style={styles.dishDesc}>{dish.description}</Text>
-            <View style={styles.metaRow}>
-              <View style={styles.priceCard}>
-                <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
-                <Text style={styles.priceText}>{dish.price}</Text>
-              </View>
-              {!!dish.rating && dish.rating > 0 && (
-                <View style={styles.priceCard}>
-                  <Ionicons name="star" size={16} color={Colors.accentGold} />
-                  <Text style={styles.priceText}>{dish.rating.toFixed(1)}</Text>
+            {dish.mode === "cook-in" ? (
+              <>
+                <View style={styles.recipeMetaRow}>
+                  {!!dish.cookTime && (
+                    <View style={styles.recipeMetaTag}>
+                      <Ionicons name="time-outline" size={14} color={Colors.accentGold} />
+                      <Text style={styles.recipeMetaTagText}>{dish.cookTime}</Text>
+                    </View>
+                  )}
+                  {!!dish.servings && (
+                    <View style={styles.recipeMetaTag}>
+                      <Ionicons name="people-outline" size={14} color={Colors.accentGold} />
+                      <Text style={styles.recipeMetaTagText}>{dish.servings} servings</Text>
+                    </View>
+                  )}
+                  {!!dish.difficulty && (
+                    <View style={styles.recipeMetaTag}>
+                      <Ionicons name="speedometer-outline" size={14} color={Colors.accentGold} />
+                      <Text style={styles.recipeMetaTagText}>{dish.difficulty}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
+                <Text style={styles.dishDesc}>{dish.description}</Text>
+                <View style={styles.priceCard}>
+                  <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
+                  <Text style={styles.priceText}>~{dish.price}/serving</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.restaurantRow}>
+                  <View style={styles.restaurantIcon}>
+                    <Ionicons name="restaurant" size={16} color={Colors.accent} />
+                  </View>
+                  <Text style={styles.restaurantName}>{dish.restaurant}</Text>
+                </View>
+                {!!dish.address && (
+                  <View style={styles.addressRow}>
+                    <Ionicons name="navigate-outline" size={14} color={Colors.textMuted} />
+                    <Text style={styles.addressText}>{dish.address}</Text>
+                  </View>
+                )}
+                <Text style={styles.dishDesc}>{dish.description}</Text>
+                <View style={styles.metaRow}>
+                  <View style={styles.priceCard}>
+                    <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
+                    <Text style={styles.priceText}>{dish.price}</Text>
+                  </View>
+                  {!!dish.rating && dish.rating > 0 && (
+                    <View style={styles.priceCard}>
+                      <Ionicons name="star" size={16} color={Colors.accentGold} />
+                      <Text style={styles.priceText}>{dish.rating.toFixed(1)}</Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
           </Animated.View>
         )}
 
@@ -365,6 +399,25 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,
     lineHeight: 22,
+  },
+  recipeMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  recipeMetaTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,179,71,0.12)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  recipeMetaTagText: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: Colors.accentGold,
   },
   metaRow: {
     flexDirection: "row",

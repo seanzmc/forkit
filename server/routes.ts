@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Dish } from "../lib/food-data";
-import { shuffleDishes } from "../lib/food-data";
+import type { Dish, SessionMode } from "../lib/food-data";
+import { shuffleDishes, shuffleRecipes } from "../lib/food-data";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -20,6 +20,7 @@ interface Session {
   members: Map<string, SessionMember>;
   dishes: Dish[];
   status: "lobby" | "swiping" | "matched";
+  mode: SessionMode;
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
@@ -50,6 +51,7 @@ function getSessionState(session: Session) {
     code: session.code,
     hostId: session.hostId,
     status: session.status,
+    mode: session.mode,
     members: Array.from(session.members.values()).map((m) => ({
       id: m.id,
       name: m.name,
@@ -62,6 +64,34 @@ function getSessionState(session: Session) {
 function checkForMatch(session: Session): boolean {
   const memberCount = session.members.size;
   const majority = Math.ceil(memberCount / 2);
+
+  if (session.mode === "cook-in") {
+    const dishLikes = new Map<string, { dish: Dish; likers: Set<string> }>();
+
+    session.members.forEach((member) => {
+      Object.entries(member.swipes).forEach(([dishId, vote]) => {
+        if (vote === "like") {
+          const dish = session.dishes.find((d) => d.id === dishId);
+          if (!dish) return;
+          if (!dishLikes.has(dishId)) {
+            dishLikes.set(dishId, { dish, likers: new Set() });
+          }
+          dishLikes.get(dishId)!.likers.add(member.id);
+        }
+      });
+    });
+
+    for (const [, { dish, likers }] of dishLikes) {
+      if (likers.size >= majority) {
+        session.status = "matched";
+        session.matchedRestaurant = dish.name;
+        session.matchedDish = dish;
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   const restaurantLikes = new Map<string, Set<string>>();
   const dishMatches = new Map<string, { dish: Dish; likers: Set<string> }>();
@@ -493,10 +523,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       code = generateCode();
     }
 
-    const { lat, lng, radius } = req.body || {};
+    const { lat, lng, radius, mode: reqMode } = req.body || {};
+    const mode: SessionMode = reqMode === "cook-in" ? "cook-in" : "dine-out";
     let dishes: Dish[];
 
-    if (lat && lng && radius) {
+    if (mode === "cook-in") {
+      dishes = shuffleRecipes();
+      console.log(`Created cook-in session with ${dishes.length} recipes`);
+    } else if (lat && lng && radius) {
       const radiusMeters = Math.min(Math.max(radius, 500), 50000);
       console.log(
         `Fetching restaurants near ${lat},${lng} within ${radiusMeters}m`
@@ -513,11 +547,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       members: new Map(),
       dishes,
       status: "lobby",
+      mode,
       createdAt: Date.now(),
     };
 
     sessions.set(code, session);
-    res.json({ code, dishCount: dishes.length });
+    res.json({ code, mode, dishCount: dishes.length });
   });
 
   app.get("/api/sessions/:code", (req, res) => {

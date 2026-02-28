@@ -133,17 +133,42 @@ function DishCard({
           <Text style={styles.cuisineText}>{dish.cuisine}</Text>
         </View>
         <Text style={styles.dishName}>{dish.name}</Text>
-        <Text style={styles.restaurantName} numberOfLines={1}>
-          <Ionicons name="restaurant-outline" size={13} color={Colors.accent} /> {dish.restaurant}
-        </Text>
-        {!!dish.address && dish.address !== dish.restaurant && (
-          <Text style={styles.addressLine} numberOfLines={1}>
-            <Ionicons name="location-outline" size={12} color={Colors.textMuted} /> {dish.address}
-          </Text>
+        {dish.mode === "cook-in" ? (
+          <View style={styles.recipeMeta}>
+            {!!dish.cookTime && (
+              <View style={styles.recipeMetaChip}>
+                <Ionicons name="time-outline" size={12} color={Colors.accentGold} />
+                <Text style={styles.recipeMetaText}>{dish.cookTime}</Text>
+              </View>
+            )}
+            {!!dish.servings && (
+              <View style={styles.recipeMetaChip}>
+                <Ionicons name="people-outline" size={12} color={Colors.accentGold} />
+                <Text style={styles.recipeMetaText}>{dish.servings} servings</Text>
+              </View>
+            )}
+            {!!dish.difficulty && (
+              <View style={styles.recipeMetaChip}>
+                <Ionicons name="speedometer-outline" size={12} color={Colors.accentGold} />
+                <Text style={styles.recipeMetaText}>{dish.difficulty}</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <>
+            <Text style={styles.restaurantName} numberOfLines={1}>
+              <Ionicons name="restaurant-outline" size={13} color={Colors.accent} /> {dish.restaurant}
+            </Text>
+            {!!dish.address && dish.address !== dish.restaurant && (
+              <Text style={styles.addressLine} numberOfLines={1}>
+                <Ionicons name="location-outline" size={12} color={Colors.textMuted} /> {dish.address}
+              </Text>
+            )}
+          </>
         )}
         <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>{dish.price}</Text>
+          <Text style={styles.price}>{dish.mode === "cook-in" ? `~${dish.price}/serving` : dish.price}</Text>
           {!!dish.rating && dish.rating > 0 && (
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={13} color={Colors.accentGold} />
@@ -535,6 +560,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Poppins_400Regular",
     color: "rgba(255,255,255,0.5)",
+  },
+  recipeMeta: {
+    flexDirection: "row",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  recipeMetaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,179,71,0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  recipeMetaText: {
+    fontSize: 11,
+    fontFamily: "Poppins_500Medium",
+    color: Colors.accentGold,
   },
   dishDesc: {
     fontSize: 13,

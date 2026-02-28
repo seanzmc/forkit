@@ -140,6 +140,18 @@ export default function SessionLobby() {
         <Animated.View entering={FadeInDown.delay(150)} style={styles.codeCard}>
           <Text style={styles.codeLabel}>Session Code</Text>
           <Text style={styles.codeText}>{code?.toUpperCase()}</Text>
+          {session?.mode && (
+            <View style={styles.modeBadge}>
+              <Ionicons
+                name={session.mode === "cook-in" ? "flame-outline" : "restaurant-outline"}
+                size={13}
+                color={Colors.accent}
+              />
+              <Text style={styles.modeBadgeText}>
+                {session.mode === "cook-in" ? "Cook In" : "Dine Out"}
+              </Text>
+            </View>
+          )}
           <Pressable onPress={handleShare} style={styles.copyRow}>
             <Ionicons name="copy-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.copyText}>Tap to share with your group</Text>
@@ -285,6 +297,20 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_700Bold",
     color: Colors.accent,
     letterSpacing: 8,
+  },
+  modeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,107,53,0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  modeBadgeText: {
+    fontSize: 12,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accent,
   },
   copyRow: {
     flexDirection: "row",

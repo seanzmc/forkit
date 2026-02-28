@@ -20,6 +20,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest } from "@/lib/query-client";
+import type { SessionMode } from "@/lib/food-data";
 
 const RADIUS_OPTIONS = [
   { label: "1 mi", value: 1609 },
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [tab, setTab] = useState<"create" | "join">("create");
+  const [mode, setMode] = useState<SessionMode>("dine-out");
   const [selectedRadius, setSelectedRadius] = useState(2);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
@@ -100,12 +102,17 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleModeChange = (newMode: SessionMode) => {
+    setMode(newMode);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   const handleCreate = async () => {
     setCreating(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const body: Record<string, number> = {};
-      if (location) {
+      const body: Record<string, string | number> = { mode };
+      if (mode === "dine-out" && location) {
         body.lat = location.lat;
         body.lng = location.lng;
         body.radius = RADIUS_OPTIONS[selectedRadius].value;
@@ -163,82 +170,128 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(150)} style={styles.locationCard}>
-          {locationStatus === "granted" && location ? (
-            <View style={styles.locationGranted}>
-              <View style={styles.locationDot}>
-                <Ionicons name="location" size={18} color={Colors.green} />
-              </View>
-              <View style={styles.locationTextCol}>
-                <Text style={styles.locationLabel}>Location active</Text>
-                <Text style={styles.locationCoords}>
-                  Restaurants near you will be used
-                </Text>
-              </View>
-              <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
-            </View>
-          ) : locationStatus === "denied" ? (
-            <View style={styles.locationDenied}>
-              <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
-              <View style={styles.locationDeniedContent}>
-                <Text style={styles.locationDeniedText}>
-                  Location denied — using curated picks instead.
-                </Text>
-                {Platform.OS !== "web" && locationPermission?.canAskAgain ? (
-                  <Pressable onPress={handleRequestLocation} style={styles.retryBtn}>
-                    <Text style={styles.retryBtnText}>Try Again</Text>
-                  </Pressable>
-                ) : Platform.OS !== "web" ? (
-                  <Pressable onPress={() => Linking.openSettings()} style={styles.retryBtn}>
-                    <Text style={styles.retryBtnText}>Open Settings</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-          ) : (
-            <Pressable onPress={handleRequestLocation} style={styles.locationRequest}>
-              <View style={styles.locationDot}>
-                <Ionicons name="location-outline" size={18} color={Colors.accent} />
-              </View>
-              <View style={styles.locationTextCol}>
-                <Text style={styles.locationRequestTitle}>Enable Location</Text>
-                <Text style={styles.locationRequestSub}>
-                  Find restaurants near you
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
-            </Pressable>
-          )}
+        <Animated.View entering={FadeInDown.delay(150)} style={styles.modeToggle}>
+          <Pressable
+            onPress={() => handleModeChange("dine-out")}
+            style={[styles.modeOption, mode === "dine-out" && styles.modeOptionActive]}
+          >
+            <Ionicons
+              name="restaurant"
+              size={22}
+              color={mode === "dine-out" ? Colors.accent : Colors.textMuted}
+            />
+            <Text style={[styles.modeLabel, mode === "dine-out" && styles.modeLabelActive]}>
+              Dine Out
+            </Text>
+            <Text style={styles.modeSub}>Nearby restaurants</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => handleModeChange("cook-in")}
+            style={[styles.modeOption, mode === "cook-in" && styles.modeOptionActive]}
+          >
+            <MaterialCommunityIcons
+              name="pot-steam"
+              size={22}
+              color={mode === "cook-in" ? Colors.accent : Colors.textMuted}
+            />
+            <Text style={[styles.modeLabel, mode === "cook-in" && styles.modeLabelActive]}>
+              Cook In
+            </Text>
+            <Text style={styles.modeSub}>Home recipes</Text>
+          </Pressable>
         </Animated.View>
 
-        {locationStatus === "granted" && (
-          <Animated.View entering={FadeInDown.delay(200)} style={styles.radiusSection}>
-            <Text style={styles.radiusSectionTitle}>Search Radius</Text>
-            <View style={styles.radiusOptions}>
-              {RADIUS_OPTIONS.map((opt, i) => (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => handleRadiusChange(i)}
-                  style={[
-                    styles.radiusChip,
-                    selectedRadius === i && styles.radiusChipActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.radiusChipText,
-                      selectedRadius === i && styles.radiusChipTextActive,
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
+        {mode === "dine-out" && (
+          <>
+            <Animated.View entering={FadeInDown.delay(200)} style={styles.locationCard}>
+              {locationStatus === "granted" && location ? (
+                <View style={styles.locationGranted}>
+                  <View style={styles.locationDot}>
+                    <Ionicons name="location" size={18} color={Colors.green} />
+                  </View>
+                  <View style={styles.locationTextCol}>
+                    <Text style={styles.locationLabel}>Location active</Text>
+                    <Text style={styles.locationCoords}>
+                      Restaurants near you will be used
+                    </Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+                </View>
+              ) : locationStatus === "denied" ? (
+                <View style={styles.locationDenied}>
+                  <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
+                  <View style={styles.locationDeniedContent}>
+                    <Text style={styles.locationDeniedText}>
+                      Location denied — using curated picks instead.
+                    </Text>
+                    {Platform.OS !== "web" && locationPermission?.canAskAgain ? (
+                      <Pressable onPress={handleRequestLocation} style={styles.retryBtn}>
+                        <Text style={styles.retryBtnText}>Try Again</Text>
+                      </Pressable>
+                    ) : Platform.OS !== "web" ? (
+                      <Pressable onPress={() => Linking.openSettings()} style={styles.retryBtn}>
+                        <Text style={styles.retryBtnText}>Open Settings</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+              ) : (
+                <Pressable onPress={handleRequestLocation} style={styles.locationRequest}>
+                  <View style={styles.locationDot}>
+                    <Ionicons name="location-outline" size={18} color={Colors.accent} />
+                  </View>
+                  <View style={styles.locationTextCol}>
+                    <Text style={styles.locationRequestTitle}>Enable Location</Text>
+                    <Text style={styles.locationRequestSub}>
+                      Find restaurants near you
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
                 </Pressable>
-              ))}
+              )}
+            </Animated.View>
+            {locationStatus === "granted" && (
+              <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
+                <Text style={styles.radiusSectionTitle}>Search Radius</Text>
+                <View style={styles.radiusOptions}>
+                  {RADIUS_OPTIONS.map((opt, i) => (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => handleRadiusChange(i)}
+                      style={[
+                        styles.radiusChip,
+                        selectedRadius === i && styles.radiusChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.radiusChipText,
+                          selectedRadius === i && styles.radiusChipTextActive,
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Animated.View>
+            )}
+          </>
+        )}
+
+        {mode === "cook-in" && (
+          <Animated.View entering={FadeInDown.delay(200)} style={styles.cookInCard}>
+            <MaterialCommunityIcons name="pot-steam" size={24} color={Colors.accent} />
+            <View style={styles.locationTextCol}>
+              <Text style={styles.locationLabel}>Recipe Mode</Text>
+              <Text style={styles.locationCoords}>
+                Swipe through home recipes your group can cook together
+              </Text>
             </View>
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInDown.delay(250)} style={styles.tabs}>
+        <Animated.View entering={FadeInDown.delay(350)} style={styles.tabs}>
           <Pressable
             style={[styles.tabBtn, tab === "create" && styles.tabBtnActive]}
             onPress={() => setTab("create")}
@@ -262,9 +315,11 @@ export default function HomeScreen() {
             <MaterialCommunityIcons name="door-open" size={40} color={Colors.accent} style={styles.panelIcon} />
             <Text style={styles.panelTitle}>Host a Session</Text>
             <Text style={styles.panelDesc}>
-              {location
-                ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
-                : "Share a room code with your group. Using curated restaurant picks."}
+              {mode === "cook-in"
+                ? "Share a room code with your group. Swipe on recipes to cook together."
+                : location
+                  ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
+                  : "Share a room code with your group. Using curated restaurant picks."}
             </Text>
             <Pressable
               onPress={handleCreate}
@@ -281,7 +336,9 @@ export default function HomeScreen() {
                 style={styles.actionBtnGradient}
               >
                 {creating ? (
-                  <Text style={styles.actionBtnText}>Finding restaurants...</Text>
+                  <Text style={styles.actionBtnText}>
+                    {mode === "cook-in" ? "Loading recipes..." : "Finding restaurants..."}
+                  </Text>
                 ) : (
                   <>
                     <Ionicons name="add-circle" size={22} color="#fff" />
@@ -377,6 +434,47 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Poppins_700Bold",
     color: Colors.accent,
+  },
+  modeToggle: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modeOption: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    alignItems: "center",
+    gap: 6,
+  },
+  modeOptionActive: {
+    borderColor: Colors.accent,
+    backgroundColor: "rgba(255,107,53,0.08)",
+  },
+  modeLabel: {
+    fontSize: 15,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.textSecondary,
+  },
+  modeLabelActive: {
+    color: Colors.text,
+  },
+  modeSub: {
+    fontSize: 11,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textMuted,
+  },
+  cookInCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
   },
   locationCard: {
     backgroundColor: Colors.surface,
