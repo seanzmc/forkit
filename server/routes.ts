@@ -671,6 +671,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             broadcastToSession(session, matchMsg);
             ws.send(JSON.stringify(matchMsg));
           }
+        } else if (msg.type === "undo") {
+          const session = sessions.get(sessionCode);
+          if (!session || session.status !== "swiping") return;
+
+          const member = session.members.get(memberId);
+          if (!member) return;
+
+          delete member.swipes[msg.dishId];
+
+          broadcastToSession(
+            session,
+            {
+              type: "swipe_update",
+              memberId,
+              dishId: msg.dishId,
+              vote: "undo",
+            },
+            memberId
+          );
         } else if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         }

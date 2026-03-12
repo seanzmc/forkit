@@ -196,6 +196,7 @@ export default function SwipeScreen() {
   const [swipedCount, setSwipedCount] = useState(0);
   const [memberSwipes, setMemberSwipes] = useState<Record<string, number>>({});
   const [session, setSession] = useState<SessionState | null>(null);
+  const [swipeHistory, setSwipeHistory] = useState<{ dishId: string; vote: "like" | "pass" }[]>([]);
   const userId = paramUserId ?? Crypto.randomUUID();
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -266,9 +267,25 @@ export default function SwipeScreen() {
       wsRef.current.send(JSON.stringify({ type: "swipe", dishId: dish.id, vote }));
     }
 
+    setSwipeHistory((h) => [...h, { dishId: dish.id, vote }]);
     setSwipedCount((c) => c + 1);
     setCurrentIndex((i) => i + 1);
   }, [currentIndex, dishes]);
+
+  const handleUndo = useCallback(() => {
+    if (swipeHistory.length === 0 || currentIndex <= 0) return;
+
+    const lastSwipe = swipeHistory[swipeHistory.length - 1];
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "undo", dishId: lastSwipe.dishId }));
+    }
+
+    setSwipeHistory((h) => h.slice(0, -1));
+    setSwipedCount((c) => Math.max(0, c - 1));
+    setCurrentIndex((i) => i - 1);
+  }, [swipeHistory, currentIndex]);
 
   const handleButtonSwipe = (vote: "like" | "pass") => {
     handleSwipe(vote);
@@ -370,11 +387,21 @@ export default function SwipeScreen() {
               <Ionicons name="close" size={32} color={Colors.red} />
             </Pressable>
 
-            <View style={styles.actionCenter}>
-              <Text style={styles.actionLabel}>
-                {dishes[currentIndex]?.restaurant}
-              </Text>
-            </View>
+            <Pressable
+              onPress={handleUndo}
+              disabled={swipeHistory.length === 0}
+              style={({ pressed }) => [
+                styles.undoBtn,
+                swipeHistory.length === 0 && styles.undoBtnDisabled,
+                { transform: [{ scale: pressed && swipeHistory.length > 0 ? 0.9 : 1 }] },
+              ]}
+            >
+              <Ionicons
+                name="arrow-undo"
+                size={22}
+                color={swipeHistory.length > 0 ? Colors.accentGold : Colors.textMuted}
+              />
+            </Pressable>
 
             <Pressable
               onPress={() => handleButtonSwipe("like")}
@@ -626,15 +653,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(76,175,80,0.3)",
   },
-  actionCenter: {
-    flex: 1,
+  undoBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,179,71,0.1)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,179,71,0.25)",
   },
-  actionLabel: {
-    fontSize: 13,
-    fontFamily: "Poppins_500Medium",
-    color: Colors.textSecondary,
-    textAlign: "center",
+  undoBtnDisabled: {
+    opacity: 0.35,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
   doneCard: {
     width: CARD_WIDTH,
