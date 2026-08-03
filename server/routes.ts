@@ -517,6 +517,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   setInterval(cleanupStaleSessions, 300000);
 
+  app.get("/api/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      sessions: sessions.size,
+      uptime: Math.round(process.uptime()),
+    });
+  });
+
   app.post("/api/sessions", async (req, res) => {
     let code = generateCode();
     while (sessions.has(code)) {
@@ -629,19 +637,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           session.status = "swiping";
 
+          // No excludeId, so this already reaches the host who sent "start"
           broadcastToSession(session, {
             type: "game_started",
             session: getSessionState(session),
             dishes: session.dishes,
           });
-
-          ws.send(
-            JSON.stringify({
-              type: "game_started",
-              session: getSessionState(session),
-              dishes: session.dishes,
-            })
-          );
         } else if (msg.type === "swipe") {
           const session = sessions.get(sessionCode);
           if (!session || session.status !== "swiping") return;
@@ -668,8 +669,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               session: getSessionState(session),
               dish: session.matchedDish,
             };
+            // No excludeId, so this already reaches the swiper who triggered it
             broadcastToSession(session, matchMsg);
-            ws.send(JSON.stringify(matchMsg));
           }
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);
