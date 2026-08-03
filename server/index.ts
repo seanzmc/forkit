@@ -7,6 +7,11 @@ import * as path from "path";
 const app = express();
 const log = console.log;
 
+// Bump this when the privacy policy text changes.
+const PRIVACY_LAST_UPDATED = "3 August 2026";
+const PRIVACY_CONTACT_EMAIL =
+  process.env.PRIVACY_CONTACT_EMAIL || "seanzmc9613@gmail.com";
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -181,6 +186,25 @@ function configureExpoAndLanding(app: express.Application) {
   );
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
+
+  // The App Store and Play Console both require a publicly reachable privacy
+  // policy URL, so it is served from the same host as the API.
+  const privacyPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "privacy-policy.html",
+  );
+  const privacyTemplate = fs.readFileSync(privacyPath, "utf-8");
+  const privacyHtml = privacyTemplate
+    .replace(/APP_NAME_PLACEHOLDER/g, appName)
+    .replace(/LAST_UPDATED_PLACEHOLDER/g, PRIVACY_LAST_UPDATED)
+    .replace(/CONTACT_EMAIL_PLACEHOLDER/g, PRIVACY_CONTACT_EMAIL);
+
+  app.get("/privacy", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(privacyHtml);
+  });
 
   log("Serving static Expo files with dynamic manifest routing");
 
