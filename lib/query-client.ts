@@ -1,18 +1,31 @@
 import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
 /**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
+ * Whether a host should be reached over plain http/ws instead of https/wss.
+ * Local and LAN addresses have no TLS certificate.
+ */
+export function isLocalHost(host: string): boolean {
+  return LOCAL_HOST.test(host);
+}
+
+/**
+ * Gets the base URL for the Express API server (e.g., "http://localhost:5000")
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+    throw new Error(
+      'EXPO_PUBLIC_DOMAIN is not set. Set it to the API host — "localhost:5000" for local dev, or the deployed domain for a release build.',
+    );
   }
 
-  let url = new URL(`https://${host}`);
+  let protocol = isLocalHost(host) ? "http" : "https";
+  let url = new URL(`${protocol}://${host}`);
 
   return url.href;
 }

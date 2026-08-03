@@ -3,7 +3,8 @@ import type { SessionMode } from "./food-data";
 
 export function getWsUrl(): string {
   const apiUrl = getApiUrl();
-  const wsUrl = apiUrl.replace(/^https?:\/\//, "wss://");
+  // http -> ws, https -> wss, so local dev over plain http still connects
+  const wsUrl = apiUrl.replace(/^http(s?):\/\//, "ws$1://");
   return wsUrl.replace(/\/$/, "") + "/ws";
 }
 

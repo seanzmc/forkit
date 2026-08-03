@@ -17,6 +17,18 @@ function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
 
+    // Comma-separated list of allowed origins, with or without scheme.
+    // Primary mechanism for non-Replit deployments.
+    if (process.env.ALLOWED_ORIGINS) {
+      process.env.ALLOWED_ORIGINS.split(",").forEach((o) => {
+        const trimmed = o.trim();
+        if (!trimmed) return;
+        origins.add(
+          /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`,
+        );
+      });
+    }
+
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
     }
@@ -241,7 +253,8 @@ function setupErrorHandler(app: express.Application) {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
+      // SO_REUSEPORT is Linux-only; macOS and Windows throw ENOTSUP
+      reusePort: process.platform === "linux",
     },
     () => {
       log(`express server serving on port ${port}`);
