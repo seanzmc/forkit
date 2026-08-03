@@ -14,22 +14,35 @@ npm run expo:dev      # Metro / Expo on :8081 (needs REPLIT_DEV_DOMAIN)
 npm start             # plain `expo start` for local dev
 npm run lint          # expo lint (eslint-config-expo flat config)
 npm run lint:fix
+npm run typecheck     # tsc --noEmit
 npm run db:push       # drizzle-kit push (requires DATABASE_URL)
 ```
 
 Both processes must run together — the app is useless without the backend. Replit's "Project" workflow (`.replit`) starts both in parallel.
 
-There is **no test suite and no typecheck script**. For type errors run `npx tsc --noEmit`.
+There is **no test suite**. `npm run typecheck` and `npm run lint` are the only automated checks; `.github/workflows/ci.yml` runs both plus a server build and a boot/health/create-session smoke test on every push and PR to `main`.
+
+CI must regenerate `expo-env.d.ts` (via `npx expo customize tsconfig.json`) before typechecking. `tsconfig.json` includes that file, it supplies the `expo/types` reference that types `process.env`, and it is gitignored — so a fresh checkout fails typecheck with implicit-any errors that never reproduce locally.
 
 Production build: `npm run expo:static:build && npm run server:build`, then `npm run server:prod`.
 
 ## Environment
 
-- `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`.
+- `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `npm start` defaults it to `localhost:5000`; `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`; EAS builds get it from the profile `env` in [eas.json](eas.json).
 - `GOOGLE_PLACES_API_KEY` — server-side; absent ⇒ dine-out silently falls back to the curated `DISHES` list.
+- `ALLOWED_ORIGINS` — server-side CORS allowlist, comma-separated, scheme optional. The `REPLIT_*` domain vars still work as a fallback.
+- `PRIVACY_CONTACT_EMAIL` — server-side; contact address shown on `/privacy`.
 - `DATABASE_URL` — only needed for `db:push`; the running app never touches Postgres.
 
-Note `getWsUrl()` always rewrites to `wss://`, so plain-`http` local hosts won't connect without editing it.
+`getApiUrl()` picks `http` for localhost/LAN hosts and `https` otherwise; `getWsUrl()` derives `ws`/`wss` from that, so local dev connects without edits.
+
+## Deployment
+
+The server runs on Railway (project `forkit`, service `forkit-server`) at `https://forkit-server-production.up.railway.app`, configured by [railway.json](railway.json). Pushing to `main` auto-deploys.
+
+**`numReplicas` must stay 1.** Session state is an in-memory `Map`, so a second replica would split members of one session across servers. Any deploy also drops every live session.
+
+`/api/health` backs the platform healthcheck. `/privacy` serves the store-required privacy policy from `server/templates/privacy-policy.html`.
 
 ## Architecture
 
