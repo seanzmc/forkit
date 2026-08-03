@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npx expo lint
+
+      - name: Build server
+        run: npm run server:build
+
+      - name: Smoke test server
+        env:
+          PORT: 5055
+        run: |
+          npm run server:prod &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf -m 2 http://localhost:5055/api/health > /dev/null; then
+              echo "Server is up"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "Server did not become healthy in time"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl -sf -m 5 http://localhost:5055/api/health
+          echo
+
+          # A session must actually be creatable, not just the process alive
+          curl -sf -m 10 -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"mode":"cook-in"}' \
+            http://localhost:5055/api/sessions | grep -q '"code"'
+          echo "Session creation OK"
