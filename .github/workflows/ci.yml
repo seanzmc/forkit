@@ -26,6 +26,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # tsconfig.json includes expo-env.d.ts, which supplies the expo/types
+      # reference that types process.env. Expo generates that file and it is
+      # gitignored, so a fresh checkout does not have it and typecheck fails
+      # with implicit-any errors that never appear locally.
+      - name: Generate Expo type declarations
+        run: npx expo customize tsconfig.json
+
       - name: Typecheck
         run: npm run typecheck
 
