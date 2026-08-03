@@ -37,7 +37,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ForkIt uses your location to find restaurants near you so the group can swipe on nearby dishes."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,0 +1,34 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "forkit-server-production.up.railway.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "forkit-server-production.up.railway.app"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "forkit-server-production.up.railway.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
