@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
@@ -116,7 +115,7 @@ export default function WelcomeScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.buttonGradient}
               >
-                <Text style={styles.buttonText}>Let's Eat</Text>
+                <Text style={styles.buttonText}>{"Let's Eat"}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </Pressable>

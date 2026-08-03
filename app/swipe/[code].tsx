@@ -8,7 +8,6 @@ import {
   PanResponder,
   Dimensions,
   Image,
-  Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,7 +22,6 @@ import Animated, {
   interpolate,
   Extrapolate,
   FadeIn,
-  FadeOut,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
@@ -193,8 +191,8 @@ export default function SwipeScreen() {
     try { return JSON.parse(dishesParam ?? "[]"); } catch { return []; }
   });
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipedCount, setSwipedCount] = useState(0);
-  const [memberSwipes, setMemberSwipes] = useState<Record<string, number>>({});
+  const [, setSwipedCount] = useState(0);
+  const [, setMemberSwipes] = useState<Record<string, number>>({});
   const [session, setSession] = useState<SessionState | null>(null);
   const [swipeHistory, setSwipeHistory] = useState<{ dishId: string; vote: "like" | "pass" }[]>([]);
   const userId = paramUserId ?? Crypto.randomUUID();
@@ -309,7 +307,7 @@ export default function SwipeScreen() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>What's for dinner?</Text>
+            <Text style={styles.headerTitle}>{"What's for dinner?"}</Text>
             <Text style={styles.headerSub}>Swipe right if you want it</Text>
           </View>
           <View style={styles.memberBubbles}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import Animated, {
   withRepeat,
   FadeIn,
   FadeInDown,
-  ZoomIn,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
@@ -113,7 +112,7 @@ export default function MatchScreen() {
         <Animated.View entering={FadeInDown.delay(100)} style={styles.matchHeader}>
           <View style={styles.matchBadge}>
             <Ionicons name="flame" size={16} color={Colors.accent} />
-            <Text style={styles.matchBadgeText}>IT'S A MATCH</Text>
+            <Text style={styles.matchBadgeText}>{"IT'S A MATCH"}</Text>
             <Ionicons name="flame" size={16} color={Colors.accent} />
           </View>
           <Text style={styles.matchTitle}>
