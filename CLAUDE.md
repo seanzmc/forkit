@@ -41,7 +41,7 @@ Note `getWsUrl()` always rewrites to `wss://`, so plain-`http` local hosts won't
 - `dine-out` — server calls Google Places `searchNearby`, resolves photo redirects, then synthesizes 2–3 dish cards per restaurant from a hardcoded cuisine→dishes table (`CUISINE_DISHES`). Match = majority liked the same **restaurant**; the winning dish is the most-liked one there.
 - `cook-in` — 20 curated recipes, no location. Match = majority liked the same **dish**.
 
-Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is `ceil(memberCount / 2)`.
+Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is a strict majority — `floor(memberCount / 2) + 1`, so 2/2, 2/3, 3/4, 3/5.
 
 **Client↔server protocol** is hand-rolled JSON over one WebSocket at `/ws`. Message types are declared in [lib/websocket.ts](lib/websocket.ts) (`WsMessage`) but the server does not validate inbound messages — inbound kinds are `join`, `start`, `swipe`, `undo`, `ping`, matched by string in the `ws.on("message")` block. Adding a message type means editing both files.
 

@@ -63,7 +63,10 @@ function getSessionState(session: Session) {
 
 function checkForMatch(session: Session): boolean {
   const memberCount = session.members.size;
-  const majority = Math.ceil(memberCount / 2);
+  // Strict majority: more than half, not half. Math.ceil(n / 2) let exactly
+  // half decide on every even group size — in a 2-person session a single
+  // like ended the game before the other person had voted at all.
+  const majority = Math.floor(memberCount / 2) + 1;
 
   if (session.mode === "cook-in") {
     const dishLikes = new Map<string, { dish: Dish; likers: Set<string> }>();
