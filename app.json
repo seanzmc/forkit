@@ -33,7 +33,7 @@
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://forkit-server-production.up.railway.app"
         }
       ],
       "expo-font",
