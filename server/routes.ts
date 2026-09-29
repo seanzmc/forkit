@@ -602,6 +602,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return;
           }
 
+          if (typeof msg.userId !== "string" || !msg.userId || msg.userId.length > 64) {
+            ws.send(
+              JSON.stringify({ type: "error", message: "Invalid user id" })
+            );
+            return;
+          }
+          const cleanName =
+            typeof msg.name === "string"
+              ? msg.name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 24)
+              : "";
+
           memberId = msg.userId;
           sessionCode = session.code;
 
@@ -611,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           session.members.set(memberId, {
             id: memberId,
-            name: msg.name,
+            name: cleanName || "Guest",
             ws,
             swipes: {},
           });
