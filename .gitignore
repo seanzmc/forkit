@@ -46,3 +46,4 @@ yarn-error.*
 
 # Claude Code local skills cache
 .local/
+expo-config.json
