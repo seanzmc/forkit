@@ -26,6 +26,10 @@ CI must regenerate `expo-env.d.ts` (via `npx expo customize tsconfig.json`) befo
 
 Production build: `npm run expo:static:build && npm run server:build`, then `npm run server:prod`.
 
+## Contribution workflow
+
+All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). CI has two jobs, `check` (typecheck, lint, server build, smoke test) and `expo-config` (asserts release-critical `app.json` values). Don't push to `main` directly.
+
 ## Environment
 
 - `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `npm start` defaults it to `localhost:5000`; `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`; EAS builds get it from the profile `env` in [eas.json](eas.json).
