@@ -171,7 +171,6 @@ export default function MatchScreen() {
                     </View>
                   )}
                 </View>
-                <PlacesAttribution dish={dish} />
                 <Text style={styles.dishDesc}>{dish.description}</Text>
                 <View style={styles.priceCard}>
                   <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
@@ -192,6 +191,7 @@ export default function MatchScreen() {
                     <Text style={styles.addressText}>{dish.address}</Text>
                   </View>
                 )}
+                <PlacesAttribution dish={dish} />
                 <Text style={styles.dishDesc}>{dish.description}</Text>
                 <View style={styles.metaRow}>
                   <View style={styles.priceCard}>
