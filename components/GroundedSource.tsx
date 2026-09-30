@@ -16,17 +16,18 @@ export function GroundedSource({ dish }: { dish: Dish }) {
         <Ionicons name="sparkles-outline" size={12} color={Colors.accentGold} />
         <Text style={styles.label}>Popular here, summarized from reviews</Text>
       </View>
-      <Text style={styles.sources} numberOfLines={2}>
-        {sources.map((s, i) => (
+      {/* No line limit: every source must stay visible and tappable, and
+          "Google Maps" goes first so it can never be cut off. */}
+      <Text style={styles.sources}>
+        <Text style={styles.provider}>Google Maps</Text>
+        {sources.map((s) => (
           <Text key={s.uri}>
-            {i > 0 ? "  " : ""}
+            {" · "}
             <Text style={styles.link} onPress={() => Linking.openURL(s.uri)}>
               {s.title}
             </Text>
           </Text>
         ))}
-        {" · "}
-        <Text style={styles.provider}>Google Maps</Text>
       </Text>
     </View>
   );
