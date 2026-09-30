@@ -27,6 +27,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Dish } from "@/lib/food-data";
+import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
 
@@ -162,6 +163,7 @@ function DishCard({
                 <Ionicons name="location-outline" size={12} color={Colors.textMuted} /> {dish.address}
               </Text>
             )}
+            <PlacesAttribution dish={dish} />
           </>
         )}
         <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>

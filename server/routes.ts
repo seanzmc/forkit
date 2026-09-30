@@ -463,12 +463,15 @@ async function fetchNearbyRestaurants(
 
     const resolvedUrls = await Promise.all(photoPromises);
 
-    const placePhotos = new Map<number, string[]>();
+    const placePhotos = new Map<number, { url: string; author?: string }[]>();
     resolvedUrls.forEach((url, idx) => {
       if (!url) return;
-      const { placeIndex } = photoMeta[idx];
+      const { placeIndex, photoIndex } = photoMeta[idx];
+      const author: string | undefined =
+        places[placeIndex].photos?.[photoIndex]?.authorAttributions?.[0]
+          ?.displayName || undefined;
       if (!placePhotos.has(placeIndex)) placePhotos.set(placeIndex, []);
-      placePhotos.get(placeIndex)!.push(url);
+      placePhotos.get(placeIndex)!.push({ url, author });
     });
 
     for (let pi = 0; pi < places.length; pi++) {
@@ -494,11 +497,12 @@ async function fetchNearbyRestaurants(
           restaurant: restaurantName,
           cuisine,
           description: dish.desc,
-          image: photos[di % photos.length],
+          image: photos[di % photos.length].url,
           price,
           rating,
           address,
           placeId: place.id,
+          photoAuthor: photos[di % photos.length].author,
         });
       });
     }

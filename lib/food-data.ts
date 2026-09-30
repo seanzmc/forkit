@@ -11,6 +11,7 @@ export interface Dish {
   rating?: number;
   address?: string;
   placeId?: string;
+  photoAuthor?: string;
   cookTime?: string;
   servings?: string;
   difficulty?: string;
