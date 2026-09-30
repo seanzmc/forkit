@@ -28,6 +28,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { Dish } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
+import { GroundedSource } from "@/components/GroundedSource";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
   const translateY = useSharedValue(-20);
@@ -195,6 +196,7 @@ export default function MatchScreen() {
                 )}
                 <PlacesAttribution dish={dish} />
                 <Text style={styles.dishDesc}>{dish.description}</Text>
+                <GroundedSource dish={dish} />
                 <View style={styles.metaRow}>
                   <View style={styles.priceCard}>
                     <Ionicons name="pricetag" size={16} color={Colors.accentGold} />

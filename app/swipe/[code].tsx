@@ -29,6 +29,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { Dish } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
+import { GroundedSource } from "@/components/GroundedSource";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
 
@@ -169,6 +170,7 @@ function DishCard({
           </>
         )}
         <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>
+        <GroundedSource dish={dish} />
         <View style={styles.priceRow}>
           <Text style={styles.price}>{dish.mode === "cook-in" ? `~${dish.price}/serving` : dish.price}</Text>
           {!!dish.rating && dish.rating > 0 && (

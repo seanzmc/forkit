@@ -1,5 +1,10 @@
 export type SessionMode = "dine-out" | "cook-in";
 
+export interface GroundedSource {
+  title: string;
+  uri: string;
+}
+
 export interface Dish {
   id: string;
   name: string;
@@ -14,6 +19,9 @@ export interface Dish {
   photoAuthors?: string[];
   // True when the dish name is inferred from cuisine, not the restaurant's menu.
   suggested?: boolean;
+  // Set when the dish came from Gemini Maps grounding; these Google Maps links
+  // must be shown right after the dish (Google's grounding terms).
+  groundedSources?: GroundedSource[];
   cookTime?: string;
   servings?: string;
   difficulty?: string;

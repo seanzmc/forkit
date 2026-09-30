@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import type { Dish, SessionMode } from "../lib/food-data";
 import { shuffleDishes, shuffleRecipes } from "../lib/food-data";
+import { fetchPopularDishes, type GroundedMenu } from "./menu-grounding";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -476,6 +477,27 @@ async function fetchNearbyRestaurants(
       placePhotos.get(placeIndex)!.push({ url, authors });
     });
 
+    // Ask Gemini (grounded in Google Maps) for real popular dishes at every
+    // place that will produce cards, in parallel. Places it can't answer for
+    // fall back to cuisine-based suggestions below.
+    const grounded = new Map<number, GroundedMenu>();
+    await Promise.all(
+      [...placePhotos.keys()].map(async (pi) => {
+        const place = places[pi];
+        const menu = await fetchPopularDishes({
+          id: place.id,
+          name: place.displayName?.text || "",
+          address: place.formattedAddress || "",
+          lat,
+          lng,
+        });
+        if (menu) grounded.set(pi, menu);
+      })
+    );
+    if (grounded.size > 0) {
+      console.log(`Grounded dishes for ${grounded.size}/${placePhotos.size} places`);
+    }
+
     for (let pi = 0; pi < places.length; pi++) {
       const place = places[pi];
       const photos = placePhotos.get(pi);
@@ -488,9 +510,10 @@ async function fetchNearbyRestaurants(
       const rating = place.rating || 0;
       const address = place.formattedAddress || "";
 
-      const cuisineDishes = getDishesForCuisine(cuisine);
-      const dishCount = Math.min(photos.length, 3);
-      const selectedDishes = pickRandom(cuisineDishes, dishCount);
+      const menu = grounded.get(pi);
+      const selectedDishes = menu
+        ? menu.dishes
+        : pickRandom(getDishesForCuisine(cuisine), Math.min(photos.length, 3));
 
       selectedDishes.forEach((dish, di) => {
         dishes.push({
@@ -498,14 +521,15 @@ async function fetchNearbyRestaurants(
           name: dish.name,
           restaurant: restaurantName,
           cuisine,
-          description: dish.desc,
+          description: dish.desc || `Popular at ${restaurantName}`,
           image: photos[di % photos.length].url,
           price,
           rating,
           address,
           placeId: place.id,
           photoAuthors: photos[di % photos.length].authors,
-          suggested: true,
+          suggested: !menu,
+          groundedSources: menu?.sources,
         });
       });
     }
