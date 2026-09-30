@@ -26,6 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Dish } from "@/lib/food-data";
+import { PlacesAttribution } from "@/components/PlacesAttribution";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
   const translateY = useSharedValue(-20);
@@ -190,6 +191,7 @@ export default function MatchScreen() {
                     <Text style={styles.addressText}>{dish.address}</Text>
                   </View>
                 )}
+                <PlacesAttribution dish={dish} />
                 <Text style={styles.dishDesc}>{dish.description}</Text>
                 <View style={styles.metaRow}>
                   <View style={styles.priceCard}>
