@@ -34,6 +34,7 @@ All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). 
 
 - `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `npm start` defaults it to `localhost:5000`; `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`; EAS builds get it from the profile `env` in [eas.json](eas.json).
 - `GOOGLE_PLACES_API_KEY` — server-side; absent ⇒ dine-out silently falls back to the curated `DISHES` list.
+- `GEMINI_API_KEY` — server-side; enables real popular dishes per restaurant via Gemini "Grounding with Google Maps" ([server/menu-grounding.ts](server/menu-grounding.ts)). Absent, or no Maps-sourced answer ⇒ that restaurant falls back to cuisine-table dishes labeled "Suggested". `GEMINI_MAPS_MODEL` overrides the model (default `gemini-2.5-flash`). Grounded dishes must render with their Google Maps source links right after them (`components/GroundedSource.tsx`) and must never be persisted — Google's terms.
 - `ALLOWED_ORIGINS` — server-side CORS allowlist, comma-separated, scheme optional. The `REPLIT_*` domain vars still work as a fallback.
 - `PRIVACY_CONTACT_EMAIL` — server-side; contact address shown on `/privacy`.
 - `DATABASE_URL` — only needed for `db:push`; the running app never touches Postgres.
@@ -55,7 +56,7 @@ The server runs on Railway (project `forkit`, service `forkit-server`) at `https
 **`lib/food-data.ts` is shared across the client/server boundary** — `server/routes.ts` imports it via a relative path. Keep it free of React Native imports or the server build breaks.
 
 **Two session modes** (`SessionMode = "dine-out" | "cook-in"`), chosen on `/home` and fixed at session-create time:
-- `dine-out` — server calls Google Places `searchNearby`, resolves photo redirects, then synthesizes 2–3 dish cards per restaurant from a hardcoded cuisine→dishes table (`CUISINE_DISHES`). Match = majority liked the same **restaurant**; the winning dish is the most-liked one there.
+- `dine-out` — server calls Google Places `searchNearby`, resolves photo redirects, then builds up to 3 dish cards per restaurant: real popular dishes from Gemini Maps grounding when `GEMINI_API_KEY` is set and Gemini answers with a Maps source, otherwise picks from a hardcoded cuisine→dishes table (`CUISINE_DISHES`) and marks them `suggested`. Grounding runs in parallel (10 s timeout each) while the session is created. Match = majority liked the same **restaurant**; the winning dish is the most-liked one there.
 - `cook-in` — 20 curated recipes, no location. Match = majority liked the same **dish**.
 
 Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is a strict majority — `floor(memberCount / 2) + 1`, so 2/2, 2/3, 3/4, 3/5.
