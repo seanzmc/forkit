@@ -28,6 +28,7 @@ import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Dish } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
+import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
 
@@ -131,6 +132,7 @@ function DishCard({
         <View style={styles.cuisineBadge}>
           <Text style={styles.cuisineText}>{dish.cuisine}</Text>
         </View>
+        <SuggestedDishLabel dish={dish} />
         <Text style={styles.dishName}>{dish.name}</Text>
         {dish.mode === "cook-in" ? (
           <View style={styles.recipeMeta}>

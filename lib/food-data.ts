@@ -12,6 +12,8 @@ export interface Dish {
   address?: string;
   placeId?: string;
   photoAuthors?: string[];
+  // True when the dish name is inferred from cuisine, not the restaurant's menu.
+  suggested?: boolean;
   cookTime?: string;
   servings?: string;
   difficulty?: string;
