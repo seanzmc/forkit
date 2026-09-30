@@ -395,9 +395,12 @@ async function resolvePhotoUrl(photoName: string): Promise<string> {
   const url = `${PLACES_API_BASE}/${photoName}/media?maxHeightPx=600&maxWidthPx=800&key=${GOOGLE_API_KEY}`;
   try {
     const res = await fetch(url, { redirect: "manual" });
+    // Only the redirect target (a googleusercontent URL) is safe to hand to
+    // clients. The request URL carries our API key, so never fall back to it;
+    // an unresolved photo is skipped instead.
     const location = res.headers.get("location");
-    if (location) return location;
-    return url;
+    if (location && !location.includes(GOOGLE_API_KEY)) return location;
+    return "";
   } catch {
     return "";
   }
