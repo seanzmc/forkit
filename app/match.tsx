@@ -27,6 +27,7 @@ import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Dish } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
+import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
   const translateY = useSharedValue(-20);
@@ -148,6 +149,7 @@ export default function MatchScreen() {
             <View style={styles.cuisineTag}>
               <Text style={styles.cuisineTagText}>{dish.cuisine}</Text>
             </View>
+            <SuggestedDishLabel dish={dish} />
             <Text style={styles.dishName}>{dish.name}</Text>
             {dish.mode === "cook-in" ? (
               <>

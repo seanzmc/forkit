@@ -505,6 +505,7 @@ async function fetchNearbyRestaurants(
           address,
           placeId: place.id,
           photoAuthors: photos[di % photos.length].authors,
+          suggested: true,
         });
       });
     }
