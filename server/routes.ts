@@ -3,7 +3,11 @@ import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import type { Dish, SessionMode } from "../lib/food-data";
 import { shuffleDishes, shuffleRecipes } from "../lib/food-data";
-import { fetchPopularDishes, type GroundedMenu } from "./menu-grounding";
+import {
+  fetchPopularDishes,
+  menuGroundingEnabled,
+  type GroundedMenu,
+} from "./menu-grounding";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -549,6 +553,14 @@ async function fetchNearbyRestaurants(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Which optional integrations this process can see. Missing keys fall back
+  // silently at request time, so this is the one place a misconfigured env
+  // shows up in the logs. Never logs the keys themselves.
+  console.log(
+    `Integrations: Google Places ${GOOGLE_API_KEY ? "on" : "OFF (curated fallback)"}, ` +
+      `Gemini menu grounding ${menuGroundingEnabled() ? "on" : "OFF (suggested dishes)"}`
+  );
+
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
