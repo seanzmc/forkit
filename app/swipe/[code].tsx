@@ -114,8 +114,11 @@ function DishCard({
         style={styles.cardImage}
         resizeMode="cover"
       />
+      {/* Dark enough under the text block that the Google Maps / photo
+          attribution stays legible on bright photos (Places policy). */}
       <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.85)"]}
+        colors={["transparent", "rgba(0,0,0,0.6)", "rgba(0,0,0,0.92)"]}
+        locations={[0, 0.35, 1]}
         style={styles.cardGradient}
       />
 
@@ -516,7 +519,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: "60%",
+    height: "75%",
   },
   likeStamp: {
     position: "absolute",
