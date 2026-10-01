@@ -78,7 +78,7 @@ CORS allows only `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` origins plus any `localh
 ## Gotchas
 
 - `metro.config.js` blocks `.local/skills/.tmp-*` from the resolver — temp agent-skill dirs crashed Metro. Don't remove it.
-- `postinstall` runs `patch-package` (`patches/expo-asset+12.0.12.patch`); use `npm install`, not a raw node_modules copy.
+- `postinstall` runs `patch-package` (`patches/expo-asset+12.0.13.patch`); use `npm install`, not a raw node_modules copy.
 - `reactCompiler` is enabled in `app.json` experiments — babel-plugin-react-compiler runs on all app code.
 - Theme is fixed dark: `#0F0F0F` background, `#FF6B35` accent, Poppins loaded in `_layout.tsx` (renders `null` until fonts resolve). Colors live in [constants/colors.ts](constants/colors.ts).
 - Path aliases: `@/*` → repo root, `@shared/*` → `shared/`.
