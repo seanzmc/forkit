@@ -13,7 +13,10 @@
 import type { GroundedSource } from "../lib/food-data";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = process.env.GEMINI_MAPS_MODEL || "gemini-2.5-flash";
+// gemini-2.5-* only serves projects that used it before (404 for new keys);
+// 3.5 Flash-Lite is a current GA model with Maps grounding, cheap and fast
+// enough for ~20 parallel calls per session.
+const GEMINI_MODEL = process.env.GEMINI_MAPS_MODEL || "gemini-3.5-flash-lite";
 const TIMEOUT_MS = 10_000;
 const MAX_DISHES = 3;
 
@@ -100,7 +103,14 @@ export async function fetchPopularDishes(place: {
       }
     );
     if (!res.ok) {
-      console.warn(`Gemini maps grounding ${res.status} for ${place.name}`);
+      // Google's error message says why (model not found, quota, permission).
+      const detail = await res
+        .json()
+        .then((b) => String(b?.error?.message || "").slice(0, 200))
+        .catch(() => "");
+      console.warn(
+        `Gemini maps grounding ${res.status} (${GEMINI_MODEL}) for ${place.name}${detail ? `: ${detail}` : ""}`
+      );
       return null;
     }
 
