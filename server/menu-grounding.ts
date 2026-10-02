@@ -13,11 +13,14 @@
 import type { GroundedSource } from "../lib/food-data";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-// gemini-2.5-* only serves projects that used it before (404 for new keys);
-// 3.5 Flash-Lite is a current GA model with Maps grounding, cheap and fast
-// enough for ~20 parallel calls per session.
-const GEMINI_MODEL = process.env.GEMINI_MAPS_MODEL || "gemini-3.5-flash-lite";
-const TIMEOUT_MS = 10_000;
+// Measured 2026-10-02 against a real restaurant: gemini-3.5-flash-lite calls
+// the Maps tool but returns no groundingChunks (answers can't be attributed,
+// so all get dropped); gemini-3.5-flash was inconsistent; gemini-3.8-flash
+// returned Maps sources and dishes every time, in ~9-12 s. gemini-2.5-* 404s
+// for projects that never used it.
+const GEMINI_MODEL = process.env.GEMINI_MAPS_MODEL || "gemini-3.8-flash";
+// 3.8 Flash took ~9 s per grounded call; leave headroom for 20 in parallel.
+const TIMEOUT_MS = 15_000;
 const MAX_DISHES = 3;
 
 export interface GroundedDish {
