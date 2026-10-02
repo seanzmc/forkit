@@ -119,10 +119,21 @@ export async function fetchPopularDishes(place: {
     const text: string = (candidate?.content?.parts || [])
       .map((p: { text?: string }) => p.text || "")
       .join("");
-    const dishes = parseDishes(text);
-    if (dishes.length === 0) return null;
-
     const chunks: MapsChunk[] = candidate?.groundingMetadata?.groundingChunks || [];
+    // Answers we can't use are dropped silently otherwise; log why, with a
+    // short excerpt of the model's reply (no secrets in it).
+    const drop = (why: string) => {
+      console.warn(
+        `Gemini maps grounding dropped (${GEMINI_MODEL}) for ${place.name}: ${why}; ` +
+          `finish=${candidate?.finishReason ?? "none"} chunks=${chunks.length} ` +
+          `text=${JSON.stringify(text.slice(0, 160))}`
+      );
+      return null;
+    };
+
+    const dishes = parseDishes(text);
+    if (dishes.length === 0) return drop("no parseable dishes");
+
     const maps = chunks
       .map((c) => c.maps)
       .filter((m): m is NonNullable<MapsChunk["maps"]> => !!m?.uri);
@@ -139,7 +150,7 @@ export async function fetchPopularDishes(place: {
     ];
     // No Google Maps source means the answer isn't grounded and can't be
     // attributed, so it can't be shown.
-    if (sources.length === 0) return null;
+    if (sources.length === 0) return drop("no Google Maps sources");
 
     return { dishes, sources };
   } catch (error) {
