@@ -30,6 +30,9 @@ interface Session {
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
+  // Pending deletion of an in-progress session that went empty; cleared on
+  // rejoin and restarted on every new empty transition.
+  emptyTimer?: ReturnType<typeof setTimeout>;
 }
 
 const sessions = new Map<string, Session>();
@@ -663,6 +666,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           memberId = msg.userId;
           sessionCode = session.code;
 
+          if (session.emptyTimer) {
+            clearTimeout(session.emptyTimer);
+            session.emptyTimer = undefined;
+          }
+
           if (!session.hostId) {
             session.hostId = memberId;
           }
@@ -780,10 +788,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (session.status === "lobby") {
           sessions.delete(sessionCode);
         } else {
+          // Restart the grace period on each empty transition so an earlier
+          // timer can't cut a later disconnect's window short.
+          if (session.emptyTimer) clearTimeout(session.emptyTimer);
           const code = sessionCode;
-          setTimeout(() => {
+          session.emptyTimer = setTimeout(() => {
             const s = sessions.get(code);
-            if (s && s.members.size === 0) sessions.delete(code);
+            if (s === session && s.members.size === 0) sessions.delete(code);
           }, EMPTY_SESSION_GRACE_MS);
         }
         return;
