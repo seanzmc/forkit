@@ -53,25 +53,33 @@ export default function HomeScreen() {
     });
   }, []);
 
-  useEffect(() => {
-    if (locationPermission?.granted) {
-      setLocationStatus("granted");
-      getLocation();
-    } else if (locationPermission?.status === "denied") {
-      setLocationStatus("denied");
-    }
-  }, [locationPermission]);
+  // Returns coordinates without touching state, so callers (including the
+  // effect below) only set state in an async callback.
+  const fetchCoords = () =>
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(
+      (loc) => ({ lat: loc.coords.latitude, lng: loc.coords.longitude })
+    );
 
-  const getLocation = async () => {
-    try {
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-    } catch {
-      console.warn("Could not get location");
-    }
-  };
+  const getLocation = () =>
+    fetchCoords()
+      .then(setLocation)
+      .catch(() => console.warn("Could not get location"));
+
+  // On native the OS permission is the source of truth; derive the status from
+  // it instead of copying it into state from an effect. Web keeps its own
+  // status in state (set by handleRequestLocation).
+  const effectiveLocationStatus: typeof locationStatus = locationPermission?.granted
+    ? "granted"
+    : locationPermission?.status === "denied"
+      ? "denied"
+      : locationStatus;
+
+  useEffect(() => {
+    if (!locationPermission?.granted) return;
+    fetchCoords()
+      .then(setLocation)
+      .catch(() => console.warn("Could not get location"));
+  }, [locationPermission?.granted]);
 
   const handleRequestLocation = async () => {
     if (Platform.OS === "web") {
@@ -204,7 +212,7 @@ export default function HomeScreen() {
         {mode === "dine-out" && (
           <>
             <Animated.View entering={FadeInDown.delay(200)} style={styles.locationCard}>
-              {locationStatus === "granted" && location ? (
+              {effectiveLocationStatus === "granted" && location ? (
                 <View style={styles.locationGranted}>
                   <View style={styles.locationDot}>
                     <Ionicons name="location" size={18} color={Colors.green} />
@@ -217,7 +225,7 @@ export default function HomeScreen() {
                   </View>
                   <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
                 </View>
-              ) : locationStatus === "denied" ? (
+              ) : effectiveLocationStatus === "denied" ? (
                 <View style={styles.locationDenied}>
                   <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
                   <View style={styles.locationDeniedContent}>
@@ -250,7 +258,7 @@ export default function HomeScreen() {
                 </Pressable>
               )}
             </Animated.View>
-            {locationStatus === "granted" && (
+            {effectiveLocationStatus === "granted" && (
               <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
                 <Text style={styles.radiusSectionTitle}>Search Radius</Text>
                 <View style={styles.radiusOptions}>

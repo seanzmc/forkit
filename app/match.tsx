@@ -36,9 +36,9 @@ function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: str
   const rotate = useSharedValue(0);
 
   useEffect(() => {
-    translateY.value = withDelay(delay, withTiming(300, { duration: 1200 }));
-    opacity.value = withDelay(delay + 800, withTiming(0, { duration: 400 }));
-    rotate.value = withDelay(delay, withRepeat(withTiming(360, { duration: 600 }), -1));
+    translateY.set(withDelay(delay, withTiming(300, { duration: 1200 })));
+    opacity.set(withDelay(delay + 800, withTiming(0, { duration: 400 })));
+    rotate.set(withDelay(delay, withRepeat(withTiming(360, { duration: 600 }), -1)));
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -76,15 +76,15 @@ export default function MatchScreen() {
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    heroScale.value = withDelay(200, withSpring(1, { damping: 10, stiffness: 120 }));
-    heroOpacity.value = withDelay(200, withTiming(1, { duration: 400 }));
-    pulseScale.value = withDelay(600, withRepeat(
+    heroScale.set(withDelay(200, withSpring(1, { damping: 10, stiffness: 120 })));
+    heroOpacity.set(withDelay(200, withTiming(1, { duration: 400 })));
+    pulseScale.set(withDelay(600, withRepeat(
       withSequence(
         withTiming(1.05, { duration: 800 }),
         withTiming(1, { duration: 800 })
       ),
       -1
-    ));
+    )));
   }, []);
 
   const confettiItems = Array.from({ length: 18 }, (_, i) => ({

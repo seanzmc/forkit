@@ -30,7 +30,7 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const logoScale = useSharedValue(0.8);
   const logoOpacity = useSharedValue(0);
@@ -41,8 +41,8 @@ export default function WelcomeScreen() {
   }));
 
   useEffect(() => {
-    logoScale.value = withDelay(100, withSpring(1, { damping: 12 }));
-    logoOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
+    logoScale.set(withDelay(100, withSpring(1, { damping: 12 })));
+    logoOpacity.set(withDelay(100, withTiming(1, { duration: 600 })));
 
     AsyncStorage.getItem("userName").then((storedName) => {
       if (storedName) {
