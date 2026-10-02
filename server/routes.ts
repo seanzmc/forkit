@@ -11,6 +11,7 @@ import {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
+const EMPTY_SESSION_GRACE_MS = 30_000;
 
 interface SessionMember {
   id: string;
@@ -29,6 +30,9 @@ interface Session {
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
+  // Pending deletion of an in-progress session that went empty; cleared on
+  // rejoin and restarted on every new empty transition.
+  emptyTimer?: ReturnType<typeof setTimeout>;
 }
 
 const sessions = new Map<string, Session>();
@@ -662,6 +666,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           memberId = msg.userId;
           sessionCode = session.code;
 
+          if (session.emptyTimer) {
+            clearTimeout(session.emptyTimer);
+            session.emptyTimer = undefined;
+          }
+
           if (!session.hostId) {
             session.hostId = memberId;
           }
@@ -764,10 +773,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = sessions.get(sessionCode);
       if (!session) return;
 
+      // The lobby and swipe screens each open their own socket with the same
+      // userId, and the swipe screen's join replaces the member's socket. When
+      // the lobby socket closes afterwards it must not remove the member the
+      // swipe screen is now using (that deleted the session and silently
+      // dropped every swipe).
+      if (session.members.get(memberId)?.ws !== ws) return;
+
       session.members.delete(memberId);
 
       if (session.members.size === 0) {
-        sessions.delete(sessionCode);
+        // A game in progress can be momentarily empty while a member hops
+        // between screens; give them a moment to rejoin before dropping it.
+        if (session.status === "lobby") {
+          sessions.delete(sessionCode);
+        } else {
+          // Restart the grace period on each empty transition so an earlier
+          // timer can't cut a later disconnect's window short.
+          if (session.emptyTimer) clearTimeout(session.emptyTimer);
+          const code = sessionCode;
+          session.emptyTimer = setTimeout(() => {
+            const s = sessions.get(code);
+            if (s === session && s.members.size === 0) sessions.delete(code);
+          }, EMPTY_SESSION_GRACE_MS);
+        }
         return;
       }
 
