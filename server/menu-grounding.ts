@@ -119,10 +119,22 @@ export async function fetchPopularDishes(place: {
     const text: string = (candidate?.content?.parts || [])
       .map((p: { text?: string }) => p.text || "")
       .join("");
-    const dishes = parseDishes(text);
-    if (dishes.length === 0) return null;
-
     const chunks: MapsChunk[] = candidate?.groundingMetadata?.groundingChunks || [];
+    // Answers we can't use are dropped silently otherwise; log why. Only the
+    // reply's shape is logged, never its text: grounded output must not be
+    // persisted (Google's terms), and logs outlive the session.
+    const drop = (why: string) => {
+      console.warn(
+        `Gemini maps grounding dropped (${GEMINI_MODEL}) for ${place.name}: ${why}; ` +
+          `finish=${candidate?.finishReason ?? "none"} chunks=${chunks.length} ` +
+          `textLen=${text.length} hasBracket=${text.includes("[")} fenced=${text.includes("```")}`
+      );
+      return null;
+    };
+
+    const dishes = parseDishes(text);
+    if (dishes.length === 0) return drop("no parseable dishes");
+
     const maps = chunks
       .map((c) => c.maps)
       .filter((m): m is NonNullable<MapsChunk["maps"]> => !!m?.uri);
@@ -139,7 +151,7 @@ export async function fetchPopularDishes(place: {
     ];
     // No Google Maps source means the answer isn't grounded and can't be
     // attributed, so it can't be shown.
-    if (sources.length === 0) return null;
+    if (sources.length === 0) return drop("no Google Maps sources");
 
     return { dishes, sources };
   } catch (error) {
