@@ -120,13 +120,14 @@ export async function fetchPopularDishes(place: {
       .map((p: { text?: string }) => p.text || "")
       .join("");
     const chunks: MapsChunk[] = candidate?.groundingMetadata?.groundingChunks || [];
-    // Answers we can't use are dropped silently otherwise; log why, with a
-    // short excerpt of the model's reply (no secrets in it).
+    // Answers we can't use are dropped silently otherwise; log why. Only the
+    // reply's shape is logged, never its text: grounded output must not be
+    // persisted (Google's terms), and logs outlive the session.
     const drop = (why: string) => {
       console.warn(
         `Gemini maps grounding dropped (${GEMINI_MODEL}) for ${place.name}: ${why}; ` +
           `finish=${candidate?.finishReason ?? "none"} chunks=${chunks.length} ` +
-          `text=${JSON.stringify(text.slice(0, 160))}`
+          `textLen=${text.length} hasBracket=${text.includes("[")} fenced=${text.includes("```")}`
       );
       return null;
     };
