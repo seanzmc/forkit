@@ -19,6 +19,14 @@ export interface Dish {
   photoAuthors?: string[];
   // True when the dish name is inferred from cuisine, not the restaurant's menu.
   suggested?: boolean;
+  // True when there is no dish to suggest (fast food, or a cuisine we have no
+  // dishes for): the card is the restaurant itself and `name` is its name.
+  restaurantOnly?: boolean;
+  ratingCount?: number;
+  // Places details for the match screen's actions.
+  mapsUrl?: string;
+  phone?: string;
+  website?: string;
   // Set when the dish came from Gemini Maps grounding; these Google Maps links
   // must be shown right after the dish (Google's grounding terms).
   groundedSources?: GroundedSource[];

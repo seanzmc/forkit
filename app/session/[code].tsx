@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Platform,
   Pressable,
-  Share,
   ScrollView,
   Alert,
 } from "react-native";
@@ -20,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import type { Dish } from "@/lib/food-data";
 import * as Crypto from "expo-crypto";
+import { shareSessionCode } from "@/lib/share-session";
 
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -101,11 +101,7 @@ export default function SessionLobby() {
   };
 
   const handleShare = async () => {
-    const sessionCode = code?.toUpperCase();
-    await Share.share({
-      message: `Join my ForkIt session! Code: ${sessionCode}\n\nLet's decide what to eat together.`,
-      title: "ForkIt - Join my session",
-    });
+    if (code) await shareSessionCode(code);
   };
 
   const handleBack = () => {

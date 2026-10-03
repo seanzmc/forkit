@@ -168,41 +168,45 @@ const PRICE_MAP: Record<string, string> = {
   PRICE_LEVEL_VERY_EXPENSIVE: "$$$$",
 };
 
-function extractCuisine(types: string[]): string {
-  const cuisineMap: Record<string, string> = {
-    italian_restaurant: "Italian",
-    chinese_restaurant: "Chinese",
-    japanese_restaurant: "Japanese",
-    mexican_restaurant: "Mexican",
-    indian_restaurant: "Indian",
-    thai_restaurant: "Thai",
-    french_restaurant: "French",
-    korean_restaurant: "Korean",
-    vietnamese_restaurant: "Vietnamese",
-    greek_restaurant: "Greek",
-    mediterranean_restaurant: "Mediterranean",
-    turkish_restaurant: "Turkish",
-    american_restaurant: "American",
-    hamburger_restaurant: "Burgers",
-    pizza_restaurant: "Pizza",
-    seafood_restaurant: "Seafood",
-    steak_house: "Steakhouse",
-    sushi_restaurant: "Sushi",
-    ramen_restaurant: "Ramen",
-    barbecue_restaurant: "BBQ",
-    breakfast_restaurant: "Breakfast",
-    brunch_restaurant: "Brunch",
-    cafe: "Cafe",
-    coffee_shop: "Coffee",
-    bakery: "Bakery",
-    ice_cream_shop: "Ice Cream",
-    sandwich_shop: "Sandwiches",
-    vegetarian_restaurant: "Vegetarian",
-    vegan_restaurant: "Vegan",
-  };
+const TYPE_TO_CUISINE: Record<string, string> = {
+  italian_restaurant: "Italian",
+  chinese_restaurant: "Chinese",
+  japanese_restaurant: "Japanese",
+  mexican_restaurant: "Mexican",
+  taco_restaurant: "Mexican",
+  burrito_restaurant: "Mexican",
+  indian_restaurant: "Indian",
+  thai_restaurant: "Thai",
+  french_restaurant: "French",
+  korean_restaurant: "Korean",
+  vietnamese_restaurant: "Vietnamese",
+  greek_restaurant: "Greek",
+  mediterranean_restaurant: "Mediterranean",
+  middle_eastern_restaurant: "Mediterranean",
+  lebanese_restaurant: "Mediterranean",
+  turkish_restaurant: "Turkish",
+  american_restaurant: "American",
+  hamburger_restaurant: "Burgers",
+  pizza_restaurant: "Pizza",
+  seafood_restaurant: "Seafood",
+  steak_house: "Steakhouse",
+  sushi_restaurant: "Sushi",
+  ramen_restaurant: "Ramen",
+  barbecue_restaurant: "BBQ",
+  breakfast_restaurant: "Breakfast",
+  brunch_restaurant: "Brunch",
+  cafe: "Cafe",
+  coffee_shop: "Coffee",
+  bakery: "Bakery",
+  ice_cream_shop: "Ice Cream",
+  sandwich_shop: "Sandwiches",
+  vegetarian_restaurant: "Vegetarian",
+  vegan_restaurant: "Vegan",
+};
 
+function extractCuisine(types: string[]): string {
   for (const type of types) {
-    if (cuisineMap[type]) return cuisineMap[type];
+    if (TYPE_TO_CUISINE[type]) return TYPE_TO_CUISINE[type];
   }
   return "Restaurant";
 }
@@ -379,19 +383,24 @@ const CUISINE_DISHES: Record<string, { name: string; desc: string }[]> = {
   ],
 };
 
-const GENERIC_DISHES = [
-  { name: "Chef's Special", desc: "House signature dish, seasonal ingredients, chef's preparation" },
-  { name: "Grilled Entrée", desc: "Premium cut, house seasoning, seasonal vegetables, starch" },
-  { name: "House Appetizer Sampler", desc: "Selection of house favorites, sharing-style, dipping sauces" },
-];
-
-function getDishesForCuisine(cuisine: string): { name: string; desc: string }[] {
-  const dishes = CUISINE_DISHES[cuisine];
-  if (dishes) return dishes;
-  for (const [key, val] of Object.entries(CUISINE_DISHES)) {
-    if (cuisine.toLowerCase().includes(key.toLowerCase())) return val;
+// Dishes worth suggesting for a place, or null when any guess would be a
+// reach. Fast-food chains have their own fixed menus ("House Appetizer
+// Sampler" at McDonald's), and places with no known cuisine get nothing:
+// those become restaurant-only cards instead of invented dishes.
+function suggestedDishesFor(
+  types: string[],
+  cuisineLabel: string
+): { name: string; desc: string }[] | null {
+  if (types.includes("fast_food_restaurant")) return null;
+  for (const type of types) {
+    const dishes = CUISINE_DISHES[TYPE_TO_CUISINE[type]];
+    if (dishes) return dishes;
   }
-  return GENERIC_DISHES;
+  const label = cuisineLabel.toLowerCase();
+  for (const [key, val] of Object.entries(CUISINE_DISHES)) {
+    if (label.includes(key.toLowerCase())) return val;
+  }
+  return null;
 }
 
 function pickRandom<T>(arr: T[], count: number): T[] {
@@ -430,8 +439,10 @@ async function fetchNearbyRestaurants(
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": GOOGLE_API_KEY,
+        // editorialSummary already bills this call at the Enterprise +
+        // Atmosphere SKU, so the phone, website and Maps URL cost nothing extra.
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName",
+          "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri",
       },
       body: JSON.stringify({
         includedPrimaryTypes: ["restaurant"],
@@ -521,23 +532,47 @@ async function fetchNearbyRestaurants(
       const rating = place.rating || 0;
       const address = place.formattedAddress || "";
 
+      const shared = {
+        restaurant: restaurantName,
+        cuisine,
+        price,
+        rating,
+        ratingCount: place.userRatingCount || 0,
+        address,
+        placeId: place.id,
+        mapsUrl: place.googleMapsUri || undefined,
+        phone: place.nationalPhoneNumber || undefined,
+        website: place.websiteUri || undefined,
+      };
+
       const menu = grounded.get(pi);
+      const suggestions = menu ? null : suggestedDishesFor(types, cuisine);
+
+      if (!menu && !suggestions) {
+        // One card for the restaurant itself rather than invented dishes.
+        dishes.push({
+          ...shared,
+          id: `${place.id}_0`,
+          name: restaurantName,
+          description: place.editorialSummary?.text || "",
+          image: photos[0].url,
+          photoAuthors: photos[0].authors,
+          restaurantOnly: true,
+        });
+        continue;
+      }
+
       const selectedDishes = menu
         ? menu.dishes
-        : pickRandom(getDishesForCuisine(cuisine), Math.min(photos.length, 3));
+        : pickRandom(suggestions!, Math.min(photos.length, 3));
 
       selectedDishes.forEach((dish, di) => {
         dishes.push({
+          ...shared,
           id: `${place.id}_${di}`,
           name: dish.name,
-          restaurant: restaurantName,
-          cuisine,
           description: dish.desc || `Popular at ${restaurantName}`,
           image: photos[di % photos.length].url,
-          price,
-          rating,
-          address,
-          placeId: place.id,
           photoAuthors: photos[di % photos.length].authors,
           suggested: !menu,
           groundedSources: menu?.sources,
@@ -800,7 +835,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      if (session.hostId === memberId) {
+      // Hosting only matters in the lobby (only the host can start). Once the
+      // game is on, the host's lobby socket closing just before their swipe
+      // screen rejoins would otherwise hand the role to someone else.
+      if (session.hostId === memberId && session.status === "lobby") {
         session.hostId = session.members.keys().next().value ?? "";
       }
 
