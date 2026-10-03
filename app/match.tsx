@@ -126,7 +126,9 @@ export default function MatchScreen() {
 
         {dish && (
           <Animated.View style={[styles.dishHero, heroStyle]}>
-            <Animated.View style={pulseStyle}>
+            {/* Full width: the hero centers its child, so without this the
+                image's width: "100%" resolves against a zero-width wrapper. */}
+            <Animated.View style={[styles.pulseWrap, pulseStyle]}>
               <View style={styles.imageContainer}>
                 <Image
                   source={{ uri: dish.image }}
@@ -317,6 +319,9 @@ const styles = StyleSheet.create({
   },
   dishHero: {
     alignItems: "center",
+  },
+  pulseWrap: {
+    width: "100%",
   },
   imageContainer: {
     width: "100%",
