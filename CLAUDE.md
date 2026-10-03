@@ -56,7 +56,7 @@ The server runs on Railway (project `forkit`, service `forkit-server`) at `https
 **`lib/food-data.ts` is shared across the client/server boundary** — `server/routes.ts` imports it via a relative path. Keep it free of React Native imports or the server build breaks.
 
 **Two session modes** (`SessionMode = "dine-out" | "cook-in"`), chosen on `/home` and fixed at session-create time:
-- `dine-out` — server calls Google Places `searchNearby`, resolves photo redirects, then builds up to 3 dish cards per restaurant: real popular dishes from Gemini Maps grounding when `GEMINI_API_KEY` is set and Gemini answers with a Maps source, otherwise picks from a hardcoded cuisine→dishes table (`CUISINE_DISHES`) and marks them `suggested`. Grounding runs in parallel (15 s timeout each) while the session is created, so dine-out session creation takes ~10 s with Gemini on. Match = majority liked the same **restaurant**; the winning dish is the most-liked one there.
+- `dine-out` — server calls Google Places `searchNearby`, resolves photo redirects, then builds up to 3 dish cards per restaurant: real popular dishes from Gemini Maps grounding when `GEMINI_API_KEY` is set and Gemini answers with a Maps source, otherwise picks from a hardcoded cuisine→dishes table (`CUISINE_DISHES`, keyed by Places `types`) and marks them `suggested`. Fast-food places and cuisines with no table entry get one `restaurantOnly` card (no invented dish; description from `editorialSummary`). Cards also carry `phone`, `website` and `mapsUrl` for the match screen's actions (`components/MatchActions.tsx`). Grounding runs in parallel (15 s timeout each) while the session is created, so dine-out session creation takes ~10 s with Gemini on. Match = majority liked the same **restaurant**; the winning dish is the most-liked one there.
 - `cook-in` — 20 curated recipes, no location. Match = majority liked the same **dish**.
 
 Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is a strict majority — `floor(memberCount / 2) + 1`, so 2/2, 2/3, 3/4, 3/5.
@@ -66,6 +66,8 @@ Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is
 Host is whoever joins first (`session.hostId`); on host disconnect it transfers to the next member. Only the host's `start` is honored.
 
 **Identity is ephemeral**: `Crypto.randomUUID()` generated per screen mount. `/session/[code]` mints one and passes it to `/swipe/[code]` as a route param — if that param is lost, the user rejoins as a new member and their swipes reset. Only the display name persists (AsyncStorage `userName`).
+
+Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset per swipe screen) so the done and match screens can show what you swiped right and left on.
 
 **Screens** (`app/`, expo-router file-based, typedRoutes enabled): `index` name entry → `home` mode/create/join → `session/[code]` lobby → `swipe/[code]` game → `match` result. Both `session/` and `swipe/` open their own WebSocket independently.
 

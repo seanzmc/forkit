@@ -8,6 +8,7 @@ import {
   PanResponder,
   Dimensions,
   Image,
+  ScrollView,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -30,6 +31,8 @@ import type { Dish } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
+import { SwipeReview } from "@/components/SwipeReview";
+import { recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
 
@@ -132,12 +135,27 @@ function DishCard({
         <Text style={[styles.stampText, { color: Colors.red }]}>NOPE</Text>
       </Animated.View>
 
+      {/* Reading order: where (restaurant), what (dish), what it is, then
+          the details. Cook-in recipes have no restaurant, so the dish leads. */}
       <View style={styles.cardContent}>
-        <View style={styles.cuisineBadge}>
-          <Text style={styles.cuisineText}>{dish.cuisine}</Text>
-        </View>
-        <SuggestedDishLabel dish={dish} />
-        <Text style={styles.dishName}>{dish.name}</Text>
+        {dish.mode === "cook-in" ? (
+          <Text style={styles.dishName} numberOfLines={2}>{dish.name}</Text>
+        ) : dish.restaurantOnly ? (
+          <Text style={styles.dishName} numberOfLines={2}>{dish.restaurant}</Text>
+        ) : (
+          <>
+            <View style={styles.restaurantRow}>
+              <Ionicons name="restaurant" size={15} color={Colors.accent} />
+              <Text style={styles.restaurantName} numberOfLines={1}>{dish.restaurant}</Text>
+            </View>
+            <Text style={styles.dishName} numberOfLines={2}>{dish.name}</Text>
+            <SuggestedDishLabel dish={dish} />
+          </>
+        )}
+        {!!dish.description && (
+          <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>
+        )}
+        <GroundedSource dish={dish} />
         {dish.mode === "cook-in" ? (
           <View style={styles.recipeMeta}>
             {!!dish.cookTime && (
@@ -160,29 +178,31 @@ function DishCard({
             )}
           </View>
         ) : (
-          <>
-            <Text style={styles.restaurantName} numberOfLines={1}>
-              <Ionicons name="restaurant-outline" size={13} color={Colors.accent} /> {dish.restaurant}
-            </Text>
-            {!!dish.address && dish.address !== dish.restaurant && (
-              <Text style={styles.addressLine} numberOfLines={1}>
-                <Ionicons name="location-outline" size={12} color={Colors.textMuted} /> {dish.address}
-              </Text>
-            )}
-            <PlacesAttribution dish={dish} />
-          </>
-        )}
-        <Text style={styles.dishDesc} numberOfLines={2}>{dish.description}</Text>
-        <GroundedSource dish={dish} />
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>{dish.mode === "cook-in" ? `~${dish.price}/serving` : dish.price}</Text>
-          {!!dish.rating && dish.rating > 0 && (
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={13} color={Colors.accentGold} />
-              <Text style={styles.ratingText}>{dish.rating.toFixed(1)}</Text>
+          !!dish.address && dish.address !== dish.restaurant && (
+            <View style={styles.addressRow}>
+              <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.6)" />
+              <Text style={styles.addressLine} numberOfLines={1}>{dish.address}</Text>
             </View>
+          )
+        )}
+        <View style={styles.metaRow}>
+          <Text style={styles.metaText}>{dish.cuisine}</Text>
+          <Text style={styles.metaDot}>·</Text>
+          <Text style={[styles.metaText, styles.metaPrice]}>
+            {dish.mode === "cook-in" ? `~${dish.price}/serving` : dish.price}
+          </Text>
+          {!!dish.rating && dish.rating > 0 && (
+            <>
+              <Text style={styles.metaDot}>·</Text>
+              <Ionicons name="star" size={13} color={Colors.accentGold} />
+              <Text style={styles.metaText}>
+                {dish.rating.toFixed(1)}
+                {!!dish.ratingCount && ` (${dish.ratingCount.toLocaleString()})`}
+              </Text>
+            </>
           )}
         </View>
+        <PlacesAttribution dish={dish} />
       </View>
     </Animated.View>
   );
@@ -253,6 +273,10 @@ export default function SwipeScreen() {
   }, [code, userId]);
 
   useEffect(() => {
+    resetSwipes();
+  }, [code]);
+
+  useEffect(() => {
     connectWs();
     return () => {
       if (pingRef.current) clearInterval(pingRef.current);
@@ -274,6 +298,7 @@ export default function SwipeScreen() {
       wsRef.current.send(JSON.stringify({ type: "swipe", dishId: dish.id, vote }));
     }
 
+    recordSwipe(dish, vote);
     setSwipeHistory((h) => [...h, { dishId: dish.id, vote }]);
     setSwipedCount((c) => c + 1);
     setCurrentIndex((i) => i + 1);
@@ -289,6 +314,7 @@ export default function SwipeScreen() {
       wsRef.current.send(JSON.stringify({ type: "undo", dishId: lastSwipe.dishId }));
     }
 
+    undoSwipe(lastSwipe.dishId);
     setSwipeHistory((h) => h.slice(0, -1));
     setSwipedCount((c) => Math.max(0, c - 1));
     setCurrentIndex((i) => i - 1);
@@ -343,17 +369,27 @@ export default function SwipeScreen() {
         <View style={styles.cardStack}>
           {done ? (
             <Animated.View entering={FadeIn} style={styles.doneCard}>
-              <Ionicons name="checkmark-circle" size={56} color={Colors.accent} />
-              <Text style={styles.doneTitle}>All done!</Text>
-              <Text style={styles.doneText}>
-                Waiting for others to finish swiping...{"\n"}A match will be revealed when the group decides.
-              </Text>
-              <Pressable
-                onPress={() => router.replace("/home")}
-                style={styles.doneBtn}
-              >
-                <Text style={styles.doneBtnText}>Back to Home</Text>
-              </Pressable>
+              <ScrollView contentContainerStyle={styles.doneScroll} showsVerticalScrollIndicator={false}>
+                <Ionicons name="checkmark-circle" size={56} color={Colors.accent} />
+                <Text style={styles.doneTitle}>All done!</Text>
+                <Text style={styles.doneText}>
+                  Waiting for others to finish swiping...{"\n"}A match will be revealed when the group decides.
+                </Text>
+                <View style={styles.doneReview}>
+                  <SwipeReview
+                    swipes={swipeHistory.flatMap(({ dishId, vote }) => {
+                      const d = dishes.find((x) => x.id === dishId);
+                      return d ? [{ dish: d, vote }] : [];
+                    })}
+                  />
+                </View>
+                <Pressable
+                  onPress={() => router.replace("/home")}
+                  style={styles.doneBtn}
+                >
+                  <Text style={styles.doneBtnText}>Back to Home</Text>
+                </Pressable>
+              </ScrollView>
             </Animated.View>
           ) : (
             <>
@@ -562,38 +598,54 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    gap: 4,
-  },
-  cuisineBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: Colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginBottom: 4,
-  },
-  cuisineText: {
-    fontSize: 11,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#fff",
-    textTransform: "uppercase",
-    letterSpacing: 1,
+    gap: 6,
   },
   dishName: {
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: "Poppins_700Bold",
     color: "#fff",
-    lineHeight: 32,
+    lineHeight: 34,
   },
   restaurantName: {
-    fontSize: 14,
-    fontFamily: "Poppins_500Medium",
-    color: "rgba(255,255,255,0.8)",
+    flexShrink: 1,
+    fontSize: 17,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#fff",
   },
   addressLine: {
+    flexShrink: 1,
     fontSize: 12,
     fontFamily: "Poppins_400Regular",
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.6)",
+  },
+  restaurantRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  metaText: {
+    fontSize: 13,
+    fontFamily: "Poppins_500Medium",
+    color: "rgba(255,255,255,0.85)",
+  },
+  metaPrice: {
+    color: Colors.accentGold,
+    fontFamily: "Poppins_600SemiBold",
+  },
+  metaDot: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.4)",
   },
   recipeMeta: {
     flexDirection: "row",
@@ -615,20 +667,10 @@ const styles = StyleSheet.create({
     color: Colors.accentGold,
   },
   dishDesc: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: "Poppins_400Regular",
-    color: "rgba(255,255,255,0.65)",
-    lineHeight: 18,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  price: {
-    fontSize: 18,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.accentGold,
+    color: "rgba(255,255,255,0.8)",
+    lineHeight: 20,
   },
   actionRow: {
     flexDirection: "row",
@@ -682,10 +724,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: "hidden",
+  },
+  doneScroll: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 16,
-    padding: 32,
+    padding: 24,
+  },
+  doneReview: {
+    alignSelf: "stretch",
   },
   doneTitle: {
     fontSize: 28,
@@ -712,20 +761,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Poppins_600SemiBold",
     color: Colors.textSecondary,
-  },
-  ratingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,179,71,0.15)",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginLeft: 8,
-  },
-  ratingText: {
-    fontSize: 13,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.accentGold,
   },
 });
