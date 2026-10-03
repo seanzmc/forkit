@@ -835,7 +835,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      if (session.hostId === memberId) {
+      // Hosting only matters in the lobby (only the host can start). Once the
+      // game is on, the host's lobby socket closing just before their swipe
+      // screen rejoins would otherwise hand the role to someone else.
+      if (session.hostId === memberId && session.status === "lobby") {
         session.hostId = session.members.keys().next().value ?? "";
       }
 

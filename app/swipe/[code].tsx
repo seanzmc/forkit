@@ -32,6 +32,7 @@ import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
 import { SwipeReview } from "@/components/SwipeReview";
+import { SessionPanel } from "@/components/SessionPanel";
 import { recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
@@ -221,7 +222,9 @@ export default function SwipeScreen() {
   });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [, setSwipedCount] = useState(0);
-  const [, setMemberSwipes] = useState<Record<string, number>>({});
+  // Swipe counts for the other members, from their swipe_update broadcasts.
+  const [memberSwipes, setMemberSwipes] = useState<Record<string, number>>({});
+  const [panelOpen, setPanelOpen] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
   const [swipeHistory, setSwipeHistory] = useState<{ dishId: string; vote: "like" | "pass" }[]>([]);
   const userId = paramUserId ?? Crypto.randomUUID();
@@ -256,7 +259,7 @@ export default function SwipeScreen() {
         } else if (msg.type === "swipe_update") {
           setMemberSwipes((prev) => ({
             ...prev,
-            [msg.memberId]: (prev[msg.memberId] ?? 0) + 1,
+            [msg.memberId]: Math.max(0, (prev[msg.memberId] ?? 0) + (msg.vote === "undo" ? -1 : 1)),
           }));
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);
@@ -328,6 +331,10 @@ export default function SwipeScreen() {
   const progress = dishes.length > 0 ? Math.min(currentIndex / dishes.length, 1) : 0;
 
   const members = session?.members ?? [];
+  const reviewed = swipeHistory.flatMap(({ dishId, vote }) => {
+    const d = dishes.find((x) => x.id === dishId);
+    return d ? [{ dish: d, vote }] : [];
+  });
 
   return (
     <LinearGradient colors={["#0F0F0F", "#1A0A00", "#0F0F0F"]} style={styles.container}>
@@ -345,7 +352,13 @@ export default function SwipeScreen() {
             <Text style={styles.headerTitle}>{"What's for dinner?"}</Text>
             <Text style={styles.headerSub}>Swipe right if you want it</Text>
           </View>
-          <View style={styles.memberBubbles}>
+          <Pressable
+            onPress={() => setPanelOpen(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Session details"
+            style={({ pressed }) => [styles.memberBubbles, { opacity: pressed ? 0.7 : 1 }]}
+          >
             {members.slice(0, 4).map((m) => (
               <View key={m.id} style={styles.memberBubble}>
                 <Text style={styles.memberBubbleLetter}>{m.name[0]?.toUpperCase()}</Text>
@@ -356,7 +369,10 @@ export default function SwipeScreen() {
                 <Text style={styles.memberBubbleLetter}>+{members.length - 4}</Text>
               </View>
             )}
-          </View>
+            <View style={styles.infoDot}>
+              <Ionicons name="chevron-down" size={12} color={Colors.text} />
+            </View>
+          </Pressable>
         </View>
 
         <View style={styles.progressBar}>
@@ -376,12 +392,7 @@ export default function SwipeScreen() {
                   Waiting for others to finish swiping...{"\n"}A match will be revealed when the group decides.
                 </Text>
                 <View style={styles.doneReview}>
-                  <SwipeReview
-                    swipes={swipeHistory.flatMap(({ dishId, vote }) => {
-                      const d = dishes.find((x) => x.id === dishId);
-                      return d ? [{ dish: d, vote }] : [];
-                    })}
-                  />
+                  <SwipeReview swipes={reviewed} />
                 </View>
                 <Pressable
                   onPress={() => router.replace("/home")}
@@ -459,6 +470,17 @@ export default function SwipeScreen() {
           </View>
         )}
       </View>
+      <SessionPanel
+        visible={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        code={code ?? ""}
+        members={members}
+        hostId={session?.hostId}
+        myId={userId}
+        progress={{ ...memberSwipes, [userId]: currentIndex }}
+        total={dishes.length}
+        swipes={reviewed}
+      />
     </LinearGradient>
   );
 }
@@ -488,6 +510,16 @@ const styles = StyleSheet.create({
   },
   memberBubbles: {
     flexDirection: "row",
+    alignItems: "center",
+  },
+  infoDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginLeft: 4,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
   },
   memberBubble: {
     width: 32,

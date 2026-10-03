@@ -42,18 +42,22 @@ function Section({
         <Text style={styles.empty}>Nothing</Text>
       ) : (
         items.map(({ dish }) => {
-          const [main, sub] =
-            dish.mode === "cook-in" || dish.restaurantOnly
-              ? [dish.restaurantOnly ? dish.restaurant : dish.name, dish.cuisine]
-              : [dish.name, dish.restaurant];
+          // A dish card names its restaurant underneath (with the restaurant
+          // icon); a restaurant-only card or a recipe shows its cuisine.
+          const atRestaurant = dish.mode !== "cook-in" && !dish.restaurantOnly;
           return (
             <View key={dish.id} style={styles.row}>
               <Text style={styles.main} numberOfLines={1}>
-                {main}
+                {dish.restaurantOnly ? dish.restaurant : dish.name}
               </Text>
-              <Text style={styles.sub} numberOfLines={1}>
-                {sub}
-              </Text>
+              <View style={styles.subRow}>
+                {atRestaurant && (
+                  <Ionicons name="restaurant-outline" size={12} color={Colors.accent} />
+                )}
+                <Text style={styles.sub} numberOfLines={1}>
+                  {atRestaurant ? dish.restaurant : dish.cuisine}
+                </Text>
+              </View>
             </View>
           );
         })
@@ -101,7 +105,13 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     color: Colors.text,
   },
+  subRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   sub: {
+    flexShrink: 1,
     fontSize: 12,
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,
