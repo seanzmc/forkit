@@ -78,7 +78,8 @@ CORS allows only `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` origins plus any `localh
 ## Gotchas
 
 - `metro.config.js` blocks `.local/skills/.tmp-*` from the resolver — temp agent-skill dirs crashed Metro. Don't remove it.
-- `postinstall` runs `patch-package` (`patches/expo-asset+12.0.13.patch`); use `npm install`, not a raw node_modules copy.
+- `.npmrc` sets `legacy-peer-deps=true` because the Expo SDK 58 beta pins `react-native@0.88.0-rc.x`, which npm doesn't match against peer ranges like `0.86 - 0.88`. Remove it once SDK 58 is stable on RN 0.88.0.
+- Expo SDK 58 (beta) / React Native 0.88 / React 19.3 / TypeScript 6. iOS uses the UIScene life cycle (`SceneDelegate.swift`), required for Xcode 27 builds. Splash is configured through the `expo-splash-screen` plugin in `app.json` (the top-level `splash` key was removed).
 - `reactCompiler` is enabled in `app.json` experiments — babel-plugin-react-compiler runs on all app code.
 - Theme is fixed dark: `#0F0F0F` background, `#FF6B35` accent, Poppins loaded in `_layout.tsx` (renders `null` until fonts resolve). Colors live in [constants/colors.ts](constants/colors.ts).
 - Path aliases: `@/*` → repo root, `@shared/*` → `shared/`.
