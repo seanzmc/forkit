@@ -10,7 +10,7 @@ import {
   ScrollView,
   Keyboard,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -25,12 +25,21 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
+import { takeLaunchMatch } from "@/lib/push";
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  // Set when an invite link opened the app before a name was saved; after
+  // the name is entered we go straight to that session.
+  const { join } = useLocalSearchParams<{ join?: string }>();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
+
+  function goNext() {
+    if (join) router.replace({ pathname: "/session/[code]", params: { code: join } });
+    else router.replace("/home");
+  }
 
   const logoScale = useSharedValue(0.8);
   const logoOpacity = useSharedValue(0);
@@ -44,13 +53,17 @@ export default function WelcomeScreen() {
     logoScale.value = withDelay(100, withSpring(1, { damping: 12 }));
     logoOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
 
-    AsyncStorage.getItem("userName").then((storedName) => {
-      if (storedName) {
-        router.replace("/home");
-      } else {
-        setLoading(false);
+    Promise.all([AsyncStorage.getItem("userName"), takeLaunchMatch()]).then(
+      ([storedName, launchMatch]) => {
+        if (launchMatch) {
+          router.replace({ pathname: "/match", params: { dish: JSON.stringify(launchMatch.dish) } });
+        } else if (storedName) {
+          goNext();
+        } else {
+          setLoading(false);
+        }
       }
-    });
+    );
   }, []);
 
   // Keep the input and "Let's Eat" in view above the keyboard.
@@ -66,7 +79,7 @@ export default function WelcomeScreen() {
     if (!trimmed) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await AsyncStorage.setItem("userName", trimmed);
-    router.replace("/home");
+    goNext();
   };
 
   if (loading) return null;

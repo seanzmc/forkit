@@ -34,6 +34,7 @@ import { GroundedSource } from "@/components/GroundedSource";
 import { SwipeReview } from "@/components/SwipeReview";
 import { SessionPanel } from "@/components/SessionPanel";
 import { recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
+import { getPushToken } from "@/lib/push";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
 
@@ -242,6 +243,13 @@ export default function SwipeScreen() {
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name }));
+      // Registered separately so a slow permission prompt or APNs lookup
+      // never delays joining and a late token still reaches the server.
+      getPushToken().then((pushToken) => {
+        if (pushToken && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "push_token", pushToken }));
+        }
+      });
       pingRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
       }, 20000);

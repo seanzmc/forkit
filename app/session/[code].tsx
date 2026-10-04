@@ -20,6 +20,7 @@ import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import type { Dish } from "@/lib/food-data";
 import * as Crypto from "expo-crypto";
 import { shareSessionCode } from "@/lib/share-session";
+import { getPushToken } from "@/lib/push";
 
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -35,7 +36,10 @@ export default function SessionLobby() {
 
   const connect = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
-    if (!name) { router.replace("/"); return; }
+    if (!name) {
+      router.replace({ pathname: "/", params: { join: code?.toUpperCase() } });
+      return;
+    }
     setUserName(name);
 
     const wsUrl = getWsUrl();
@@ -75,7 +79,22 @@ export default function SessionLobby() {
           });
         } else if (msg.type === "error") {
           setStatus("error");
-          Alert.alert("Error", msg.message);
+          // Usually an old invite: rooms end when everyone leaves.
+          const notFound = msg.message === "Session not found";
+          Alert.alert(
+            notFound ? "Room not found" : "Error",
+            notFound ? "This room has ended or the code is wrong." : msg.message,
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  ws.close();
+                  if (router.canGoBack()) router.back();
+                  else router.replace("/home");
+                },
+              },
+            ]
+          );
         }
       } catch {}
     };
@@ -85,6 +104,12 @@ export default function SessionLobby() {
       if (pingRef.current) clearInterval(pingRef.current);
     };
   }, [code, userId]);
+
+  // Ask for notification permission here, while there's a reason to say yes:
+  // the swipe screen sends the token so a match reaches members who leave.
+  useEffect(() => {
+    getPushToken();
+  }, []);
 
   useEffect(() => {
     connect();
@@ -106,7 +131,9 @@ export default function SessionLobby() {
 
   const handleBack = () => {
     wsRef.current?.close();
-    router.back();
+    // An invite link opens the lobby with nothing behind it.
+    if (router.canGoBack()) router.back();
+    else router.replace("/home");
   };
 
   const members = session?.members ?? [];

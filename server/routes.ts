@@ -8,6 +8,7 @@ import {
   menuGroundingEnabled,
   type GroundedMenu,
 } from "./menu-grounding";
+import { isExpoPushToken, sendMatchPush } from "./push";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -33,6 +34,9 @@ interface Session {
   // Pending deletion of an in-progress session that went empty; cleared on
   // rejoin and restarted on every new empty transition.
   emptyTimer?: ReturnType<typeof setTimeout>;
+  // Expo push tokens by member id. Kept when a member disconnects, since the
+  // members who left the app are the ones a match notification is for.
+  pushTokens: Map<string, string>;
 }
 
 const sessions = new Map<string, Session>();
@@ -645,6 +649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "lobby",
       mode,
       createdAt: Date.now(),
+      pushTokens: new Map(),
     };
 
     sessions.set(code, session);
@@ -700,6 +705,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           memberId = msg.userId;
           sessionCode = session.code;
+          if (isExpoPushToken(msg.pushToken)) {
+            session.pushTokens.set(memberId, msg.pushToken);
+          }
 
           if (session.emptyTimer) {
             clearTimeout(session.emptyTimer);
@@ -775,6 +783,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
             // No excludeId, so this already reaches the swiper who triggered it
             broadcastToSession(session, matchMsg);
+            // Everyone with a token, including connected members: the app
+            // hides the banner in the foreground, and a backgrounded phone's
+            // socket can look open for a while after iOS suspends it.
+            void sendMatchPush(session.pushTokens.values(), session.code, session.matchedDish!);
           }
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);
@@ -795,6 +807,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             memberId
           );
+        } else if (msg.type === "push_token") {
+          // Sent after join, once the device has a token (it can take a
+          // while on iOS, or wait on the permission prompt).
+          const session = sessions.get(sessionCode);
+          if (session && memberId && isExpoPushToken(msg.pushToken)) {
+            session.pushTokens.set(memberId, msg.pushToken);
+          }
         } else if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         }
