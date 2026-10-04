@@ -269,7 +269,10 @@ function configureExpoAndLanding(app: express.Application) {
     next();
   });
 
-  app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
+  // Includes the example dish photos (assets/dishes). The app requests them
+  // with a ?v=<content hash>, so a replaced photo gets a new URL and a week
+  // of caching never pairs an old image with a new credit.
+  app.use("/assets", express.static(path.resolve(process.cwd(), "assets"), { maxAge: "7d" }));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
   log("Expo routing: Checking expo-platform header on / and /manifest");
