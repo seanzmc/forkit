@@ -34,7 +34,7 @@ export default function WelcomeScreen() {
   const { join } = useLocalSearchParams<{ join?: string }>();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   function goNext() {
     if (join) router.replace({ pathname: "/session/[code]", params: { code: join } });
@@ -50,8 +50,8 @@ export default function WelcomeScreen() {
   }));
 
   useEffect(() => {
-    logoScale.value = withDelay(100, withSpring(1, { damping: 12 }));
-    logoOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
+    logoScale.set(withDelay(100, withSpring(1, { damping: 12 })));
+    logoOpacity.set(withDelay(100, withTiming(1, { duration: 600 })));
 
     Promise.all([AsyncStorage.getItem("userName"), takeLaunchMatch()]).then(
       ([storedName, launchMatch]) => {

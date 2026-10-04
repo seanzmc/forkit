@@ -27,7 +27,9 @@ function RootLayoutNav() {
       <Stack.Screen name="index" />
       <Stack.Screen name="home" />
       <Stack.Screen name="session/[code]" />
-      <Stack.Screen name="swipe/[code]" />
+      {/* Card swipes are horizontal pans; the stack's back gesture (full-screen
+          on iOS 26+) would otherwise steal a right swipe and leave the game. */}
+      <Stack.Screen name="swipe/[code]" options={{ gestureEnabled: false }} />
       <Stack.Screen name="match" />
     </Stack>
   );
