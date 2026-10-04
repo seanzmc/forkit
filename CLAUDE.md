@@ -62,7 +62,7 @@ The server runs on Railway (project `forkit`, service `forkit-server`) at `https
 
 Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is a strict majority — `floor(memberCount / 2) + 1`, so 2/2, 2/3, 3/4, 3/5.
 
-**Client↔server protocol** is hand-rolled JSON over one WebSocket at `/ws`. Message types are declared in [lib/websocket.ts](lib/websocket.ts) (`WsMessage`) but the server does not validate inbound messages — inbound kinds are `join` (optionally with `pushToken`), `start`, `swipe`, `undo`, `ping`, matched by string in the `ws.on("message")` block. Adding a message type means editing both files.
+**Client↔server protocol** is hand-rolled JSON over one WebSocket at `/ws`. Message types are declared in [lib/websocket.ts](lib/websocket.ts) (`WsMessage`) but the server does not validate inbound messages — inbound kinds are `join` (optionally with `pushToken`), `push_token`, `start`, `swipe`, `undo`, `ping`, matched by string in the `ws.on("message")` block. Adding a message type means editing both files.
 
 Host is whoever joins first (`session.hostId`); on host disconnect it transfers to the next member. Only the host's `start` is honored.
 
@@ -70,7 +70,7 @@ Host is whoever joins first (`session.hostId`); on host disconnect it transfers 
 
 Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset per swipe screen) so the done and match screens can show what you swiped right and left on.
 
-**Match notifications**: the lobby asks for notification permission; the swipe screen's `join` carries the Expo push token (`lib/push.ts`). The server keeps tokens per session even after members disconnect and pushes to all of them on a match; the app hides the banner while in the foreground. Tapping one opens `/match` from the dish in the payload (the session may be gone by then). `lib/push.ts` loads `expo-notifications` defensively, so builds without the native module just run without push.
+**Match notifications**: the lobby asks for notification permission; the swipe screen sends the Expo push token in a `push_token` message once it resolves (`lib/push.ts`). The server keeps tokens per session even after members disconnect and pushes to all of them on a match; the app hides the banner while in the foreground. Tapping one opens `/match` from the dish in the payload (the session may be gone by then). `lib/push.ts` loads `expo-notifications` defensively, so builds without the native module just run without push.
 
 **Invite links**: `https://<host>/join/CODE` (served by `server/index.ts`, with `/.well-known/apple-app-site-association` for team `N526K73K96`) and `forkit://join/CODE` both map to `/session/CODE` in `app/+native-intent.tsx`. With no saved name, the lobby sends you to `/` with `join` set and returns after the name is entered. The https form needs a build that includes `ios.associatedDomains`.
 

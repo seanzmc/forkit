@@ -807,6 +807,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             memberId
           );
+        } else if (msg.type === "push_token") {
+          // Sent after join, once the device has a token (it can take a
+          // while on iOS, or wait on the permission prompt).
+          const session = sessions.get(sessionCode);
+          if (session && memberId && isExpoPushToken(msg.pushToken)) {
+            session.pushTokens.set(memberId, msg.pushToken);
+          }
         } else if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         }

@@ -42,6 +42,14 @@ export function getPushToken(): Promise<string | null> {
     tokenPromise = (async () => {
       if (!Notifications) return null;
       try {
+        // Android 13+ shows the permission prompt only once a channel
+        // exists, and Expo needs one before it will issue a token.
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("default", {
+            name: "Matches",
+            importance: Notifications.AndroidImportance.HIGH,
+          });
+        }
         let { status, canAskAgain } = await Notifications.getPermissionsAsync();
         if (status !== "granted" && canAskAgain) {
           ({ status } = await Notifications.requestPermissionsAsync());

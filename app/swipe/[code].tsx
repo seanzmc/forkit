@@ -236,19 +236,20 @@ export default function SwipeScreen() {
   const connectWs = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
     if (!name) return;
-    // Usually already resolved in the lobby; don't hold up joining if the
-    // permission prompt is still open.
-    const pushToken = await Promise.race([
-      getPushToken(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
-    ]);
 
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name, pushToken }));
+      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name }));
+      // Registered separately so a slow permission prompt or APNs lookup
+      // never delays joining and a late token still reaches the server.
+      getPushToken().then((pushToken) => {
+        if (pushToken && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "push_token", pushToken }));
+        }
+      });
       pingRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
       }, 20000);
