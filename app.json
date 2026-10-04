@@ -18,7 +18,10 @@
       "bundleIdentifier": "com.seandm.forkit",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:forkit-server-production.up.railway.app"
+      ]
     },
     "android": {
       "package": "com.seandm.forkit",
@@ -49,6 +52,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "ForkIt uses your location to find restaurants near you so the group can swipe on nearby dishes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#FF6B35"
         }
       ]
     ],

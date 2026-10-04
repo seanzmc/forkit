@@ -34,6 +34,7 @@ import { GroundedSource } from "@/components/GroundedSource";
 import { SwipeReview } from "@/components/SwipeReview";
 import { SessionPanel } from "@/components/SessionPanel";
 import { recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
+import { getPushToken } from "@/lib/push";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import * as Crypto from "expo-crypto";
 
@@ -235,13 +236,19 @@ export default function SwipeScreen() {
   const connectWs = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
     if (!name) return;
+    // Usually already resolved in the lobby; don't hold up joining if the
+    // permission prompt is still open.
+    const pushToken = await Promise.race([
+      getPushToken(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
 
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name }));
+      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name, pushToken }));
       pingRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
       }, 20000);

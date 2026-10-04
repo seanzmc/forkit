@@ -35,6 +35,7 @@ All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). 
 - `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `npm start` defaults it to `localhost:5000`; `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`; EAS builds get it from the profile `env` in [eas.json](eas.json).
 - `GOOGLE_PLACES_API_KEY` — server-side; absent ⇒ dine-out silently falls back to the curated `DISHES` list.
 - `GEMINI_API_KEY` — server-side; enables real popular dishes per restaurant via Gemini "Grounding with Google Maps" ([server/menu-grounding.ts](server/menu-grounding.ts)). Absent, or no Maps-sourced answer ⇒ that restaurant falls back to cuisine-table dishes labeled "Suggested". `GEMINI_MAPS_MODEL` overrides the model (default `gemini-3.8-flash`: `3.5-flash-lite` calls Maps but returns no grounding chunks, so every answer is dropped; `gemini-2.5-*` returns 404 for projects that never used it). Grounded dishes must render with their Google Maps source links right after them (`components/GroundedSource.tsx`) and must never be persisted — Google's terms.
+- `EXPO_ACCESS_TOKEN` — server-side, optional; only needed if "enhanced push security" is turned on for the Expo project. Match notifications go through Expo's push service ([server/push.ts](server/push.ts)) either way.
 - `ALLOWED_ORIGINS` — server-side CORS allowlist, comma-separated, scheme optional. The `REPLIT_*` domain vars still work as a fallback.
 - `PRIVACY_CONTACT_EMAIL` — server-side; contact address shown on `/privacy`.
 - `DATABASE_URL` — only needed for `db:push`; the running app never touches Postgres.
@@ -61,13 +62,17 @@ The server runs on Railway (project `forkit`, service `forkit-server`) at `https
 
 Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is a strict majority — `floor(memberCount / 2) + 1`, so 2/2, 2/3, 3/4, 3/5.
 
-**Client↔server protocol** is hand-rolled JSON over one WebSocket at `/ws`. Message types are declared in [lib/websocket.ts](lib/websocket.ts) (`WsMessage`) but the server does not validate inbound messages — inbound kinds are `join`, `start`, `swipe`, `undo`, `ping`, matched by string in the `ws.on("message")` block. Adding a message type means editing both files.
+**Client↔server protocol** is hand-rolled JSON over one WebSocket at `/ws`. Message types are declared in [lib/websocket.ts](lib/websocket.ts) (`WsMessage`) but the server does not validate inbound messages — inbound kinds are `join` (optionally with `pushToken`), `start`, `swipe`, `undo`, `ping`, matched by string in the `ws.on("message")` block. Adding a message type means editing both files.
 
 Host is whoever joins first (`session.hostId`); on host disconnect it transfers to the next member. Only the host's `start` is honored.
 
 **Identity is ephemeral**: `Crypto.randomUUID()` generated per screen mount. `/session/[code]` mints one and passes it to `/swipe/[code]` as a route param — if that param is lost, the user rejoins as a new member and their swipes reset. Only the display name persists (AsyncStorage `userName`).
 
 Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset per swipe screen) so the done and match screens can show what you swiped right and left on.
+
+**Match notifications**: the lobby asks for notification permission; the swipe screen's `join` carries the Expo push token (`lib/push.ts`). The server keeps tokens per session even after members disconnect and pushes to all of them on a match; the app hides the banner while in the foreground. Tapping one opens `/match` from the dish in the payload (the session may be gone by then). `lib/push.ts` loads `expo-notifications` defensively, so builds without the native module just run without push.
+
+**Invite links**: `https://<host>/join/CODE` (served by `server/index.ts`, with `/.well-known/apple-app-site-association` for team `N526K73K96`) and `forkit://join/CODE` both map to `/session/CODE` in `app/+native-intent.tsx`. With no saved name, the lobby sends you to `/` with `join` set and returns after the name is entered. The https form needs a build that includes `ios.associatedDomains`.
 
 **Screens** (`app/`, expo-router file-based, typedRoutes enabled): `index` name entry → `home` mode/create/join → `session/[code]` lobby → `swipe/[code]` game → `match` result. Both `session/` and `swipe/` open their own WebSocket independently.
 

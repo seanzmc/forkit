@@ -8,7 +8,7 @@ const app = express();
 const log = console.log;
 
 // Bump this when the privacy policy text changes.
-const PRIVACY_LAST_UPDATED = "3 August 2026";
+const PRIVACY_LAST_UPDATED = "3 October 2026";
 const PRIVACY_CONTACT_EMAIL =
   process.env.PRIVACY_CONTACT_EMAIL || "seanzmc9613@gmail.com";
 
@@ -204,6 +204,41 @@ function configureExpoAndLanding(app: express.Application) {
   app.get("/privacy", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(privacyHtml);
+  });
+
+  // Invite links: https://<host>/join/<code>. With the app installed, iOS
+  // opens it straight into the session (universal link, via the
+  // apple-app-site-association file below and the app's associatedDomains);
+  // otherwise this page shows the code and an "Open in ForkIt" button.
+  const joinTemplate = fs.readFileSync(
+    path.resolve(process.cwd(), "server", "templates", "join.html"),
+    "utf-8",
+  );
+  app.get("/join/:code", (req: Request, res: Response) => {
+    const code = String(req.params.code).toUpperCase();
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) {
+      return res.redirect("/");
+    }
+    const html = joinTemplate
+      .replace(/APP_NAME_PLACEHOLDER/g, appName)
+      .replace(/CODE_PLACEHOLDER/g, code)
+      .replace(/APP_LINK_PLACEHOLDER/g, `forkit://join/${code}`);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  });
+
+  // Team ID N526K73K96 + bundle ID: the app allowed to open /join links.
+  app.get("/.well-known/apple-app-site-association", (_req: Request, res: Response) => {
+    res.json({
+      applinks: {
+        details: [
+          {
+            appIDs: ["N526K73K96.com.seandm.forkit"],
+            components: [{ "/": "/join/*" }],
+          },
+        ],
+      },
+    });
   });
 
   log("Serving static Expo files with dynamic manifest routing");
