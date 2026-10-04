@@ -26,6 +26,8 @@ CI must regenerate `expo-env.d.ts` (via `npx expo customize tsconfig.json`) befo
 
 Production build: `npm run expo:static:build && npm run server:build`, then `npm run server:prod`.
 
+iOS builds run on EAS: `npx eas-cli@latest build --profile <development|development-simulator|preview|production> --platform ios`. eas-cli is deliberately not a dependency; `cli.version` in [eas.json](eas.json) sets the minimum (24.4.2 fixed Apple sign-in failing with "iTunes service key is empty").
+
 ## Contribution workflow
 
 All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). CI has two jobs, `check` (typecheck, lint, server build, smoke test) and `expo-config` (asserts release-critical `app.json` values). Don't push to `main` directly.
