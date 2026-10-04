@@ -17,6 +17,7 @@
 // --pick <slug>=<n>     take the nth acceptable search result (0-based)
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { CUISINE_DISHES } from "../server/cuisine-dishes";
@@ -277,6 +278,7 @@ async function main() {
       license: file.license,
       licenseUrl: file.licenseUrl,
       pageUrl: file.pageUrl,
+      version: createHash("sha1").update(fs.readFileSync(out)).digest("hex").slice(0, 10),
     };
     console.log(`  ${slug}: ${file.title} (${file.license})`);
     // Be gentle with the API.

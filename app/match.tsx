@@ -225,7 +225,7 @@ export default function MatchScreen() {
                     </>
                   )}
                 </View>
-                <PlacesAttribution dish={dish} linked />
+                <PlacesAttribution dish={dish} />
               </>
             )}
           </Animated.View>

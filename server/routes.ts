@@ -416,7 +416,7 @@ async function fetchNearbyRestaurants(
           description: dish.desc || `Popular at ${restaurantName}`,
           ...(example
             ? {
-                image: `/assets/${example.file}`,
+                image: `/assets/${example.file}?v=${example.version}`,
                 photoCredit: {
                   author: example.author,
                   license: example.license,

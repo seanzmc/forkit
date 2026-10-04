@@ -13,6 +13,9 @@ export interface DishPhoto {
   licenseUrl?: string;
   // The file's page on Wikimedia Commons.
   pageUrl: string;
+  // Hash of the file's bytes, appended to its URL so a replaced photo is
+  // never served from a stale cache next to the new photo's credit.
+  version: string;
 }
 
 const PHOTOS: Record<string, DishPhoto> = photos;
