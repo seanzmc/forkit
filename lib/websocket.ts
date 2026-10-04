@@ -23,7 +23,8 @@ export type WsMessage =
   | { type: "member_joined"; session: SessionState }
   | { type: "member_left"; memberId: string; session: SessionState }
   | { type: "game_started"; session: SessionState; dishes: import("./food-data").Dish[] }
-  | { type: "swipe_update"; memberId: string; dishId: string; vote: "like" | "pass" }
+  // "undo" when a member takes back their last swipe.
+  | { type: "swipe_update"; memberId: string; dishId: string; vote: "like" | "pass" | "undo" }
   | { type: "match"; session: SessionState; dish: import("./food-data").Dish }
   | { type: "error"; message: string }
   | { type: "pong" };
