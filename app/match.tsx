@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -29,6 +29,9 @@ import type { Dish } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
+import { MatchActions } from "@/components/MatchActions";
+import { SwipeReview } from "@/components/SwipeReview";
+import { getSwipes } from "@/lib/swipe-review";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
   const translateY = useSharedValue(-20);
@@ -56,6 +59,7 @@ const CONFETTI_COLORS = [Colors.accent, Colors.accentGold, Colors.green, "#FF6B9
 export default function MatchScreen() {
   const { dish: dishParam } = useLocalSearchParams<{ dish: string }>();
   const insets = useSafeAreaInsets();
+  const [swipes] = useState(getSwipes);
 
   const dish: Dish | null = (() => {
     try { return JSON.parse(dishParam ?? "null"); } catch { return null; }
@@ -149,13 +153,10 @@ export default function MatchScreen() {
 
         {dish && (
           <Animated.View entering={FadeInDown.delay(400)} style={styles.dishInfo}>
-            <View style={styles.cuisineTag}>
-              <Text style={styles.cuisineTagText}>{dish.cuisine}</Text>
-            </View>
-            <SuggestedDishLabel dish={dish} />
-            <Text style={styles.dishName}>{dish.name}</Text>
             {dish.mode === "cook-in" ? (
               <>
+                <Text style={styles.dishName}>{dish.name}</Text>
+                <Text style={styles.cuisineText}>{dish.cuisine}</Text>
                 <View style={styles.recipeMetaRow}>
                   {!!dish.cookTime && (
                     <View style={styles.recipeMetaTag}>
@@ -184,35 +185,60 @@ export default function MatchScreen() {
               </>
             ) : (
               <>
-                <View style={styles.restaurantRow}>
-                  <View style={styles.restaurantIcon}>
-                    <Ionicons name="restaurant" size={16} color={Colors.accent} />
-                  </View>
-                  <Text style={styles.restaurantName}>{dish.restaurant}</Text>
-                </View>
+                {/* Same order as the swipe card: restaurant, dish, what it
+                    is, where, then price and rating. */}
+                {dish.restaurantOnly ? (
+                  <Text style={styles.dishName}>{dish.restaurant}</Text>
+                ) : (
+                  <>
+                    <View style={styles.restaurantRow}>
+                      <View style={styles.restaurantIcon}>
+                        <Ionicons name="restaurant" size={16} color={Colors.accent} />
+                      </View>
+                      <Text style={styles.restaurantName}>{dish.restaurant}</Text>
+                    </View>
+                    <Text style={styles.dishName}>{dish.name}</Text>
+                    <SuggestedDishLabel dish={dish} />
+                  </>
+                )}
+                {!!dish.description && <Text style={styles.dishDesc}>{dish.description}</Text>}
+                <GroundedSource dish={dish} />
                 {!!dish.address && (
                   <View style={styles.addressRow}>
-                    <Ionicons name="navigate-outline" size={14} color={Colors.textMuted} />
+                    <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
                     <Text style={styles.addressText}>{dish.address}</Text>
                   </View>
                 )}
-                <PlacesAttribution dish={dish} />
-                <Text style={styles.dishDesc}>{dish.description}</Text>
-                <GroundedSource dish={dish} />
                 <View style={styles.metaRow}>
-                  <View style={styles.priceCard}>
-                    <Ionicons name="pricetag" size={16} color={Colors.accentGold} />
-                    <Text style={styles.priceText}>{dish.price}</Text>
-                  </View>
+                  <Text style={styles.cuisineText}>{dish.cuisine}</Text>
+                  <Text style={styles.metaDot}>·</Text>
+                  <Text style={styles.metaPrice}>{dish.price}</Text>
                   {!!dish.rating && dish.rating > 0 && (
-                    <View style={styles.priceCard}>
-                      <Ionicons name="star" size={16} color={Colors.accentGold} />
-                      <Text style={styles.priceText}>{dish.rating.toFixed(1)}</Text>
-                    </View>
+                    <>
+                      <Text style={styles.metaDot}>·</Text>
+                      <Ionicons name="star" size={14} color={Colors.accentGold} />
+                      <Text style={styles.cuisineText}>
+                        {dish.rating.toFixed(1)}
+                        {!!dish.ratingCount && ` (${dish.ratingCount.toLocaleString()})`}
+                      </Text>
+                    </>
                   )}
                 </View>
+                <PlacesAttribution dish={dish} />
               </>
             )}
+          </Animated.View>
+        )}
+
+        {dish && (
+          <Animated.View entering={FadeInDown.delay(500)}>
+            <MatchActions dish={dish} />
+          </Animated.View>
+        )}
+
+        {swipes.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(550)}>
+            <SwipeReview swipes={swipes} />
           </Animated.View>
         )}
 
@@ -355,19 +381,10 @@ const styles = StyleSheet.create({
   dishInfo: {
     gap: 10,
   },
-  cuisineTag: {
-    alignSelf: "flex-start",
-    backgroundColor: Colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  cuisineTagText: {
-    fontSize: 11,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#fff",
-    textTransform: "uppercase",
-    letterSpacing: 1,
+  cuisineText: {
+    fontSize: 14,
+    fontFamily: "Poppins_500Medium",
+    color: Colors.textSecondary,
   },
   dishName: {
     fontSize: 30,
@@ -389,9 +406,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   restaurantName: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 20,
     fontFamily: "Poppins_600SemiBold",
-    color: Colors.textSecondary,
+    color: Colors.text,
   },
   addressRow: {
     flexDirection: "row",
@@ -401,7 +419,7 @@ const styles = StyleSheet.create({
   addressText: {
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     flex: 1,
   },
   dishDesc: {
@@ -431,7 +449,18 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: "row",
-    gap: 10,
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  metaDot: {
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  metaPrice: {
+    fontSize: 14,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accentGold,
   },
   priceCard: {
     flexDirection: "row",

@@ -95,6 +95,12 @@
           <strong>Your swipes.</strong> Which dishes you liked or passed on
           during a session, so the app can work out what the group agrees on.
         </li>
+        <li>
+          <strong>A push notification token, only if you allow
+          notifications.</strong> A random identifier for your device's
+          notifications, sent to our server when a game starts so it can tell
+          you when your group finds a match, even if you have left the app.
+        </li>
       </ul>
 
       <h2>What the app does not collect</h2>
@@ -107,7 +113,8 @@
 
       <h2>How long it is kept</h2>
       <p>
-        Session data — display names, swipes, and the generated dish list — is
+        Session data — display names, swipes, notification tokens, and the
+        generated dish list — is
         held in the server's memory only, for the length of the session. It is
         deleted when the last person leaves, when the server restarts, or
         automatically after one hour, whichever comes first. There is no
@@ -139,6 +146,14 @@
           not sent. This is also governed by Google's Privacy Policy.
         </li>
         <li>
+          <strong>Expo and Apple</strong> deliver match notifications if you
+          allow them. Our server sends your notification token and the matched
+          restaurant or recipe to Expo's push service, which passes it to Apple
+          Push Notification service to show on your device. This is governed by
+          <a href="https://expo.dev/privacy" rel="noopener">Expo's Privacy Policy</a>
+          and Apple's.
+        </li>
+        <li>
           <strong>Railway</strong> hosts the server and processes traffic on our
           behalf.
         </li>
@@ -153,8 +168,10 @@
 
       <h2>Your choices</h2>
       <p>
-        Location permission can be declined or revoked at any time in your
-        device settings; "cook in" mode works without it, and "dine out" falls
+        Notification permission can be declined or turned off at any time in
+        your device settings; the app works the same without it. Location
+        permission can be declined or revoked at any time in your device
+        settings; "cook in" mode works without it, and "dine out" falls
         back to a built-in list of dishes. To remove the data stored on your
         device, clear the app's storage or uninstall it. Because sessions are
         never persisted, there is no stored history for us to delete on request.
