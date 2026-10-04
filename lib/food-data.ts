@@ -5,6 +5,14 @@ export interface GroundedSource {
   uri: string;
 }
 
+export interface PhotoCredit {
+  author: string;
+  license: string;
+  licenseUrl?: string;
+  // The photo's page on Wikimedia Commons.
+  pageUrl: string;
+}
+
 export interface Dish {
   id: string;
   name: string;
@@ -17,6 +25,10 @@ export interface Dish {
   address?: string;
   placeId?: string;
   photoAuthors?: string[];
+  // Set when `image` is an example photo of the dish (Wikimedia Commons)
+  // rather than a photo of this restaurant. Its license requires this credit
+  // wherever the photo is shown.
+  photoCredit?: PhotoCredit;
   // True when the dish name is inferred from cuisine, not the restaurant's menu.
   suggested?: boolean;
   // True when there is no dish to suggest (fast food, or a cuisine we have no

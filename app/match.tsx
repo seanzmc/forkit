@@ -32,6 +32,7 @@ import { GroundedSource } from "@/components/GroundedSource";
 import { MatchActions } from "@/components/MatchActions";
 import { SwipeReview } from "@/components/SwipeReview";
 import { getSwipes } from "@/lib/swipe-review";
+import { resolveImageUrl } from "@/lib/query-client";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
   const translateY = useSharedValue(-20);
@@ -135,7 +136,7 @@ export default function MatchScreen() {
             <Animated.View style={[styles.pulseWrap, pulseStyle]}>
               <View style={styles.imageContainer}>
                 <Image
-                  source={{ uri: dish.image }}
+                  source={{ uri: resolveImageUrl(dish.image) }}
                   style={styles.dishImage}
                   resizeMode="cover"
                 />
@@ -224,7 +225,7 @@ export default function MatchScreen() {
                     </>
                   )}
                 </View>
-                <PlacesAttribution dish={dish} />
+                <PlacesAttribution dish={dish} linked />
               </>
             )}
           </Animated.View>

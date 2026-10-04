@@ -31,14 +31,14 @@ function matchText(dish: Dish): { title: string; body: string } {
 // The tapped notification opens the match screen from this copy of the dish,
 // since the session itself may already be gone by then. Trimming never drops
 // attribution: grounded dishes keep their Google Maps sources, and the photo
-// goes only together with its author credit.
+// goes only together with its credit (Places author or Wikimedia author and license).
 function dishForPayload(dish: Dish): Partial<Dish> {
   const fits = (d: Partial<Dish>) => JSON.stringify(d).length <= MAX_DATA_BYTES;
   if (fits(dish)) return dish;
   const { phone: _phone, website: _website, ...rest } = dish;
   const trimmed: Partial<Dish> = { ...rest, description: dish.description.slice(0, 140) };
   if (fits(trimmed)) return trimmed;
-  const { image: _image, photoAuthors: _authors, ...noPhoto } = trimmed;
+  const { image: _image, photoAuthors: _authors, photoCredit: _credit, ...noPhoto } = trimmed;
   return { ...noPhoto, image: "" };
 }
 

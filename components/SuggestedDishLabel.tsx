@@ -6,13 +6,16 @@ import type { Dish } from "@/lib/food-data";
 
 // Dine-out cards pair a real restaurant with a dish picked from a cuisine
 // table, not from that restaurant's menu. Label them so nobody expects the
-// restaurant to actually serve the dish shown.
+// restaurant to actually serve the dish shown. Its photo, when an example
+// photo, is what the dish looks like in general, not at this restaurant.
 export function SuggestedDishLabel({ dish }: { dish: Dish }) {
   if (!dish.suggested) return null;
   return (
     <View style={styles.row}>
       <Ionicons name="sparkles-outline" size={12} color={Colors.accentGold} />
-      <Text style={styles.text}>Suggested dish · check the menu</Text>
+      <Text style={styles.text}>
+        {dish.photoCredit ? "Suggested dish · example photo" : "Suggested dish · check the menu"}
+      </Text>
     </View>
   );
 }

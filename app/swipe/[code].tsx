@@ -36,6 +36,7 @@ import { SessionPanel } from "@/components/SessionPanel";
 import { recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
 import { getPushToken } from "@/lib/push";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
+import { resolveImageUrl } from "@/lib/query-client";
 import * as Crypto from "expo-crypto";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -115,7 +116,7 @@ function DishCard({
       {...(isTop ? panResponder.panHandlers : {})}
     >
       <Image
-        source={{ uri: dish.image }}
+        source={{ uri: resolveImageUrl(dish.image) }}
         style={styles.cardImage}
         resizeMode="cover"
       />

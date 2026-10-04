@@ -269,7 +269,9 @@ function configureExpoAndLanding(app: express.Application) {
     next();
   });
 
-  app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
+  // Includes the example dish photos (assets/dishes); they never change in
+  // place, so let phones cache them.
+  app.use("/assets", express.static(path.resolve(process.cwd(), "assets"), { maxAge: "7d" }));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
   log("Expo routing: Checking expo-platform header on / and /manifest");

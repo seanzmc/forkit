@@ -30,6 +30,14 @@ export function getApiUrl(): string {
   return url.href;
 }
 
+/**
+ * Image URLs from the server are either absolute (Google photos) or paths on
+ * the API host such as "/assets/dishes/pad-thai.jpg" (example dish photos).
+ */
+export function resolveImageUrl(uri: string): string {
+  return uri.startsWith("/") ? new URL(uri.slice(1), getApiUrl()).href : uri;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
