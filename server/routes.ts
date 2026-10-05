@@ -223,6 +223,9 @@ function extractCuisine(types: string[]): string {
 // reach. Fast-food chains have their own fixed menus ("House Appetizer
 // Sampler" at McDonald's), and places with no known cuisine get nothing:
 // those become restaurant-only cards instead of invented dishes.
+// Places formats US addresses as "..., City, ST 12345, USA".
+const isUsAddress = (address?: string) => /,\s*(USA|United States)\s*$/i.test(address || "");
+
 function suggestedDishesFor(
   types: string[],
   cuisineLabel: string
@@ -342,14 +345,8 @@ async function fetchNearbyRestaurants(
     // place that will produce cards, in parallel. Places it can't answer for
     // fall back to cuisine-based suggestions below.
     const grounded = new Map<number, GroundedMenu>();
-    // Real menu items for chains (spoonacular), looked up alongside.
-    const chainMenus = new Map<number, ChainDish[]>();
-    await Promise.all([
-      ...[...placePhotos.keys()].map(async (pi) => {
-        const items = await fetchChainDishes(places[pi].displayName?.text || "");
-        if (items) chainMenus.set(pi, items);
-      }),
-      ...[...placePhotos.keys()].map(async (pi) => {
+    await Promise.all(
+      [...placePhotos.keys()].map(async (pi) => {
         const place = places[pi];
         const menu = await fetchPopularDishes({
           id: place.id,
@@ -359,11 +356,24 @@ async function fetchNearbyRestaurants(
           lng,
         });
         if (menu) grounded.set(pi, menu);
-      }),
-    ]);
+      })
+    );
     if (grounded.size > 0) {
       console.log(`Grounded dishes for ${grounded.size}/${placePhotos.size} places`);
     }
+
+    // Real menu items for chains (spoonacular), only where grounding found
+    // nothing (lookups cost quota points) and only in the US (its data is
+    // US chain menus; a UK McDonald's serves something else).
+    const chainMenus = new Map<number, ChainDish[]>();
+    await Promise.all(
+      [...placePhotos.keys()]
+        .filter((pi) => !grounded.has(pi) && isUsAddress(places[pi].formattedAddress))
+        .map(async (pi) => {
+          const items = await fetchChainDishes(places[pi].displayName?.text || "");
+          if (items) chainMenus.set(pi, items);
+        })
+    );
     if (chainMenusEnabled()) {
       console.log(`Chain menu items for ${chainMenus.size}/${placePhotos.size} places`);
     }

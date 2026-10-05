@@ -1,5 +1,6 @@
 // Real menu items for chain restaurants, from spoonacular's menu item search
-// (115K+ items from 800+ US chains, each with a photo of that item).
+// (115K+ items from 800+ US chains, each with a photo of that item). US menus
+// only, so callers skip places outside the US.
 //
 // Terms: results may be cached for at most 1 hour, so lookups (including
 // "not a chain we know") live in memory for an hour and are never written
@@ -52,14 +53,13 @@ const norm = (s: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-// "Chili's Grill & Bar" (Google) vs "Chili's" (spoonacular): equal, a prefix
-// of one another, or the same first two words.
+// "Chili's Grill & Bar" (Google) vs "Chili's" (spoonacular): equal, or one
+// is the other plus more words. Sharing only a first word or two is not
+// enough ("The Capital Grille" is not "The Capital Burger").
 function sameChain(a: string, b: string): boolean {
   const [x, y] = [norm(a), norm(b)];
   if (!x || !y) return false;
-  if (x === y || x.startsWith(`${y} `) || y.startsWith(`${x} `)) return true;
-  const firstTwo = (s: string) => s.split(" ").slice(0, 2).join(" ");
-  return x.includes(" ") && y.includes(" ") && firstTwo(x) === firstTwo(y);
+  return x === y || x.startsWith(`${y} `) || y.startsWith(`${x} `);
 }
 
 // Items the group wouldn't pick dinner by: drinks, condiments, sides,
