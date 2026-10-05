@@ -10,10 +10,12 @@ import type { Dish } from "@/lib/food-data";
 // Example dish photos come from Wikimedia Commons instead; their CC licenses
 // require author, license (linked), source (linked) and a note that we
 // modified the photo (every one is resized and recompressed).
+// Chain menu items and their photos come from spoonacular, whose free plan
+// requires a backlink to its food API page wherever the data is shown.
 // The links work on the swipe card too: a tap on them is claimed by the
 // text before the card's pan handler, while a drag still moves the card.
 export function PlacesAttribution({ dish }: { dish: Dish }) {
-  if (!dish.placeId && !dish.photoCredit) return null;
+  if (!dish.placeId && !dish.photoCredit && !dish.menuSource) return null;
   const open = (url: string) => () => {
     Linking.openURL(url).catch(() => {});
   };
@@ -24,7 +26,14 @@ export function PlacesAttribution({ dish }: { dish: Dish }) {
   return (
     <View style={styles.row}>
       {!!dish.placeId && <Text style={styles.text}>Google Maps</Text>}
-      {example ? (
+      {dish.menuSource === "spoonacular" ? (
+        <Text style={[styles.text, styles.credit]} numberOfLines={1}>
+          {dish.placeId ? "· " : ""}Menu & photo:{" "}
+          <Text style={styles.link} onPress={open("https://spoonacular.com/food-api")}>
+            spoonacular
+          </Text>
+        </Text>
+      ) : example ? (
         // Two lines so a long author name can't push the license out of view.
         <Text style={[styles.text, styles.credit]} numberOfLines={2}>
           {dish.placeId ? "· " : ""}Photo (resized): {example.author} ·{" "}

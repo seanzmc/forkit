@@ -8,7 +8,7 @@ const app = express();
 const log = console.log;
 
 // Bump this when the privacy policy text changes.
-const PRIVACY_LAST_UPDATED = "3 October 2026";
+const PRIVACY_LAST_UPDATED = "4 October 2026";
 const PRIVACY_CONTACT_EMAIL =
   process.env.PRIVACY_CONTACT_EMAIL || "seanzmc9613@gmail.com";
 

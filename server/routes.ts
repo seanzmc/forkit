@@ -11,6 +11,7 @@ import {
 import { isExpoPushToken, sendMatchPush } from "./push";
 import { CUISINE_DISHES } from "./cuisine-dishes";
 import { examplePhotoFor } from "./dish-photos";
+import { chainMenusEnabled, fetchChainDishes, type ChainDish } from "./chain-menus";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -341,8 +342,14 @@ async function fetchNearbyRestaurants(
     // place that will produce cards, in parallel. Places it can't answer for
     // fall back to cuisine-based suggestions below.
     const grounded = new Map<number, GroundedMenu>();
-    await Promise.all(
-      [...placePhotos.keys()].map(async (pi) => {
+    // Real menu items for chains (spoonacular), looked up alongside.
+    const chainMenus = new Map<number, ChainDish[]>();
+    await Promise.all([
+      ...[...placePhotos.keys()].map(async (pi) => {
+        const items = await fetchChainDishes(places[pi].displayName?.text || "");
+        if (items) chainMenus.set(pi, items);
+      }),
+      ...[...placePhotos.keys()].map(async (pi) => {
         const place = places[pi];
         const menu = await fetchPopularDishes({
           id: place.id,
@@ -352,10 +359,13 @@ async function fetchNearbyRestaurants(
           lng,
         });
         if (menu) grounded.set(pi, menu);
-      })
-    );
+      }),
+    ]);
     if (grounded.size > 0) {
       console.log(`Grounded dishes for ${grounded.size}/${placePhotos.size} places`);
+    }
+    if (chainMenusEnabled()) {
+      console.log(`Chain menu items for ${chainMenus.size}/${placePhotos.size} places`);
     }
 
     for (let pi = 0; pi < places.length; pi++) {
@@ -384,6 +394,23 @@ async function fetchNearbyRestaurants(
       };
 
       const menu = grounded.get(pi);
+      const chainItems = menu ? undefined : chainMenus.get(pi);
+
+      if (chainItems) {
+        // Real dishes from this chain's menu, each with its own photo.
+        chainItems.forEach((item, di) => {
+          dishes.push({
+            ...shared,
+            id: `${place.id}_${di}`,
+            name: item.name,
+            description: "",
+            image: item.image,
+            menuSource: "spoonacular",
+          });
+        });
+        continue;
+      }
+
       const suggestions = menu ? null : suggestedDishesFor(types, cuisine);
 
       if (!menu && !suggestions) {
@@ -448,7 +475,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // shows up in the logs. Never logs the keys themselves.
   console.log(
     `Integrations: Google Places ${GOOGLE_API_KEY ? "on" : "OFF (curated fallback)"}, ` +
-      `Gemini menu grounding ${menuGroundingEnabled() ? "on" : "OFF (suggested dishes)"}`
+      `Gemini menu grounding ${menuGroundingEnabled() ? "on" : "OFF (suggested dishes)"}, ` +
+      `spoonacular chain menus ${chainMenusEnabled() ? "on" : "OFF (suggested dishes)"}`
   );
 
   const httpServer = createServer(app);
