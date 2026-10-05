@@ -26,7 +26,7 @@ CI must regenerate `expo-env.d.ts` (via `npx expo customize tsconfig.json`) befo
 
 Production build: `npm run expo:static:build && npm run server:build`, then `npm run server:prod`.
 
-iOS builds run on EAS: `npx eas-cli@latest build --profile <development|development-simulator|preview|production> --platform ios`. eas-cli is deliberately not a dependency; `cli.version` in [eas.json](eas.json) sets the minimum (24.4.2 fixed Apple sign-in failing with "iTunes service key is empty").
+iOS builds run on EAS: `npx eas-cli@latest build --profile <development|development-simulator|preview|production> --platform ios`. TestFlight: `npx eas-cli@latest build --profile production --platform ios --auto-submit` builds and uploads to App Store Connect app 6819387031 ("ForkIt: Swipe to Decide", set in `submit.production` in eas.json). eas-cli is deliberately not a dependency; `cli.version` in [eas.json](eas.json) sets the minimum (24.4.2 fixed Apple sign-in failing with "iTunes service key is empty").
 
 ## Contribution workflow
 
