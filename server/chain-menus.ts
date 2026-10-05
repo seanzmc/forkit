@@ -144,8 +144,12 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
       for (const item of items) {
         if (!item.restaurantChain || !sameChain(item.restaurantChain, placeName)) continue;
         chainFound = true;
-        if (!item.image || NOT_A_MAIN.test(item.title)) continue;
+        if (!item.image) continue;
+        // Filter the cleaned name, not the raw title: titles can start with
+        // the chain's own name ("Waffle House Patty Melt"), which would
+        // otherwise reject every item from such chains.
         const name = cleanTitle(item.title, item.restaurantChain, placeName);
+        if (NOT_A_MAIN.test(name)) continue;
         if (name.length < 3 || name.length > 60 || seen.has(norm(name))) continue;
         seen.add(norm(name));
         candidates.push({ name, id: item.id, ext: item.imageType || "png" });
