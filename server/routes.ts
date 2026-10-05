@@ -341,6 +341,20 @@ async function fetchNearbyRestaurants(
       placePhotos.get(placeIndex)!.push({ url, authors });
     });
 
+    // Two locations of one chain (two Chick-fil-As nearby) would put the
+    // same dishes in the deck twice, and matching is by restaurant name
+    // anyway, so keep one per name: the first (most popular) that has a
+    // usable photo. Done after photos resolve so a location without one
+    // doesn't knock the chain out entirely.
+    const seenNames = new Set<string>();
+    for (let pi = 0; pi < places.length; pi++) {
+      if (!placePhotos.has(pi)) continue;
+      const key = (places[pi].displayName?.text || "").trim().toLowerCase();
+      if (!key) continue;
+      if (seenNames.has(key)) placePhotos.delete(pi);
+      else seenNames.add(key);
+    }
+
     // Ask Gemini (grounded in Google Maps) for real popular dishes at every
     // place that will produce cards, in parallel. Places it can't answer for
     // fall back to cuisine-based suggestions below.

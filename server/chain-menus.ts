@@ -63,9 +63,9 @@ function sameChain(a: string, b: string): boolean {
 }
 
 // Items the group wouldn't pick dinner by: drinks, condiments, sides,
-// breakfast add-ons and desserts.
+// breakfast dishes and desserts.
 const NOT_A_MAIN =
-  /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|kids?|child|toddler|add on|add-on|extra|topping|cup|packet|ice|refill|vinegar|salt|granola|yogurt|parfait|fruit|oatmeal|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard)\b/i;
+  /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|kids?|child|toddler|add on|add-on|extra|topping|cup|packet|ice|refill|vinegar|salt|granola|yogurt|parfait|fruit|oatmeal|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard|concrete|mixer|breakfast|biscuits?|bagels?|croissants?|muffins?|mcmuffin|pancakes?|hotcakes|waffles?|eggs?|omelets?|omelettes?)\b/i;
 
 // "Carrabba's Italian Grill Lunch - Fish Chowder" -> "Fish Chowder";
 // "The Culver's Bacon Deluxe ButterBurger" -> "Bacon Deluxe ButterBurger".
@@ -89,6 +89,8 @@ function cleanTitle(title: string, chain: string, placeName: string): string {
     .replace(/\s*\((small|medium|large|regular|cup|bowl|lunch|dinner|\d[^)]*)\)\s*$/i, "")
     .replace(/,\s*for .*$/i, "")
     .replace(/\s+w\/o\s.*$/i, "")
+    // Regional variants: "Turkey Club - FL".
+    .replace(/\s+-\s+[A-Z]{2}$/, "")
     .trim();
 }
 
@@ -142,8 +144,12 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
       for (const item of items) {
         if (!item.restaurantChain || !sameChain(item.restaurantChain, placeName)) continue;
         chainFound = true;
-        if (!item.image || NOT_A_MAIN.test(item.title)) continue;
+        if (!item.image) continue;
+        // Filter the cleaned name, not the raw title: titles can start with
+        // the chain's own name ("Waffle House Patty Melt"), which would
+        // otherwise reject every item from such chains.
         const name = cleanTitle(item.title, item.restaurantChain, placeName);
+        if (NOT_A_MAIN.test(name)) continue;
         if (name.length < 3 || name.length > 60 || seen.has(norm(name))) continue;
         seen.add(norm(name));
         candidates.push({ name, id: item.id, ext: item.imageType || "png" });
