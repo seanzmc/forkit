@@ -8,7 +8,18 @@ import type { Dish } from "@/lib/food-data";
 // table, not from that restaurant's menu. Label them so nobody expects the
 // restaurant to actually serve the dish shown. Its photo, when an example
 // photo, is what the dish looks like in general, not at this restaurant.
+//
+// Chain dishes from spoonacular are the opposite case: real items from that
+// chain's menu, so they say so instead.
 export function SuggestedDishLabel({ dish }: { dish: Dish }) {
+  if (dish.menuSource) {
+    return (
+      <View style={styles.row}>
+        <Ionicons name="checkmark-circle" size={12} color={Colors.green} />
+        <Text style={[styles.text, styles.onMenu]}>On the menu</Text>
+      </View>
+    );
+  }
   if (!dish.suggested) return null;
   return (
     <View style={styles.row}>
@@ -21,6 +32,9 @@ export function SuggestedDishLabel({ dish }: { dish: Dish }) {
 }
 
 const styles = StyleSheet.create({
+  onMenu: {
+    color: Colors.green,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",

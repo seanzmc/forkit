@@ -31,6 +31,9 @@ export interface Dish {
   photoCredit?: PhotoCredit;
   // True when the dish name is inferred from cuisine, not the restaurant's menu.
   suggested?: boolean;
+  // "spoonacular" when the dish is a real item from this chain's menu (and
+  // `image` is spoonacular's photo of it); credited wherever it's shown.
+  menuSource?: "spoonacular";
   // True when there is no dish to suggest (fast food, or a cuisine we have no
   // dishes for): the card is the restaurant itself and `name` is its name.
   restaurantOnly?: boolean;

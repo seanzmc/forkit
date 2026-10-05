@@ -11,6 +11,7 @@ import {
 import { isExpoPushToken, sendMatchPush } from "./push";
 import { CUISINE_DISHES } from "./cuisine-dishes";
 import { examplePhotoFor } from "./dish-photos";
+import { chainMenusEnabled, fetchChainDishes, type ChainDish } from "./chain-menus";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -222,6 +223,9 @@ function extractCuisine(types: string[]): string {
 // reach. Fast-food chains have their own fixed menus ("House Appetizer
 // Sampler" at McDonald's), and places with no known cuisine get nothing:
 // those become restaurant-only cards instead of invented dishes.
+// Places formats US addresses as "..., City, ST 12345, USA".
+const isUsAddress = (address?: string) => /,\s*(USA|United States)\s*$/i.test(address || "");
+
 function suggestedDishesFor(
   types: string[],
   cuisineLabel: string
@@ -358,6 +362,22 @@ async function fetchNearbyRestaurants(
       console.log(`Grounded dishes for ${grounded.size}/${placePhotos.size} places`);
     }
 
+    // Real menu items for chains (spoonacular), only where grounding found
+    // nothing (lookups cost quota points) and only in the US (its data is
+    // US chain menus; a UK McDonald's serves something else).
+    const chainMenus = new Map<number, ChainDish[]>();
+    await Promise.all(
+      [...placePhotos.keys()]
+        .filter((pi) => !grounded.has(pi) && isUsAddress(places[pi].formattedAddress))
+        .map(async (pi) => {
+          const items = await fetchChainDishes(places[pi].displayName?.text || "");
+          if (items) chainMenus.set(pi, items);
+        })
+    );
+    if (chainMenusEnabled()) {
+      console.log(`Chain menu items for ${chainMenus.size}/${placePhotos.size} places`);
+    }
+
     for (let pi = 0; pi < places.length; pi++) {
       const place = places[pi];
       const photos = placePhotos.get(pi);
@@ -384,6 +404,23 @@ async function fetchNearbyRestaurants(
       };
 
       const menu = grounded.get(pi);
+      const chainItems = menu ? undefined : chainMenus.get(pi);
+
+      if (chainItems) {
+        // Real dishes from this chain's menu, each with its own photo.
+        chainItems.forEach((item, di) => {
+          dishes.push({
+            ...shared,
+            id: `${place.id}_${di}`,
+            name: item.name,
+            description: "",
+            image: item.image,
+            menuSource: "spoonacular",
+          });
+        });
+        continue;
+      }
+
       const suggestions = menu ? null : suggestedDishesFor(types, cuisine);
 
       if (!menu && !suggestions) {
@@ -448,7 +485,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // shows up in the logs. Never logs the keys themselves.
   console.log(
     `Integrations: Google Places ${GOOGLE_API_KEY ? "on" : "OFF (curated fallback)"}, ` +
-      `Gemini menu grounding ${menuGroundingEnabled() ? "on" : "OFF (suggested dishes)"}`
+      `Gemini menu grounding ${menuGroundingEnabled() ? "on" : "OFF (suggested dishes)"}, ` +
+      `spoonacular chain menus ${chainMenusEnabled() ? "on" : "OFF (suggested dishes)"}`
   );
 
   const httpServer = createServer(app);
