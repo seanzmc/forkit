@@ -303,7 +303,16 @@ async function fetchNearbyRestaurants(
     }
 
     const data = await response.json();
-    const places = data.places || [];
+    // Two locations of one chain (two Chick-fil-As nearby) would put the
+    // same dishes in the deck twice, and matching is by restaurant name
+    // anyway, so keep the first (most popular) of each name.
+    const seenNames = new Set<string>();
+    const places = (data.places || []).filter((p: { displayName?: { text?: string } }) => {
+      const key = (p.displayName?.text || "").trim().toLowerCase();
+      if (!key || seenNames.has(key)) return !key;
+      seenNames.add(key);
+      return true;
+    });
 
     if (places.length === 0) {
       console.warn("No restaurants found, using fallback dishes");
