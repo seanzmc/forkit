@@ -90,6 +90,6 @@ CORS allows only `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` origins plus any `localh
 - `metro.config.js` blocks `.local/skills/.tmp-*` from the resolver — temp agent-skill dirs crashed Metro. Don't remove it.
 - `postinstall` runs `patch-package` (`patches/expo-asset+12.0.13.patch`); use `npm install`, not a raw node_modules copy.
 - `reactCompiler` is enabled in `app.json` experiments — babel-plugin-react-compiler runs on all app code.
-- Brand: the motto is "Swipe right on dinner" (welcome screen, lobby, swipe header, share text, `/join` page). Logo: `assets/images/logo.png` (welcome screen), `logo.svg` (rounded tile, used by `/join`) and `logo-mark.svg` (forks only, transparent), redrawn from `icon.png`.
+- Brand: the motto is "Swipe right on dinner" (welcome screen, lobby, swipe header, share text, `/join` page). Logo: `assets/images/icon.svg` is the vector master (used by `/join`); `logo.png` is a 360 px copy of `icon.png` for the welcome screen.
 - Theme is fixed dark: `#0F0F0F` background, `#FF6B35` accent, Poppins loaded in `_layout.tsx` (renders `null` until fonts resolve). Colors live in [constants/colors.ts](constants/colors.ts).
 - Path aliases: `@/*` → repo root, `@shared/*` → `shared/`.
