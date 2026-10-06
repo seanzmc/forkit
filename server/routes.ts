@@ -226,12 +226,33 @@ function extractCuisine(types: string[]): string {
 // Places formats US addresses as "..., City, ST 12345, USA".
 const isUsAddress = (address?: string) => /,\s*(USA|United States)\s*$/i.test(address || "");
 
+// Daytime-only cuisines. A place typed both breakfast_restaurant and
+// american_restaurant (Golden Corral) gets its dinner dishes.
+const DAYTIME_TYPES = new Set(["breakfast_restaurant", "brunch_restaurant", "cafe", "coffee_shop", "bakery"]);
+
+// Two suggested dishes per place, preferring ones no other place in this
+// room has been given yet.
+const SUGGESTIONS_PER_PLACE = 2;
+function pickSuggestions<T extends { name: string }>(pool: T[], used: Set<string>): T[] {
+  const fresh = pickRandom(pool.filter((d) => !used.has(d.name)), SUGGESTIONS_PER_PLACE);
+  const picked = [
+    ...fresh,
+    ...pickRandom(pool.filter((d) => used.has(d.name)), SUGGESTIONS_PER_PLACE - fresh.length),
+  ];
+  picked.forEach((d) => used.add(d.name));
+  return picked;
+}
+
 function suggestedDishesFor(
   types: string[],
   cuisineLabel: string
 ): { name: string; desc: string }[] | null {
   if (types.includes("fast_food_restaurant")) return null;
-  for (const type of types) {
+  const ordered = [
+    ...types.filter((t) => !DAYTIME_TYPES.has(t)),
+    ...types.filter((t) => DAYTIME_TYPES.has(t)),
+  ];
+  for (const type of ordered) {
     const dishes = CUISINE_DISHES[TYPE_TO_CUISINE[type]];
     if (dishes) return dishes;
   }
@@ -392,6 +413,11 @@ async function fetchNearbyRestaurants(
       console.log(`Chain menu items for ${chainMenus.size}/${placePhotos.size} places`);
     }
 
+    // Suggested dishes already given to a place in this room: several
+    // "American" places would otherwise all get Mac & Cheese with the same
+    // example photo.
+    const usedSuggestions = new Set<string>();
+
     for (let pi = 0; pi < places.length; pi++) {
       const place = places[pi];
       const photos = placePhotos.get(pi);
@@ -421,14 +447,16 @@ async function fetchNearbyRestaurants(
       const chainItems = menu ? undefined : chainMenus.get(pi);
 
       if (chainItems) {
-        // Real dishes from this chain's menu, each with its own photo.
+        // Real dishes from this chain's menu, with spoonacular's photo of
+        // the item when it has one, else the place's own photo.
         chainItems.forEach((item, di) => {
+          const own = photos[di % photos.length];
           dishes.push({
             ...shared,
             id: `${place.id}_${di}`,
             name: item.name,
             description: "",
-            image: item.image,
+            ...(item.image ? { image: item.image } : { image: own.url, photoAuthors: own.authors }),
             menuSource: "spoonacular",
           });
         });
@@ -451,9 +479,7 @@ async function fetchNearbyRestaurants(
         continue;
       }
 
-      const selectedDishes = menu
-        ? menu.dishes
-        : pickRandom(suggestions!, 3);
+      const selectedDishes = menu ? menu.dishes : pickSuggestions(suggestions!, usedSuggestions);
 
       selectedDishes.forEach((dish, di) => {
         // A suggested dish shows an example photo of that dish; anything

@@ -27,11 +27,15 @@ export function PlacesAttribution({ dish }: { dish: Dish }) {
     <View style={styles.row}>
       {!!dish.placeId && <Text style={styles.text}>Google Maps</Text>}
       {dish.menuSource === "spoonacular" ? (
+        // The photo is spoonacular's unless the item had none, in which case
+        // it is the place's own Google photo with its author credit.
         <Text style={[styles.text, styles.credit]} numberOfLines={1}>
-          {dish.placeId ? "· " : ""}Menu & photo:{" "}
+          {dish.placeId ? "· " : ""}
+          {dish.photoAuthors ? "Menu:" : "Menu & photo:"}{" "}
           <Text style={styles.link} onPress={open("https://spoonacular.com/food-api")}>
             spoonacular
           </Text>
+          {placesCredit ? ` · ${placesCredit}` : ""}
         </Text>
       ) : example ? (
         // Two lines so a long author name can't push the license out of view.

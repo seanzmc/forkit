@@ -95,6 +95,14 @@
     "pageUrl": "https://commons.wikimedia.org/wiki/File:-365_power_bowl_(26679400346).jpg",
     "version": "44a09e23c9"
   },
+  "buffalo-wings": {
+    "file": "dishes/buffalo-wings.jpg",
+    "author": "Shelby L. Bell",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:Hot_Wings_-_The_Session_Room_-_Omaha,_NE_(In_Explore_03-06-18)_-_Flickr_-_vwcampin.jpg",
+    "version": "6b34d13311"
+  },
   "bun-bo-hue": {
     "file": "dishes/bun-bo-hue.jpg",
     "author": "bopuc",
@@ -143,6 +151,14 @@
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Chicken_and_waffles_with_peaches_and_cream.jpg",
     "version": "35aea718d7"
   },
+  "chicken-fried-steak": {
+    "file": "dishes/chicken-fried-steak.jpg",
+    "author": "LeeMNichols",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:Chicken_Fried_Steak.jpg",
+    "version": "9310e3afe5"
+  },
   "chicken-katsu-curry": {
     "file": "dishes/chicken-katsu-curry.jpg",
     "author": "Andy Li",
@@ -158,6 +174,14 @@
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Chicken_parm_at_a_diner.jpg",
     "version": "aadd73e44c"
+  },
+  "chicken-tenders": {
+    "file": "dishes/chicken-tenders.jpg",
+    "author": "FotoosVanRobin",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:Crispy_Chicken_Strips_-_FotoosVanRobin.jpg",
+    "version": "3d78c02b02"
   },
   "chile-relleno": {
     "file": "dishes/chile-relleno.jpg",
@@ -181,6 +205,14 @@
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Sandwich_on_a_cutting_board.jpg",
     "version": "a0f6653bf2"
+  },
+  "cobb-salad": {
+    "file": "dishes/cobb-salad.jpg",
+    "author": "Jodimichelle",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:Cobb_salad,_15_October_2010.jpg",
+    "version": "1bf23abeab"
   },
   "cold-brew-float": {
     "file": "dishes/cold-brew-float.jpg",
@@ -524,6 +556,13 @@
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Pizza_with_pepperoni,_sausage,_cheese,_and_tomato_paste_-_Massachusetts.jpg",
     "version": "e96925dae1"
   },
+  "meatloaf": {
+    "file": "dishes/meatloaf.jpg",
+    "author": "Renee Comet (photographer)",
+    "license": "Public domain",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:MeatloafWithSauce.jpg",
+    "version": "ee217debf0"
+  },
   "mezze-board": {
     "file": "dishes/mezze-board.jpg",
     "author": "Unai Guerra",
@@ -652,6 +691,14 @@
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Pho_bo,_Guty,_Tesco,_Ostrava.jpg",
     "version": "4d6efe4215"
   },
+  "pot-roast": {
+    "file": "dishes/pot-roast.jpg",
+    "author": "Mark Miller",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:American_pot_roast_and_parsley_potatoes.jpg",
+    "version": "d639dc679f"
+  },
   "pulled-pork-sandwich": {
     "file": "dishes/pulled-pork-sandwich.jpg",
     "author": "Infrogmation of New Orleans",
@@ -675,6 +722,14 @@
     "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Sunny_Sushi_rainbow_roll.JPG",
     "version": "27180406d4"
+  },
+  "reuben-sandwich": {
+    "file": "dishes/reuben-sandwich.jpg",
+    "author": "Ernesto Andrade",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "pageUrl": "https://commons.wikimedia.org/wiki/File:Katz%27s_Deli_-_Lunch.jpg",
+    "version": "9dc06ebcee"
   },
   "ribeye-steak": {
     "file": "dishes/ribeye-steak.jpg",
