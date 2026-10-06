@@ -32,7 +32,8 @@ export interface ChainDish {
 interface Candidate {
   name: string;
   id: number;
-  ext: string;
+  // Image file type, or null when the item lists no image at all.
+  ext: string | null;
 }
 
 interface MenuItem {
@@ -64,10 +65,23 @@ function sameChain(a: string, b: string): boolean {
   return x === y || x.startsWith(`${y} `) || y.startsWith(`${x} `);
 }
 
-// Items the group wouldn't pick dinner by: drinks, condiments, sides,
+// Items the group wouldn't pick dinner by: soft drinks, condiments, sides,
 // breakfast dishes and desserts.
 const NOT_A_MAIN =
-  /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|kids?|child|toddler|add on|add-on|extra|topping|cup|packet|ice|refill|vinegar|salt|granola|yogurt|parfait|fruit|oatmeal|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard|concrete|mixer|breakfast|biscuits?|bagels?|croissants?|muffins?|mcmuffin|pancakes?|hotcakes|waffles?|eggs?|omelets?|omelettes?|cocktails?|wines?|beers?|margaritas?|sangria|mimosas?|martinis?|mojitos?|spritz|sake|whiskey|bourbon|vodka|tequila|rum|ale|lager|ipa|seltzer|spirits?|liqueur|daiquiri|bellini|moscato|sparkling|draft|pitcher)\b/i;
+  /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|kids?|child|toddler|add on|add-on|extra|topping|cup|packet|ice|refill|vinegar|salt|granola|yogurt|parfait|fruit|oatmeal|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard|concrete|mixer|breakfast|biscuits?|bagels?|croissants?|muffins?|mcmuffin|pancakes?|hotcakes|waffles?|eggs?|omelets?|omelettes?)\b/i;
+
+// Alcohol counts only as the last word of the name or of a section label
+// ("Signature Wine Cocktails", "House Margarita (Frozen)", "Wine: Merlot"),
+// so entrées cooked with it stay: "Beer-Battered Fish", "Bourbon Street
+// Chicken", "Red Wine Braised Short Ribs".
+const ALCOHOL_LAST =
+  /\b(cocktails?|wines?|beers?|margaritas?|sangria|mimosas?|martinis?|mojitos?|spritz|sake|whiskey|bourbon|vodka|tequila|rum|ale|lager|ipa|seltzer|spirits?|liqueur|daiquiri|bellini|moscato|sparkling|draft|pitcher)$/i;
+
+function isDrink(name: string): boolean {
+  const [label, rest] = name.includes(":") ? name.split(/:(.*)/s) : ["", name];
+  const plain = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return ALCOHOL_LAST.test(plain(rest)) || (label !== "" && ALCOHOL_LAST.test(plain(label)));
+}
 
 // "Carrabba's Italian Grill Lunch - Fish Chowder" -> "Fish Chowder";
 // "The Culver's Bacon Deluxe ButterBurger" -> "Bacon Deluxe ButterBurger".
@@ -119,9 +133,10 @@ async function searchPage(query: string, offset: number): Promise<MenuItem[]> {
 }
 
 // Many items list an image that was never uploaded (about two in three in a
-// test near Tampa), so only items whose photo actually loads become cards.
-// Prefer the sharper 636x393 size; both sizes exist or neither does.
-async function workingImage(id: number, ext: string): Promise<string | null> {
+// test near Tampa), so check that the photo actually loads. Prefer the
+// sharper 636x393 size; both sizes exist or neither does.
+async function workingImage(id: number, ext: string | null): Promise<string | null> {
+  if (!ext) return null;
   const url = `https://img.spoonacular.com/menu-items/${id}-636x393.${ext}`;
   try {
     const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(4_000) });
@@ -159,16 +174,15 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
       for (const item of items) {
         if (!item.restaurantChain || !sameChain(item.restaurantChain, placeName)) continue;
         chainFound = true;
-        if (!item.image) continue;
         // Filter the cleaned name, not the raw title: titles can start with
         // the chain's own name ("Waffle House Patty Melt"), which would
         // otherwise reject every item from such chains.
         const cleaned = cleanTitle(item.title, item.restaurantChain, placeName);
-        if (NOT_A_MAIN.test(cleaned)) continue;
+        if (NOT_A_MAIN.test(cleaned) || isDrink(cleaned)) continue;
         const name = stripSection(cleaned);
         if (name.length < 3 || name.length > 60 || seen.has(norm(name))) continue;
         seen.add(norm(name));
-        candidates.push({ name, id: item.id, ext: item.imageType || "png" });
+        candidates.push({ name, id: item.id, ext: item.image ? item.imageType || "png" : null });
       }
     };
     take(await searchPage(placeName, 0));
