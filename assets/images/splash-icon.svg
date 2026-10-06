@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">ForkIt splash icon</title>
+  <desc id="desc">An orange and coral heart wrapped around a three-tine fork, with a soft glow beneath its stem on a charcoal background.</desc>
+  <defs>
+    <radialGradient id="background">
+      <stop stop-color="#262424"/>
+      <stop offset="1" stop-color="#232121"/>
+    </radialGradient>
+    <linearGradient id="heartLeft" gradientUnits="userSpaceOnUse" x1="449" y1="288" x2="373" y2="580">
+      <stop stop-color="#ff8131"/>
+      <stop offset="0.5" stop-color="#ff6537"/>
+      <stop offset="1" stop-color="#ff4f3d"/>
+    </linearGradient>
+    <linearGradient id="heartRight" gradientUnits="userSpaceOnUse" x1="642" y1="293" x2="478" y2="680">
+      <stop stop-color="#ff9833"/>
+      <stop offset="0.48" stop-color="#ff7734"/>
+      <stop offset="1" stop-color="#ff4b3c"/>
+    </linearGradient>
+    <linearGradient id="forkFill" gradientUnits="userSpaceOnUse" x1="810" y1="294" x2="445.5" y2="814.6">
+      <stop stop-color="#ff783b"/>
+      <stop offset="0.48" stop-color="#ff643e"/>
+      <stop offset="1" stop-color="#ff483b"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop stop-color="#ff613b" stop-opacity="0.65"/>
+      <stop offset="0.2" stop-color="#f3502e" stop-opacity="0.38"/>
+      <stop offset="0.48" stop-color="#e84d29" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#e84d29" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Exact frontFork path from icon.svg, uniformly scaled and rotated upright. -->
+    <path id="splashFork" transform="translate(514 355) scale(0.62) rotate(-35) translate(-810 -294)" d="M 746,250
+      C 756,238 772,251 761,265
+      L 624,454
+      C 609,470 644,492 654,477
+      L 800,289
+      C 810,276 828,285 819,300
+      L 700,498
+      C 687,516 721,537 733,522
+      L 858,328
+      C 867,313 884,322 877,338
+      L 779,542
+      C 754,598 718,629 661,622
+      C 632,617 619,622 606,641
+      L 260.5,1180 L 154.4,1130
+      L 549,611
+      C 571,582 567,572 553,543
+      C 534,503 551,460 582,425 Z"/>
+    <clipPath id="forkExtent">
+      <path d="M 0,0 H 1024 V 746 H 540 Q 514,754 488,746 H 0 Z"/>
+    </clipPath>
+    <clipPath id="forkHeadClip">
+      <use href="#splashFork"/>
+    </clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#background)"/>
+  <ellipse cx="514" cy="751" rx="177" ry="65" fill="url(#glow)"/>
+
+  <g clip-path="url(#forkExtent)">
+    <use href="#splashFork" fill="url(#forkFill)"/>
+  </g>
+
+  <!-- Preserve the original heart's left lobe and its diagonal ribbon end. -->
+  <use href="#heart-left" stroke="#262424" stroke-width="10" clip-path="url(#forkHeadClip)"/>
+  <path id="heart-left" d="M 508,337
+    C 484,303 452,287 417,287
+    C 357,284 318,328 317,388
+    C 314,468 375,521 481,591
+    L 505,570
+    C 410,505 355,454 354,393
+    C 352,350 378,320 415,320
+    C 444,319 469,332 489,353
+    C 493,347 501,340 508,337 Z" fill="url(#heartLeft)"/>
+
+  <!-- Preserve the right lobe and the ribbon curling across the fork stem. -->
+  <use href="#heart-right" stroke="#262424" stroke-width="10" clip-path="url(#forkHeadClip)"/>
+  <path id="heart-right" d="M 504,371
+    C 516,324 559,287 607,287
+    C 669,284 710,329 710,390
+    C 710,471 655,518 550,588
+    C 503,619 480,650 487,694
+    C 458,655 459,625 487,596
+    C 515,568 556,544 599,511
+    C 647,474 673,436 673,390
+    C 673,349 646,320 609,320
+    C 571,319 538,345 524,376
+    C 521,385 516,389 510,385
+    C 503,382 502,378 504,371 Z" fill="url(#heartRight)"/>
+</svg>
