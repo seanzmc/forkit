@@ -24,13 +24,16 @@ export const chainMenusEnabled = () => !!API_KEY;
 
 export interface ChainDish {
   name: string;
-  image: string;
+  // spoonacular's photo, or null when it has none (most items): the caller
+  // shows the place's own photo instead. A real dish beats a suggested one.
+  image: string | null;
 }
 
 interface Candidate {
   name: string;
   id: number;
-  ext: string;
+  // Image file type, or null when the item lists no image at all.
+  ext: string | null;
 }
 
 interface MenuItem {
@@ -62,10 +65,23 @@ function sameChain(a: string, b: string): boolean {
   return x === y || x.startsWith(`${y} `) || y.startsWith(`${x} `);
 }
 
-// Items the group wouldn't pick dinner by: drinks, condiments, sides,
+// Items the group wouldn't pick dinner by: soft drinks, condiments, sides,
 // breakfast dishes and desserts.
 const NOT_A_MAIN =
   /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|kids?|child|toddler|add on|add-on|extra|topping|cup|packet|ice|refill|vinegar|salt|granola|yogurt|parfait|fruit|oatmeal|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard|concrete|mixer|breakfast|biscuits?|bagels?|croissants?|muffins?|mcmuffin|pancakes?|hotcakes|waffles?|eggs?|omelets?|omelettes?)\b/i;
+
+// Alcohol counts only as the last word of the name or of a section label
+// ("Signature Wine Cocktails", "House Margarita (Frozen)", "Wine: Merlot"),
+// so entrées cooked with it stay: "Beer-Battered Fish", "Bourbon Street
+// Chicken", "Red Wine Braised Short Ribs".
+const ALCOHOL_LAST =
+  /\b(cocktails?|wines?|beers?|margaritas?|sangria|mimosas?|martinis?|mojitos?|spritz|sake|whiskey|bourbon|vodka|tequila|rum|ale|lager|ipa|seltzer|spirits?|liqueur|daiquiri|bellini|moscato|sparkling|draft|pitcher)$/i;
+
+function isDrink(name: string): boolean {
+  const [label, rest] = name.includes(":") ? name.split(/:(.*)/s) : ["", name];
+  const plain = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return ALCOHOL_LAST.test(plain(rest)) || (label !== "" && ALCOHOL_LAST.test(plain(label)));
+}
 
 // "Carrabba's Italian Grill Lunch - Fish Chowder" -> "Fish Chowder";
 // "The Culver's Bacon Deluxe ButterBurger" -> "Bacon Deluxe ButterBurger".
@@ -89,10 +105,16 @@ function cleanTitle(title: string, chain: string, placeName: string): string {
     .replace(/\s*\((small|medium|large|regular|cup|bowl|lunch|dinner|\d[^)]*)\)\s*$/i, "")
     .replace(/,\s*for .*$/i, "")
     .replace(/\s+w\/o\s.*$/i, "")
-    // Regional variants: "Turkey Club - FL".
+    // Regional variants: "Turkey Club - FL", "Pulled Pork - North Carolina only".
     .replace(/\s+-\s+[A-Z]{2}$/, "")
+    .replace(/\s+-\s+[^-]*\bonly$/i, "")
     .trim();
 }
+
+// Menu sections some chains prefix titles with: "Country Dinner Plate:
+// Chicken n' Dumplings", "Side Dish: Tossed Salad". Removed after the
+// not-a-main filter has seen them, so "Side Dish:" still filters the item.
+const stripSection = (name: string) => name.replace(/^[^:]{2,30}:\s+/, "").trim();
 
 async function searchPage(query: string, offset: number): Promise<MenuItem[]> {
   const url = `${SEARCH_URL}?${new URLSearchParams({
@@ -111,9 +133,10 @@ async function searchPage(query: string, offset: number): Promise<MenuItem[]> {
 }
 
 // Many items list an image that was never uploaded (about two in three in a
-// test near Tampa), so only items whose photo actually loads become cards.
-// Prefer the sharper 636x393 size; both sizes exist or neither does.
-async function workingImage(id: number, ext: string): Promise<string | null> {
+// test near Tampa), so check that the photo actually loads. Prefer the
+// sharper 636x393 size; both sizes exist or neither does.
+async function workingImage(id: number, ext: string | null): Promise<string | null> {
+  if (!ext) return null;
   const url = `https://img.spoonacular.com/menu-items/${id}-636x393.${ext}`;
   try {
     const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(4_000) });
@@ -121,6 +144,13 @@ async function workingImage(id: number, ext: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+// 3 random dishes, those with their own photo first.
+function pickDishes(dishes: ChainDish[]): ChainDish[] {
+  const withPhoto = pickRandom(dishes.filter((d) => d.image), DISHES_PER_PLACE);
+  const rest = pickRandom(dishes.filter((d) => !d.image), DISHES_PER_PLACE - withPhoto.length);
+  return [...withPhoto, ...rest];
 }
 
 function pickRandom<T>(items: T[], count: number): T[] {
@@ -133,7 +163,7 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
   // The whole filtered list is cached; each room gets its own random 3.
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-    return hit.dishes ? pickRandom(hit.dishes, DISHES_PER_PLACE) : null;
+    return hit.dishes ? pickDishes(hit.dishes) : null;
   }
 
   try {
@@ -144,27 +174,27 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
       for (const item of items) {
         if (!item.restaurantChain || !sameChain(item.restaurantChain, placeName)) continue;
         chainFound = true;
-        if (!item.image) continue;
         // Filter the cleaned name, not the raw title: titles can start with
         // the chain's own name ("Waffle House Patty Melt"), which would
         // otherwise reject every item from such chains.
-        const name = cleanTitle(item.title, item.restaurantChain, placeName);
-        if (NOT_A_MAIN.test(name)) continue;
+        const cleaned = cleanTitle(item.title, item.restaurantChain, placeName);
+        if (NOT_A_MAIN.test(cleaned) || isDrink(cleaned)) continue;
+        const name = stripSection(cleaned);
         if (name.length < 3 || name.length > 60 || seen.has(norm(name))) continue;
         seen.add(norm(name));
-        candidates.push({ name, id: item.id, ext: item.imageType || "png" });
+        candidates.push({ name, id: item.id, ext: item.image ? item.imageType || "png" : null });
       }
     };
     take(await searchPage(placeName, 0));
     if (chainFound && candidates.length < DISHES_PER_PLACE * 2) {
+      // A second page gives more items to choose from and more chances of
+      // one with a photo.
       take(await searchPage(placeName, PAGE_SIZE));
     }
     const images = await Promise.all(candidates.map((c) => workingImage(c.id, c.ext)));
-    const dishes: ChainDish[] = candidates.flatMap((c, i) =>
-      images[i] ? [{ name: c.name, image: images[i]! }] : []
-    );
+    const dishes: ChainDish[] = candidates.map((c, i) => ({ name: c.name, image: images[i] }));
     cache.set(key, { at: Date.now(), dishes: dishes.length ? dishes : null });
-    return dishes.length ? pickRandom(dishes, DISHES_PER_PLACE) : null;
+    return dishes.length ? pickDishes(dishes) : null;
   } catch (error) {
     console.warn(`Chain menu lookup failed for ${placeName}:`, error instanceof Error ? error.message : error);
     return null;

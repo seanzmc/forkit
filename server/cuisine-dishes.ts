@@ -65,6 +65,13 @@ export const CUISINE_DISHES: Record<string, { name: string; desc: string }[]> = 
     { name: "BBQ Ribs", desc: "St. Louis-style, house-smoked, tangy BBQ glaze, cornbread" },
     { name: "Mac & Cheese", desc: "Four-cheese blend, crispy breadcrumb crust, truffle oil" },
     { name: "Philly Cheesesteak", desc: "Shaved ribeye, melted provolone, peppers, onions, hoagie roll" },
+    { name: "Chicken Tenders", desc: "Hand-breaded tenders, fries, honey mustard" },
+    { name: "Cobb Salad", desc: "Chicken, bacon, egg, avocado, blue cheese, tomato" },
+    { name: "Meatloaf", desc: "Glazed meatloaf, mashed potatoes, gravy, green beans" },
+    { name: "Chicken Fried Steak", desc: "Crispy breaded steak, country gravy, mashed potatoes" },
+    { name: "Buffalo Wings", desc: "Crispy wings, buffalo sauce, celery, blue cheese" },
+    { name: "Pot Roast", desc: "Slow-braised beef, carrots, potatoes, pan gravy" },
+    { name: "Reuben Sandwich", desc: "Corned beef, sauerkraut, Swiss, Russian dressing, rye" },
   ],
   Mediterranean: [
     { name: "Lamb Shawarma", desc: "Slow-roasted lamb, tahini, pickled turnip, pita, hummus" },
