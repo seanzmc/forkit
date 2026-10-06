@@ -126,7 +126,10 @@ export default function MatchScreen() {
           <Text style={styles.matchTitle}>
             {dish?.mode === "cook-in" ? "Tonight's recipe!" : "Dinner is decided!"}
           </Text>
-          <Text style={styles.matchSubtitle}>Your group agrees on this one</Text>
+          <Text style={styles.matchSubtitle}>
+            {/* Dine-out matches on the restaurant; the dish shown is its most-liked one. */}
+            {dish?.mode === "cook-in" ? "Your group swiped right on this one" : "Your group swiped right on this restaurant"}
+          </Text>
         </Animated.View>
 
         {dish && (

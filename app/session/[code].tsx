@@ -253,7 +253,9 @@ export default function SessionLobby() {
               <View style={styles.pulseContainer}>
                 <Ionicons name="time-outline" size={24} color={Colors.textSecondary} />
               </View>
-              <Text style={styles.waitingText}>Waiting for the host to start...</Text>
+              <Text style={styles.waitingText}>
+                Get ready to swipe right on dinner.{"\n"}Waiting for the host to start...
+              </Text>
             </View>
           )}
         </Animated.View>
