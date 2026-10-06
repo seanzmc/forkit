@@ -359,7 +359,7 @@ export default function SwipeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>{"What's for dinner?"}</Text>
-            <Text style={styles.headerSub}>Swipe right if you want it</Text>
+            <Text style={styles.headerSub}>Swipe right on dinner, left to pass</Text>
           </View>
           <Pressable
             onPress={() => setPanelOpen(true)}
@@ -398,7 +398,7 @@ export default function SwipeScreen() {
                 <Ionicons name="checkmark-circle" size={56} color={Colors.accent} />
                 <Text style={styles.doneTitle}>All done!</Text>
                 <Text style={styles.doneText}>
-                  Waiting for others to finish swiping...{"\n"}A match will be revealed when the group decides.
+                  Waiting for the others to finish swiping...{"\n"}When enough of you swipe right, dinner is decided.
                 </Text>
                 <View style={styles.doneReview}>
                   <SwipeReview swipes={reviewed} />

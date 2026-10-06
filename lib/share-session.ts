@@ -11,7 +11,7 @@ export function joinLink(code: string): string {
 export function shareSessionCode(code: string) {
   const upper = code.toUpperCase();
   return Share.share({
-    message: `Join my ForkIt session! Tap to join: ${joinLink(upper)}\n\nOr open ForkIt, tap Join Room and enter ${upper}.`,
-    title: "ForkIt - Join my session",
+    message: `Let's swipe right on dinner! Join my ForkIt room: ${joinLink(upper)}\n\nOr open ForkIt, tap Join Room and enter ${upper}.`,
+    title: "ForkIt - Swipe right on dinner",
   });
 }

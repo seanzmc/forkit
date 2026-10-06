@@ -163,7 +163,7 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
           <View>
             <Text style={styles.greeting}>Hey {userName}</Text>
-            <Text style={styles.subGreeting}>Ready to find dinner?</Text>
+            <Text style={styles.subGreeting}>Ready to swipe right on dinner?</Text>
           </View>
           <Pressable onPress={handleLogout} style={styles.avatarBtn}>
             <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>

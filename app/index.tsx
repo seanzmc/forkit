@@ -23,6 +23,7 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { takeLaunchMatch } from "@/lib/push";
@@ -111,9 +112,11 @@ export default function WelcomeScreen() {
             ]}
           >
             <Animated.View style={[styles.logoContainer, logoStyle]}>
-              <View style={styles.logoCircle}>
-                <Ionicons name="restaurant" size={48} color={Colors.accent} />
-              </View>
+              <Image
+                source={require("@/assets/images/logo.png")}
+                style={styles.logo}
+                accessibilityLabel="ForkIt logo"
+              />
               <Text style={styles.appName}>ForkIt</Text>
               <Text style={styles.tagline}>Swipe right on dinner</Text>
             </Animated.View>
@@ -181,13 +184,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 24,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 28,
-    backgroundColor: "rgba(255, 107, 53, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
+  logo: {
+    width: 112,
+    height: 112,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: "rgba(255, 107, 53, 0.25)",
   },
@@ -198,9 +198,9 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   tagline: {
-    fontSize: 16,
-    fontFamily: "Poppins_400Regular",
-    color: Colors.textSecondary,
+    fontSize: 18,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accent,
     textAlign: "center",
   },
   formContainer: {
