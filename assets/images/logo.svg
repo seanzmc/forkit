@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" width="1024" height="1024">
   <title>ForkIt</title>
   <defs>
-    <path id="fork" d="M-77,-312a19,19 0 0 1 38,0V-170a10,10 0 0 0 20,0V-312a19,19 0 0 1 38,0V-170a10,10 0 0 0 20,0V-312a19,19 0 0 1 38,0V-140C80,-60 42,0 24,32L32,400Q0,412 -32,400L-24,32C-42,0 -80,-60 -77,-140Z"/>
+    <path id="fork" d="M-86,-426A14,14 0 0 1 -58,-426L-48,-205A9,9 0 0 0 -30,-205L-14,-426A14,14 0 0 1 14,-426L30,-205A9,9 0 0 0 48,-205L58,-426A14,14 0 0 1 86,-426L114,-205C124,-128 84,-48 28,-8L26,12L31,70L35,470Q0,484 -35,470L-31,70L-26,12L-28,-8C-84,-48 -124,-128 -114,-205Z"/>
     <radialGradient id="bg" cx="512" cy="440" r="640" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#5A3029"/>
       <stop offset="0.42" stop-color="#2A2329"/>
       <stop offset="1" stop-color="#141920"/>
     </radialGradient>
-    <linearGradient id="coral" x1="0" y1="-330" x2="0" y2="400" gradientUnits="userSpaceOnUse">
+    <linearGradient id="coral" x1="0" y1="-440" x2="0" y2="480" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FF7A55"/>
       <stop offset="1" stop-color="#FF5E3A"/>
     </linearGradient>
-    <linearGradient id="amber" x1="95" y1="-320" x2="-40" y2="400" gradientUnits="userSpaceOnUse">
+    <linearGradient id="amber" x1="100" y1="-440" x2="-40" y2="480" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#C42C1C"/>
       <stop offset="0.38" stop-color="#F59E24"/>
       <stop offset="0.6" stop-color="#F28A22"/>
@@ -27,14 +27,14 @@
     <!-- The right fork crosses over the left one; cut a clear gap around it. -->
     <mask id="under" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#fff"/>
-      <use xlink:href="#fork" transform="translate(608 606) rotate(36.6) scale(1.13)" fill="#000" stroke="#000" stroke-width="52" stroke-linejoin="round"/>
+      <use xlink:href="#fork" transform="translate(569 635) rotate(35)" fill="#000" stroke="#000" stroke-width="50" stroke-linejoin="round"/>
     </mask>
   </defs>
   <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
   <g mask="url(#fade)" stroke="#FFD2B0" stroke-opacity=".35" stroke-width="3" stroke-linejoin="round">
     <g mask="url(#under)">
-      <use xlink:href="#fork" transform="translate(416 606) rotate(-36.6) scale(1.13)" fill="url(#coral)"/>
+      <use xlink:href="#fork" transform="translate(455 635) rotate(-35)" fill="url(#coral)"/>
     </g>
-    <use xlink:href="#fork" transform="translate(608 606) rotate(36.6) scale(1.13)" fill="url(#amber)"/>
+    <use xlink:href="#fork" transform="translate(569 635) rotate(35)" fill="url(#amber)"/>
   </g>
 </svg>
