@@ -11,6 +11,10 @@ const log = console.log;
 const PRIVACY_LAST_UPDATED = "4 October 2026";
 const PRIVACY_CONTACT_EMAIL =
   process.env.PRIVACY_CONTACT_EMAIL || "seanzmc9613@gmail.com";
+// Store listing URLs for the public home page. Unset ⇒ a "Coming soon" chip
+// instead of a link that would 404 before the listing is live.
+const APP_STORE_URL = process.env.APP_STORE_URL;
+const PLAY_STORE_URL = process.env.PLAY_STORE_URL;
 
 declare module "http" {
   interface IncomingMessage {
@@ -177,6 +181,22 @@ function serveLandingPage({
   res.status(200).send(html);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function storeButtons(): string {
+  const button = (label: string, url?: string) =>
+    url
+      ? `<a class="store" href="${escapeHtml(url)}">${label}</a>`
+      : `<span class="store soon">${label}: coming soon</span>`;
+  return button("App Store", APP_STORE_URL) + button("Google Play", PLAY_STORE_URL);
+}
+
 function configureExpoAndLanding(app: express.Application) {
   const templatePath = path.resolve(
     process.cwd(),
@@ -186,6 +206,29 @@ function configureExpoAndLanding(app: express.Application) {
   );
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
+
+  // Public home page, shown at / to ordinary browsers. The Expo Go preview
+  // page (QR code) that used to live there is at /preview.
+  const homeTemplate = fs.readFileSync(
+    path.resolve(process.cwd(), "server", "templates", "home.html"),
+    "utf-8",
+  );
+  const serveHome = (req: Request, res: Response) => {
+    const protocol = req.header("x-forwarded-proto") || req.protocol || "https";
+    const host = req.header("x-forwarded-host") || req.get("host");
+    const html = homeTemplate
+      .replace(/STORE_BUTTONS_PLACEHOLDER/g, storeButtons())
+      .replace(/BASE_URL_PLACEHOLDER/g, `${protocol}://${host}`)
+      .replace(/CONTACT_EMAIL_PLACEHOLDER/g, PRIVACY_CONTACT_EMAIL)
+      .replace(/YEAR_PLACEHOLDER/g, String(new Date().getFullYear()))
+      .replace(/APP_NAME_PLACEHOLDER/g, appName);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  };
+
+  app.get("/preview", (req: Request, res: Response) => {
+    serveLandingPage({ req, res, landingPageTemplate, appName });
+  });
 
   // The App Store and Play Console both require a publicly reachable privacy
   // policy URL, so it is served from the same host as the API.
@@ -258,12 +301,7 @@ function configureExpoAndLanding(app: express.Application) {
     }
 
     if (req.path === "/") {
-      return serveLandingPage({
-        req,
-        res,
-        landingPageTemplate,
-        appName,
-      });
+      return serveHome(req, res);
     }
 
     next();
