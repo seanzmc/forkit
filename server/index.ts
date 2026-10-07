@@ -284,6 +284,30 @@ function configureExpoAndLanding(app: express.Application) {
     });
   });
 
+  // Android App Links: lets the app's autoVerify intent filter claim /join
+  // links. ANDROID_CERT_SHA256 is the Play app-signing key's SHA-256
+  // (Play Console → Test and release → App integrity), comma-separated to
+  // also allow an upload or EAS dev key. Unset ⇒ 404, links open the browser.
+  const androidCertFingerprints = (process.env.ANDROID_CERT_SHA256 || "")
+    .split(",")
+    .map((f) => f.trim().toUpperCase())
+    .filter(Boolean);
+  app.get("/.well-known/assetlinks.json", (_req: Request, res: Response) => {
+    if (androidCertFingerprints.length === 0) {
+      return res.status(404).json([]);
+    }
+    res.json([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: "com.seandm.forkit",
+          sha256_cert_fingerprints: androidCertFingerprints,
+        },
+      },
+    ]);
+  });
+
   log("Serving static Expo files with dynamic manifest routing");
 
   app.use((req: Request, res: Response, next: NextFunction) => {

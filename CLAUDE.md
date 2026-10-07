@@ -28,6 +28,8 @@ Production build: `npm run expo:static:build && npm run server:build`, then `npm
 
 iOS builds run on EAS: `npx eas-cli@latest build --profile <development|development-simulator|preview|production> --platform ios`. TestFlight: `npx eas-cli@latest build --profile production --platform ios --auto-submit` builds and uploads to App Store Connect app 6819387031 ("ForkIt: Swipe to Decide", set in `submit.production` in eas.json). eas-cli is deliberately not a dependency; `cli.version` in [eas.json](eas.json) sets the minimum (24.4.2 fixed Apple sign-in failing with "iTunes service key is empty").
 
+Android builds: `npx eas-cli@latest build --profile production --platform android` (AAB; EAS holds the upload keystore). Google rejects API uploads for an app's first release, so upload the first AAB by hand in Play Console; after that `--auto-submit` sends it to the internal track as a draft via `submit.production.android` in eas.json, which reads the Play service-account key from `./play-service-account.json` (gitignored). Android push needs Firebase (see `GOOGLE_SERVICES_JSON` below).
+
 ## Contribution workflow
 
 All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). CI has two jobs, `check` (typecheck, lint, server build, smoke test) and `expo-config` (asserts release-critical `app.json` values). Don't push to `main` directly.
@@ -43,6 +45,7 @@ All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). 
 - `ALLOWED_ORIGINS` — server-side CORS allowlist, comma-separated, scheme optional. The `REPLIT_*` domain vars still work as a fallback.
 - `PRIVACY_CONTACT_EMAIL` — server-side; contact address shown on `/privacy` and the home page.
 - `APP_STORE_URL`, `PLAY_STORE_URL` — server-side, optional; store links on the public home page. Unset ⇒ a "coming soon" chip, so set each once its listing is live.
+- `ANDROID_CERT_SHA256` — server-side; Play app-signing key SHA-256 for `/.well-known/assetlinks.json` (Android App Links). Absent ⇒ 404.
 - `DATABASE_URL` — only needed for `db:push`; the running app never touches Postgres.
 
 `getApiUrl()` picks `http` for localhost/LAN hosts and `https` otherwise; `getWsUrl()` derives `ws`/`wss` from that, so local dev connects without edits.
@@ -77,7 +80,7 @@ Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset 
 
 **Match notifications**: the lobby asks for notification permission; the swipe screen sends the Expo push token in a `push_token` message once it resolves (`lib/push.ts`). The server keeps tokens per session even after members disconnect and pushes to all of them on a match; the app hides the banner while in the foreground. Tapping one opens `/match` from the dish in the payload (the session may be gone by then). `lib/push.ts` loads `expo-notifications` defensively, so builds without the native module just run without push.
 
-**Invite links**: `https://<host>/join/CODE` (served by `server/index.ts`, with `/.well-known/apple-app-site-association` for team `N526K73K96`) and `forkit://join/CODE` both map to `/session/CODE` in `app/+native-intent.tsx`. With no saved name, the lobby sends you to `/` with `join` set and returns after the name is entered. The https form needs a build that includes `ios.associatedDomains`.
+**Invite links**: `https://<host>/join/CODE` (served by `server/index.ts`, with `/.well-known/apple-app-site-association` for team `N526K73K96`) and `forkit://join/CODE` both map to `/session/CODE` in `app/+native-intent.tsx`. With no saved name, the lobby sends you to `/` with `join` set and returns after the name is entered. The https form needs a build that includes `ios.associatedDomains`. On Android it needs the `autoVerify` intent filter in `app.json` plus `/.well-known/assetlinks.json`, which the server serves only when `ANDROID_CERT_SHA256` (Play app-signing key SHA-256, comma-separated for more keys) is set; otherwise it 404s and those links open in the browser.
 
 **Screens** (`app/`, expo-router file-based, typedRoutes enabled): `index` name entry → `home` mode/create/join → `session/[code]` lobby → `swipe/[code]` game → `match` result. Both `session/` and `swipe/` open their own WebSocket independently.
 

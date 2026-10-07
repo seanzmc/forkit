@@ -100,6 +100,8 @@ jobs:
             if (c.ios?.infoPlist?.ITSAppUsesNonExemptEncryption !== false) errs.push("ios.infoPlist.ITSAppUsesNonExemptEncryption must be false");
             if (c.ios?.supportsTablet !== false) errs.push("ios.supportsTablet must be false");
             if (!c.extra?.eas?.projectId) errs.push("extra.eas.projectId missing");
+            const joinFilter = (c.android?.intentFilters || []).find(f => f.autoVerify && (f.data || []).some(d => d.scheme === "https" && d.pathPrefix === "/join/"));
+            if (!joinFilter) errs.push("android.intentFilters must include an autoVerify https /join/ filter");
             const loc = (c.plugins || []).find(p => Array.isArray(p) && p[0] === "expo-location");
             if (!loc?.[1]?.locationWhenInUsePermission) errs.push("expo-location usage description missing");
             if (errs.length) { console.error(errs.join("\n")); process.exit(1); }
