@@ -48,6 +48,8 @@ yarn-error.*
 .local/
 expo-config.json
 
-# Android store credentials (see CLAUDE.md "Android")
+# Firebase config for Android push (repo is public; EAS gets it from the GOOGLE_SERVICES_JSON env var)
 google-services.json
+
+# Play service-account key for eas submit (see CLAUDE.md)
 play-service-account.json
