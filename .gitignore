@@ -47,3 +47,6 @@ yarn-error.*
 # Claude Code local skills cache
 .local/
 expo-config.json
+
+# Firebase config for Android push (repo is public; EAS gets it from the GOOGLE_SERVICES_JSON env var)
+google-services.json
