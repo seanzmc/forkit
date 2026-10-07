@@ -40,7 +40,8 @@ All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). 
 - `EXPO_ACCESS_TOKEN` — server-side, optional; only needed if "enhanced push security" is turned on for the Expo project. Match notifications go through Expo's push service ([server/push.ts](server/push.ts)) either way.
 - `SPOONACULAR_API_KEY` — server-side; enables real menu items with photos for chain restaurants ([server/chain-menus.ts](server/chain-menus.ts), cards marked `menuSource: "spoonacular"`, labeled "On the menu", credited with a link to spoonacular). spoonacular's terms cap caching at 1 hour, so lookups live only in an in-memory 1-hour cache. Most spoonacular items have no photo on its CDN; those still become real-dish cards using the place's own Google photo (credited "Menu: spoonacular · Photo: …"). Each place costs ~1.1 points (~2.2 for a chain); the free plan's 50 points/day covers only a couple of rooms. Absent ⇒ suggested dishes.
 - `ALLOWED_ORIGINS` — server-side CORS allowlist, comma-separated, scheme optional. The `REPLIT_*` domain vars still work as a fallback.
-- `PRIVACY_CONTACT_EMAIL` — server-side; contact address shown on `/privacy`.
+- `PRIVACY_CONTACT_EMAIL` — server-side; contact address shown on `/privacy` and the home page.
+- `APP_STORE_URL`, `PLAY_STORE_URL` — server-side, optional; store links on the public home page. Unset ⇒ a "coming soon" chip, so set each once its listing is live.
 - `DATABASE_URL` — only needed for `db:push`; the running app never touches Postgres.
 
 `getApiUrl()` picks `http` for localhost/LAN hosts and `https` otherwise; `getWsUrl()` derives `ws`/`wss` from that, so local dev connects without edits.
@@ -51,7 +52,7 @@ The server runs on Railway (project `forkit`, service `forkit-server`) at `https
 
 **`numReplicas` must stay 1.** Session state is an in-memory `Map`, so a second replica would split members of one session across servers. Any deploy also drops every live session.
 
-`/api/health` backs the platform healthcheck. `/privacy` serves the store-required privacy policy from `server/templates/privacy-policy.html`.
+`/api/health` backs the platform healthcheck. `/privacy` serves the store-required privacy policy from `server/templates/privacy-policy.html`. `/` serves the public home page (`server/templates/home.html`, the URL for store listings and the Play developer profile) to browsers; the Expo Go QR preview page moved to `/preview`.
 
 ## Architecture
 
@@ -81,7 +82,7 @@ Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset 
 
 ## Server-as-Expo-host
 
-`server/index.ts` does more than serve `/api`. It inspects the `expo-platform` header on `/` and `/manifest` to serve native manifests out of `static-build/<platform>/manifest.json`, and otherwise renders `server/templates/landing-page.html` with the base URL injected. `scripts/build.js` produces `static-build/` by booting Metro, downloading the ios/android bundles and manifests from it, then killing it.
+`server/index.ts` does more than serve `/api`. It inspects the `expo-platform` header on `/` and `/manifest` to serve native manifests out of `static-build/<platform>/manifest.json`, and otherwise renders `server/templates/home.html` (the Expo Go preview, `landing-page.html`, is at `/preview`). `scripts/build.js` produces `static-build/` by booting Metro, downloading the ios/android bundles and manifests from it, then killing it.
 
 CORS allows only `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` origins plus any `localhost`/`127.0.0.1` port.
 
