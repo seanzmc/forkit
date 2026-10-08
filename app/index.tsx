@@ -57,7 +57,10 @@ export default function WelcomeScreen() {
     Promise.all([AsyncStorage.getItem("userName"), takeLaunchMatch()]).then(
       ([storedName, launchMatch]) => {
         if (launchMatch) {
-          router.replace({ pathname: "/match", params: { dish: JSON.stringify(launchMatch.dish) } });
+          router.replace({
+            pathname: "/match",
+            params: { dish: JSON.stringify(launchMatch.dish), meal: launchMatch.meal },
+          });
         } else if (storedName) {
           goNext();
         } else {

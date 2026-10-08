@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type * as NotificationsModule from "expo-notifications";
-import type { Dish } from "./food-data";
+import type { Dish, Meal } from "./food-data";
 
 // expo-notifications needs native code. Builds made before it was added (and
 // the web build) don't have it, so load it defensively and treat push as
@@ -73,13 +73,14 @@ export function getPushToken(): Promise<string | null> {
 export interface MatchNotification {
   id: string;
   dish: Dish;
+  meal?: Meal;
 }
 
 function toMatch(response: NotificationsModule.NotificationResponse | null): MatchNotification | null {
   const content = response?.notification.request.content;
-  const data = content?.data as { type?: string; dish?: Dish } | undefined;
+  const data = content?.data as { type?: string; dish?: Dish; meal?: Meal } | undefined;
   if (data?.type !== "match" || !data.dish?.name) return null;
-  return { id: response!.notification.request.identifier, dish: data.dish };
+  return { id: response!.notification.request.identifier, dish: data.dish, meal: data.meal };
 }
 
 const handled = new Set<string>();

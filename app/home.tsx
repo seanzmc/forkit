@@ -20,7 +20,13 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest } from "@/lib/query-client";
-import type { SessionMode } from "@/lib/food-data";
+import { MEALS, mealForTime, type Meal, type SessionMode } from "@/lib/food-data";
+
+const MEAL_OPTIONS: Record<Meal, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  breakfast: { label: "Breakfast", icon: "sunny-outline" },
+  lunch: { label: "Lunch", icon: "partly-sunny-outline" },
+  dinner: { label: "Dinner", icon: "moon-outline" },
+};
 
 const RADIUS_OPTIONS = [
   { label: "1 mi", value: 1609 },
@@ -38,6 +44,8 @@ export default function HomeScreen() {
   const [joining, setJoining] = useState(false);
   const [tab, setTab] = useState<"create" | "join">("create");
   const [mode, setMode] = useState<SessionMode>("dine-out");
+  // Starts on the meal it's time for; not remembered, since that changes.
+  const [meal, setMeal] = useState<Meal>(() => mealForTime(new Date()));
   const [selectedRadius, setSelectedRadius] = useState(2);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
@@ -113,9 +121,14 @@ export default function HomeScreen() {
     try {
       const body: Record<string, string | number> = { mode };
       if (mode === "dine-out" && location) {
+        const now = new Date();
         body.lat = location.lat;
         body.lng = location.lng;
         body.radius = RADIUS_OPTIONS[selectedRadius].value;
+        body.meal = meal;
+        // Local time, so the server can keep only places open for the meal.
+        body.day = now.getDay();
+        body.minutes = now.getHours() * 60 + now.getMinutes();
       }
       const res = await apiRequest("POST", "/api/sessions", body);
       const { code } = await res.json();
@@ -250,6 +263,43 @@ export default function HomeScreen() {
                 </Pressable>
               )}
             </Animated.View>
+            {locationStatus === "granted" && (
+              <Animated.View entering={FadeInDown.delay(225)} style={styles.radiusSection}>
+                <Text style={styles.radiusSectionTitle}>Deciding</Text>
+                <View style={styles.radiusOptions}>
+                  {MEALS.map((m) => (
+                    <Pressable
+                      key={m}
+                      onPress={() => {
+                        setMeal(m);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: meal === m }}
+                      style={[
+                        styles.radiusChip,
+                        styles.mealChip,
+                        meal === m && styles.radiusChipActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name={MEAL_OPTIONS[m].icon}
+                        size={14}
+                        color={meal === m ? "#fff" : Colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.radiusChipText,
+                          meal === m && styles.radiusChipTextActive,
+                        ]}
+                      >
+                        {MEAL_OPTIONS[m].label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Animated.View>
+            )}
             {locationStatus === "granted" && (
               <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
                 <Text style={styles.radiusSectionTitle}>Search Radius</Text>
@@ -574,6 +624,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: "center",
+  },
+  mealChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
   radiusChipActive: {
     backgroundColor: Colors.accent,

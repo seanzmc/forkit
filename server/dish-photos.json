@@ -238,14 +238,6 @@
     "pageUrl": "https://commons.wikimedia.org/wiki/File:A_Delicious_Crabcake_at_the_Middleton_Tavern.jpg",
     "version": "d62fb00c1d"
   },
-  "creme-brulee": {
-    "file": "dishes/creme-brulee.jpg",
-    "author": "Takeaway",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "pageUrl": "https://commons.wikimedia.org/wiki/File:2014_0531_Cr%C3%A8me_br%C3%BBl%C3%A9e_Doi_Mae_Salong_(cropped).jpg",
-    "version": "cc885f4a2f"
-  },
   "dan-dan-noodles": {
     "file": "dishes/dan-dan-noodles.jpg",
     "author": "Steven G. Johnson",
@@ -515,14 +507,6 @@
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
     "pageUrl": "https://commons.wikimedia.org/wiki/File:Original_Mac_n_Cheese_.jpg",
     "version": "11c1fe35ba"
-  },
-  "mango-sticky-rice": {
-    "file": "dishes/mango-sticky-rice.jpg",
-    "author": "Kenamparo",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "pageUrl": "https://commons.wikimedia.org/wiki/File:Purple_Mango_Sticky_rice.jpg",
-    "version": "599187506d"
   },
   "mapo-tofu": {
     "file": "dishes/mapo-tofu.jpg",

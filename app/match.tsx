@@ -25,7 +25,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
-import type { Dish } from "@/lib/food-data";
+import type { Dish, Meal } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
@@ -57,8 +57,14 @@ function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: str
 
 const CONFETTI_COLORS = [Colors.accent, Colors.accentGold, Colors.green, "#FF6B9D", "#9B59B6", "#3498DB"];
 
+const MEAL_DECIDED: Record<Meal, string> = {
+  breakfast: "Breakfast is decided!",
+  lunch: "Lunch is decided!",
+  dinner: "Dinner is decided!",
+};
+
 export default function MatchScreen() {
-  const { dish: dishParam } = useLocalSearchParams<{ dish: string }>();
+  const { dish: dishParam, meal } = useLocalSearchParams<{ dish: string; meal?: Meal }>();
   const insets = useSafeAreaInsets();
   const [swipes] = useState(getSwipes);
 
@@ -124,7 +130,7 @@ export default function MatchScreen() {
             <Ionicons name="flame" size={16} color={Colors.accent} />
           </View>
           <Text style={styles.matchTitle}>
-            {dish?.mode === "cook-in" ? "Tonight's recipe!" : "Dinner is decided!"}
+            {dish?.mode === "cook-in" ? "Tonight's recipe!" : MEAL_DECIDED[meal ?? "dinner"] ?? MEAL_DECIDED.dinner}
           </Text>
           <Text style={styles.matchSubtitle}>
             {/* Dine-out matches on the restaurant; the dish shown is its most-liked one. */}
@@ -191,20 +197,14 @@ export default function MatchScreen() {
               <>
                 {/* Same order as the swipe card: restaurant, dish, what it
                     is, where, then price and rating. */}
-                {dish.restaurantOnly ? (
-                  <Text style={styles.dishName}>{dish.restaurant}</Text>
-                ) : (
-                  <>
-                    <View style={styles.restaurantRow}>
-                      <View style={styles.restaurantIcon}>
-                        <Ionicons name="restaurant" size={16} color={Colors.accent} />
-                      </View>
-                      <Text style={styles.restaurantName}>{dish.restaurant}</Text>
-                    </View>
-                    <Text style={styles.dishName}>{dish.name}</Text>
-                    <SuggestedDishLabel dish={dish} />
-                  </>
-                )}
+                <View style={styles.restaurantRow}>
+                  <View style={styles.restaurantIcon}>
+                    <Ionicons name="restaurant" size={16} color={Colors.accent} />
+                  </View>
+                  <Text style={styles.restaurantName}>{dish.restaurant}</Text>
+                </View>
+                <Text style={styles.dishName}>{dish.name}</Text>
+                <SuggestedDishLabel dish={dish} />
                 {!!dish.description && <Text style={styles.dishDesc}>{dish.description}</Text>}
                 <GroundedSource dish={dish} />
                 {!!dish.address && (

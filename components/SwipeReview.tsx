@@ -42,13 +42,13 @@ function Section({
         <Text style={styles.empty}>Nothing</Text>
       ) : (
         items.map(({ dish }) => {
-          // A dish card names its restaurant underneath (with the restaurant
-          // icon); a restaurant-only card or a recipe shows its cuisine.
-          const atRestaurant = dish.mode !== "cook-in" && !dish.restaurantOnly;
+          // A dish names its restaurant underneath (with the restaurant
+          // icon); a recipe shows its cuisine.
+          const atRestaurant = dish.mode !== "cook-in";
           return (
             <View key={dish.id} style={styles.row}>
               <Text style={styles.main} numberOfLines={1}>
-                {dish.restaurantOnly ? dish.restaurant : dish.name}
+                {dish.name}
               </Text>
               <View style={styles.subRow}>
                 {atRestaurant && (

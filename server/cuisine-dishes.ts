@@ -42,7 +42,6 @@ export const CUISINE_DISHES: Record<string, { name: string; desc: string }[]> = 
     { name: "Pad Thai", desc: "Rice noodles, prawns, peanuts, bean sprouts, tamarind, lime" },
     { name: "Green Curry", desc: "Coconut milk, Thai basil, bamboo shoots, bell pepper, jasmine rice" },
     { name: "Tom Yum Soup", desc: "Hot & sour broth, shrimp, lemongrass, galangal, kaffir lime" },
-    { name: "Mango Sticky Rice", desc: "Sweet coconut sticky rice, fresh mango, toasted sesame" },
     { name: "Massaman Curry", desc: "Rich peanut curry, tender beef, potato, roasted cashews" },
   ],
   French: [
@@ -50,7 +49,6 @@ export const CUISINE_DISHES: Record<string, { name: string; desc: string }[]> = 
     { name: "Coq au Vin", desc: "Braised chicken, red wine, pearl onions, mushrooms, lardons" },
     { name: "Steak Frites", desc: "Pan-seared bavette, shoestring fries, béarnaise, green salad" },
     { name: "French Onion Soup", desc: "Caramelized onion broth, gruyère crouton, fresh thyme" },
-    { name: "Crème Brûlée", desc: "Vanilla bean custard, caramelized sugar crust, fresh berries" },
   ],
   Korean: [
     { name: "Korean BBQ Platter", desc: "Bulgogi, galbi, banchan, lettuce wraps, ssamjang" },
