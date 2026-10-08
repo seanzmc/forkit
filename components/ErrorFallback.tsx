@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { appVersionLabel } from "@/lib/app-version";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -44,7 +45,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   };
 
   const formatErrorDetails = (): string => {
-    let details = `Error: ${error.message}\n\n`;
+    let details = `App: ${appVersionLabel}\nError: ${error.message}\n\n`;
     if (error.stack) {
       details += `Stack Trace:\n${error.stack}`;
     }
@@ -101,6 +102,14 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             Try Again
           </Text>
         </Pressable>
+
+        {/* Always shown: the details view is dev-only, and a tester's
+            screenshot of this screen should still name the build. */}
+        {!!appVersionLabel && (
+          <Text style={[styles.version, { color: theme.textSecondary }]}>
+            {appVersionLabel}
+          </Text>
+        )}
       </View>
 
       {__DEV__ ? (
@@ -235,6 +244,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     fontSize: 16,
+  },
+  version: {
+    fontSize: 12,
+    textAlign: "center",
   },
   modalOverlay: {
     flex: 1,

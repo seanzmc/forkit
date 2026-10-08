@@ -18,6 +18,7 @@ import * as Location from "expo-location";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { VersionLabel } from "@/components/VersionLabel";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest } from "@/lib/query-client";
 import { MEALS, mealForTime, type Meal, type SessionMode } from "@/lib/food-data";
@@ -443,6 +444,9 @@ export default function HomeScreen() {
             </Pressable>
           </Animated.View>
         )}
+        <View style={styles.versionFooter}>
+          <VersionLabel />
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -450,6 +454,11 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  // Pinned to the bottom of the screen when the content is short.
+  versionFooter: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+  },
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
