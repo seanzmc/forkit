@@ -17,7 +17,8 @@
     "db:push": "drizzle-kit push",
     "start": "EXPO_PUBLIC_DOMAIN=${EXPO_PUBLIC_DOMAIN:-localhost:5000} npx expo start",
     "lint": "npx expo lint",
-    "lint:fix": "npx expo lint --fix"
+    "lint:fix": "npx expo lint --fix",
+    "guide:build": "node scripts/build-testers-guide.js"
   },
   "dependencies": {
     "@expo-google-fonts/poppins": "^0.4.1",

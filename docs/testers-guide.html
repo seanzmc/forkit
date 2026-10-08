@@ -1,0 +1,424 @@
+<title>Try ForkIt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one phone-first column; contents card up top, numbered step cards, ForkIt's own dark + orange look. */
+:root {
+  --bg: #0F0F0F;
+  --surface: #1A1716;
+  --line: #2E2825;
+  --fg: #F6F1EE;
+  --muted: #B3A69F;
+  --accent: #FF6B35;
+  --accent-ink: #1A0B04;
+  --tf: #0A84FF;
+  --tf-ink: #FFFFFF;
+  --good: #3DDC84;
+  --bad: #FF5A5F;
+  --display: "Poppins", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --body: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #FBF7F4; --surface: #FFFFFF; --line: #EADFD8; --fg: #1C1512; --muted: #6E615A;
+    --accent: #E8541C; --accent-ink: #FFFFFF; --tf: #007AFF; --tf-ink: #FFFFFF; --good: #138A4B; --bad: #D2363C; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #FBF7F4; --surface: #FFFFFF; --line: #EADFD8; --fg: #1C1512; --muted: #6E615A;
+  --accent: #E8541C; --accent-ink: #FFFFFF; --tf: #007AFF; --tf-ink: #FFFFFF; --good: #138A4B; --bad: #D2363C; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.55;
+  padding-inline: 16px;
+  padding-block: 24px 64px;
+  overflow-wrap: break-word;
+}
+.wrap { max-width: 620px; margin-inline: auto; display: flex; flex-direction: column; gap: 36px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+
+/* Hero */
+.hero { display: flex; flex-direction: column; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo { width: 76px; height: 76px; flex: none; border-radius: 18px; filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent)); }
+.hero h1 { font-size: clamp(38px, 11vw, 52px); font-weight: 800; line-height: 1.05; letter-spacing: -.02em; }
+.hero h1 span { color: var(--accent); }
+.motto { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 6vw, 28px); line-height: 1.2; color: var(--accent); }
+.hero .lead { font-size: 18px; color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.fact { font-size: 14px; font-weight: 500; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+
+/* Contents */
+.toc { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.toc h2 { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.toc a {
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 10px; border-radius: 12px;
+  color: var(--fg); text-decoration: none; font-weight: 600;
+}
+.toc a:hover, .toc a:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.toc .n { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-size: 14px; font-weight: 700; background: var(--accent); color: var(--accent-ink); }
+.toc .n.q { background: transparent; border: 1.5px solid var(--line); color: var(--muted); }
+.toc .t { flex: 1; min-width: 0; }
+.toc .t small { display: block; font-weight: 400; font-size: 14px; color: var(--muted); }
+.toc .go { color: var(--muted); flex: none; }
+
+/* Sections */
+section { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 16px; }
+.part { font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: -10px; }
+section > h2 { font-size: 28px; font-weight: 700; line-height: 1.2; }
+section > h3.sub-h { font-size: 20px; font-weight: 600; margin-top: 8px; scroll-margin-top: 16px; }
+section > .sub { color: var(--muted); }
+.top { align-self: flex-start; font-size: 15px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 6px 0; }
+
+/* Steps */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: step; }
+.step {
+  counter-increment: step;
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px;
+}
+.step-head { display: flex; align-items: center; gap: 12px; }
+.step-head::before {
+  content: counter(step);
+  flex: none; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--display); font-weight: 700; font-size: 17px;
+}
+.step h3 { font-size: 19px; font-weight: 600; line-height: 1.3; min-width: 0; }
+.step p { color: var(--muted); }
+.step b { color: var(--fg); font-weight: 600; }
+/* On-screen button names: wrap like text so long ones never push the card wider. */
+.tap { font-weight: 600; color: var(--fg); background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 6px; padding: 1px 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+/* Buttons */
+.btn {
+  display: flex; align-items: center; gap: 14px;
+  min-height: 64px; padding: 12px 16px; border-radius: 16px;
+  text-decoration: none; text-align: left;
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--btn) 70%, transparent);
+  background: var(--btn); color: var(--btn-ink);
+  transition: transform .1s ease;
+}
+.btn:active { transform: scale(.98); }
+.btn .ic { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--btn-ink) 20%, transparent); }
+.btn .ic svg { width: 24px; height: 24px; }
+.btn .lbl { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.btn .lbl strong { font-family: var(--display); font-size: 17px; font-weight: 700; }
+.btn .lbl span { font-size: 13px; opacity: .85; }
+.btn .arr { flex: none; font-size: 22px; font-weight: 600; }
+.btn.tf { --btn: var(--tf); --btn-ink: var(--tf-ink); }
+.btn.invite { --btn: var(--accent); --btn-ink: var(--accent-ink); }
+.linktext { font-size: 13px; color: var(--muted); word-break: break-all; text-align: center; }
+
+.callout {
+  display: flex; gap: 10px; align-items: flex-start;
+  border-radius: 12px; padding: 10px 12px; font-size: 15px;
+  background: color-mix(in srgb, var(--tf) 12%, transparent); color: var(--fg);
+}
+.callout .i { flex: none; font-weight: 700; }
+
+/* Come-back warning: the step people kept missing */
+.comeback { border: 2.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--accent) 60%, transparent); }
+.comeback p { color: var(--fg); }
+.cb-kicker { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent) !important; }
+.cb-kicker svg { width: 20px; height: 20px; flex: none; }
+.cb-big { font-family: var(--display); font-size: clamp(21px, 5.6vw, 25px); font-weight: 700; line-height: 1.25; text-wrap: balance; }
+.cb-big mark { background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 0 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.cb-how { font-size: 15px; color: var(--muted) !important; }
+.tap.nw { white-space: nowrap; }
+.after { text-align: center; font-family: var(--display); font-weight: 600; color: var(--accent) !important; }
+
+/* Heads-up and sharing */
+.heads { display: flex; gap: 12px; align-items: flex-start; border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-radius: 16px; padding: 14px 16px; }
+.heads .i { flex: none; font-size: 20px; line-height: 1.3; }
+.heads p { color: var(--fg); font-size: 16px; }
+.heads p + p { margin-top: 6px; color: var(--muted); font-size: 15px; }
+.share-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.share-card h3 { font-size: 18px; font-weight: 600; }
+.share-card p { color: var(--muted); }
+.copybox { display: flex; flex-direction: column; gap: 8px; }
+.copytext { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 15px; color: var(--fg); white-space: pre-wrap; user-select: all; -webkit-user-select: all; }
+button.btn { border: 0; width: 100%; cursor: pointer; font: inherit; }
+.copied { font-size: 14px; color: var(--good); min-height: 1.4em; text-align: center; }
+
+/* Swipe illustration */
+.swipe { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding-block: 4px; }
+.chip { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .06em; padding: 5px 12px; border-radius: 10px; border: 2px solid; }
+.chip.no { color: var(--bad); border-color: var(--bad); transform: rotate(-6deg); }
+.chip.yes { color: var(--good); border-color: var(--good); transform: rotate(6deg); }
+.swipe .arrow { color: var(--muted); font-size: 14px; white-space: nowrap; }
+
+.note { border-left: 4px solid var(--accent); padding: 12px 14px; border-radius: 4px 12px 12px 4px; background: var(--surface); color: var(--muted); font-size: 16px; }
+.note b { color: var(--fg); }
+
+/* Feedback checklist */
+.checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 600px) { .checks { grid-template-columns: 1fr 1fr; } }
+.checks li { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.checks h4 { font-family: var(--display); font-size: 16px; font-weight: 600; margin: 0; }
+.checks p { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* Help */
+.faq { display: flex; flex-direction: column; gap: 8px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 2px 16px; }
+summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+details p { color: var(--muted); padding-bottom: 14px; }
+
+.signoff { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.signoff .splash { width: 120px; height: 120px; border-radius: 28px; }
+footer { color: var(--muted); font-size: 14px; text-align: center; }
+
+@media (max-width: 380px) {
+  body { font-size: 16px; }
+  section > h2 { font-size: 25px; }
+  .btn { gap: 10px; padding: 10px 12px; }
+  .btn .ic { width: 34px; height: 34px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="hero" id="top">
+    <div class="eyebrow">You're invited to test</div>
+    <div class="brand">
+      <img class="logo" src="__ICON__" alt="ForkIt logo">
+      <h1>Fork<span>It</span></h1>
+    </div>
+    <p class="motto">Swipe right on dinner.</p>
+    <p class="lead">ForkIt settles "where should we eat?" Everyone swipes on dishes from restaurants nearby. When most of you swipe right on the same place, dinner is decided.</p>
+    <div class="facts">
+      <span class="fact">iPhone only</span>
+      <span class="fact">Free</span>
+      <span class="fact">About 5 minutes</span>
+      <span class="fact">No account needed</span>
+    </div>
+    <div class="heads">
+      <span class="i" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5.5 5"/></svg></span>
+      <div>
+        <p><b>ForkIt isn't in the App Store yet.</b> Only people who install it through this test can join a room.</p>
+        <p>Everyone you want to swipe with needs to set it up first. You can send them this page: see <a href="#share">Invite friends to test</a>.</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-labelledby="toc-title">
+    <h2 id="toc-title">Contents</h2>
+    <ol>
+      <li><a href="#install"><span class="n">1</span><span class="t">Install the app<small>TestFlight, then the ForkIt invite</small></span><span class="go" aria-hidden="true">›</span></a></li>
+      <li><a href="#use"><span class="n">2</span><span class="t">Using the App<small>Make a room, swipe, match</small></span><span class="go" aria-hidden="true">›</span></a></li>
+      <li><a href="#feedback"><span class="n">3</span><span class="t">Give Sean Feedback<small>What to look for and how to send it</small></span><span class="go" aria-hidden="true">›</span></a></li>
+      <li><a href="#share"><span class="n q">+</span><span class="t">Invite friends to test<small>Share this page so they can set up too</small></span><span class="go" aria-hidden="true">›</span></a></li>
+      <li><a href="#help"><span class="n q">?</span><span class="t">If something goes wrong</span><span class="go" aria-hidden="true">›</span></a></li>
+    </ol>
+  </nav>
+
+  <section id="install" aria-labelledby="install-h">
+    <p class="part">Part 1</p>
+    <h2 id="install-h">Install the app</h2>
+    <p class="sub">Do these on your iPhone, in this order. You'll leave this page once to get TestFlight, then come back.</p>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-head"><h3>Get TestFlight</h3></div>
+        <p>TestFlight is Apple's free app for trying apps before they're in the App Store.</p>
+        <div class="comeback" role="note">
+          <p class="cb-kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>Read this before you tap</p>
+          <p class="cb-big">After TestFlight downloads, <mark>come back to this page.</mark></p>
+          <p>Your ForkIt invite is <b>here, in step 2</b>, not inside TestFlight. If you open TestFlight now it will just be empty.</p>
+          <p class="cb-how"><b>To get back:</b> tap the small <span class="tap nw">&#9664;&nbsp;Safari</span> or <span class="tap nw">&#9664;&nbsp;Messages</span> in the top-left corner of the App Store, or reopen the app you're reading this in.</p>
+        </div>
+        <p>Got it? Tap the blue button, then tap <span class="tap">Get</span> in the App Store.</p>
+        <a class="btn tf" href="https://apps.apple.com/app/testflight/id899247664">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
+          <span class="lbl"><strong>Get TestFlight</strong><span>Free, opens the App Store</span></span>
+          <span class="arr" aria-hidden="true">›</span>
+        </a>
+        <p class="after">&#8617; Then come back here for step 2</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>Back on this page? Tap the ForkIt invite</h3></div>
+        <p>Tap the orange button. It opens TestFlight straight to ForkIt.</p>
+        <a class="btn invite" href="https://testflight.apple.com/join/EHArmAFH">
+          <span class="ic" aria-hidden="true"><img src="__ICON__" alt="" style="width:40px;height:40px;border-radius:10px"></span>
+          <span class="lbl"><strong>Join the ForkIt test</strong><span>Opens in TestFlight</span></span>
+          <span class="arr" aria-hidden="true">›</span>
+        </a>
+        <p class="linktext">testflight.apple.com/join/EHArmAFH</p>
+        <p>If a web page opens first, tap <span class="tap">View in TestFlight</span> on it.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>Accept, then Install</h3></div>
+        <p>In TestFlight, tap <span class="tap">Accept</span>, then <span class="tap">Install</span>. ForkIt appears on your home screen with the crossed-forks icon.</p>
+      </li>
+    </ol>
+    <a class="top" href="#top">↑ Back to contents</a>
+  </section>
+
+  <section id="use" aria-labelledby="use-h">
+    <p class="part">Part 2</p>
+    <h2 id="use-h">Using the App</h2>
+    <p class="sub">Best with 2 or more people. You can also start a room by yourself just to look around.</p>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-head"><h3>Type your first name</h3></div>
+        <p>Then tap <span class="tap">Let's Eat</span>.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>Choose Dine Out</h3></div>
+        <p>When your iPhone asks about location, tap <span class="tap">Allow While Using App</span>. ForkIt only uses it to find restaurants near you. <b>Search Radius</b> sets how far it looks.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>One person makes a room</h3></div>
+        <p><b>The host</b> taps <span class="tap">Create Room</span> and gets a 6-letter code. Tap the code to text it to the group.</p>
+        <p><b>Everyone else</b> taps the link they were sent, or taps <span class="tap">Join Room</span> and types the code.</p>
+        <p>Everyone in the room needs ForkIt installed from this test. If someone doesn't have it yet, <a href="#share">send them this page</a> first.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>Allow notifications</h3></div>
+        <p>In the waiting room, tap <span class="tap">Allow</span> when asked so you hear when the group finds a match. When everyone is in, the host taps <span class="tap">Start Swiping</span>.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>Swipe right on dinner</h3></div>
+        <p>Each card is one dish at a real restaurant nearby. Swipe <b>right</b> if you'd eat it, <b>left</b> if not.</p>
+        <div class="swipe" aria-hidden="true">
+          <span class="chip no">NOPE</span><span class="arrow">← left · right →</span><span class="chip yes">YUMMY</span>
+        </div>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>It's a match</h3></div>
+        <p>When most of the group swipes right on the same restaurant, everyone sees <b>IT'S A MATCH</b>. From there you can get directions, call, or open the restaurant's website.</p>
+      </li>
+    </ol>
+    <p class="note"><b>Cooking at home instead?</b> Pick <b>Cook In</b> in step 2 to swipe on recipes. No location needed.</p>
+    <a class="top" href="#top">↑ Back to contents</a>
+  </section>
+
+  <section id="feedback" aria-labelledby="feedback-h">
+    <p class="part">Part 3</p>
+    <h2 id="feedback-h">Give Sean Feedback</h2>
+    <p class="sub">Use ForkIt for real when you're deciding where to eat, then tell Sean anything that stood out. Short is fine: "the photo for the burger was a salad" helps a lot.</p>
+
+    <h3 class="sub-h" id="look">What to look for</h3>
+    <ul class="checks">
+      <li><h4>Are the dishes real?</h4><p>Do they sound like things that restaurant actually serves? Anything odd, like drinks, breakfast at dinner time, or a dish they don't have?</p></li>
+      <li><h4>Do the photos fit?</h4><p>Does the picture look like the dish? Did you see the same photo over and over?</p></li>
+      <li><h4>Are the restaurants right?</h4><p>Close by and places you'd actually go? Any favorites missing, or places that have closed?</p></li>
+      <li><h4>Was joining easy?</h4><p>Did the code or link work for everyone? Did anyone get stuck in the waiting room?</p></li>
+      <li><h4>Did the match work?</h4><p>Did everyone get the match and the notification? Did directions, call and website work?</p></li>
+      <li><h4>Anything confusing?</h4><p>A screen where you weren't sure what to tap, or text that was hard to read.</p></li>
+      <li><h4>Anything broken?</h4><p>The app closing by itself, freezing, or loading forever. Say what you were doing when it happened.</p></li>
+      <li><h4>Would you use it?</h4><p>Would your group use this to pick dinner? What would make you want to?</p></li>
+    </ul>
+
+    <h3 class="sub-h" id="send">How to send it</h3>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-head"><h3>Easiest: text Sean</h3></div>
+        <p>A quick message or a screenshot is perfect.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>Or send it through TestFlight</h3></div>
+        <p>While ForkIt is open, take a screenshot (side button and volume up together). Tap the small preview in the corner, tap the share button, and choose <span class="tap">Share Beta Feedback</span>. Add a sentence and send.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>If it crashes</h3></div>
+        <p>Your iPhone may ask to send the crash report. Tap <span class="tap">Share</span> and Sean gets the details automatically.</p>
+      </li>
+    </ol>
+    <a class="top" href="#top">↑ Back to contents</a>
+  </section>
+
+  <section id="share" aria-labelledby="share-h">
+    <h2 id="share-h">Invite friends to test</h2>
+    <p class="sub">The more people try it, the better ForkIt gets. Send friends this page so they get the same setup steps. The test has limited spots, so if the invite says it's full, text Sean.</p>
+    <div class="share-card">
+      <h3>Copy the link to this page</h3>
+      <div class="copybox">
+        <div class="copytext" id="guideLink">https://claude.ai/artifact/Ub3PpMhxWVwEow9kmDaddq</div>
+        <button class="btn invite" type="button" data-copy="guideLink">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
+          <span class="lbl"><strong>Copy link</strong><span>Then paste it into a text</span></span>
+        </button>
+        <p class="copied" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="share-card">
+      <h3>Or copy a ready-made message</h3>
+      <div class="copybox">
+        <div class="copytext" id="guideMsg">Help test ForkIt, an iPhone app that settles where to eat. Swipe right on dinner! Setup takes about 5 minutes: https://claude.ai/artifact/Ub3PpMhxWVwEow9kmDaddq</div>
+        <button class="btn invite" type="button" data-copy="guideMsg">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+          <span class="lbl"><strong>Copy message</strong><span>Paste it into Messages or a group chat</span></span>
+        </button>
+        <p class="copied" aria-live="polite"></p>
+      </div>
+    </div>
+    <a class="top" href="#top">↑ Back to contents</a>
+  </section>
+
+  <section id="help" aria-labelledby="help-h">
+    <h2 id="help-h">If something goes wrong</h2>
+    <div class="faq">
+      <details><summary>The invite says the test is full</summary><p>Text Sean so the limit can be raised.</p></details>
+      <details><summary>No restaurants show up</summary><p>Location may be off for ForkIt. Open the iPhone <b>Settings</b> app, scroll down to <b>ForkIt</b>, tap <b>Location</b>, and choose <b>While Using the App</b>. Or try a bigger Search Radius.</p></details>
+      <details><summary>I can't find the app on my phone</summary><p>Swipe down on your home screen and search "ForkIt". You can also open it from the TestFlight app.</p></details>
+      <details><summary>The room code doesn't work</summary><p>Rooms close when everyone leaves, and sometimes when Sean updates the app. Ask the host to make a new room.</p></details>
+      <details><summary>How do I get updates?</summary><p>TestFlight tells you when there's a new version. Open TestFlight and tap <b>Update</b> next to ForkIt.</p></details>
+    </div>
+    <a class="top" href="#top">↑ Back to contents</a>
+  </section>
+
+  <div class="signoff"><img class="splash" src="__SPLASH__" alt=""><p class="motto">Thanks for swiping right on dinner.</p></div>
+  <footer>ForkIt needs no account, just a first name. Your location is used to find nearby restaurants and isn't saved. This test version stops working after 90 days.</footer>
+</div>
+
+<script>
+// In-page links: scroll inside the page instead of relying on hash navigation,
+// which the artifact frame may not pass through.
+document.addEventListener("click", function (e) {
+  var a = e.target.closest && e.target.closest('a[href^="#"]');
+  if (!a) return;
+  var el = document.getElementById(a.getAttribute("href").slice(1));
+  if (!el) return;
+  e.preventDefault();
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+});
+
+// Copy buttons: clipboard when allowed, otherwise select the text so the
+// viewer can tap Copy themselves.
+document.querySelectorAll("[data-copy]").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var src = document.getElementById(btn.getAttribute("data-copy"));
+    var status = btn.parentNode.querySelector(".copied");
+    var text = src.textContent.trim();
+    function selectIt() {
+      var range = document.createRange();
+      range.selectNodeContents(src);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      status.textContent = "Selected. Tap Copy in the menu that appears.";
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () {
+        status.textContent = "Copied. Paste it into a text.";
+      }, selectIt);
+    } catch (e) { selectIt(); }
+  });
+});
+</script>
