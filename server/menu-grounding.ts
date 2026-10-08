@@ -63,22 +63,35 @@ function parseDishes(text: string): GroundedDish[] {
   return dishes;
 }
 
+import type { Meal } from "../lib/food-data";
+import { isBreakfastDish } from "./chain-menus";
+
 // Places API ids come back as "ChIJ..."; grounding chunks may prefix "places/".
 const samePlace = (a?: string, b?: string) =>
   !!a && !!b && a.replace(/^places\//, "") === b.replace(/^places\//, "");
 
-export async function fetchPopularDishes(place: {
-  id: string;
-  name: string;
-  address: string;
-  lat: number;
-  lng: number;
-}): Promise<GroundedMenu | null> {
+// What a room's meal asks the model for.
+const MEAL_ASK: Record<Meal, string> = {
+  breakfast: "breakfast dishes",
+  lunch: "lunch dishes (no breakfast items, drinks, sides or desserts)",
+  dinner: "dinner dishes (no breakfast items, drinks, sides or desserts)",
+};
+
+export async function fetchPopularDishes(
+  place: {
+    id: string;
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+  },
+  meal: Meal
+): Promise<GroundedMenu | null> {
   if (!GEMINI_API_KEY) return null;
 
   const prompt =
-    `Using Google Maps, list up to ${MAX_DISHES} specific dishes that reviewers ` +
-    `mention or recommend at the restaurant "${place.name}" located at ` +
+    `Using Google Maps, list up to ${MAX_DISHES} specific ${MEAL_ASK[meal]} that ` +
+    `reviewers mention or recommend at the restaurant "${place.name}" located at ` +
     `${place.address}. Only include dishes this restaurant actually serves. ` +
     `Reply with only a JSON array, no prose: ` +
     `[{"name": "dish name", "desc": "description under 12 words"}]. ` +
@@ -135,8 +148,11 @@ export async function fetchPopularDishes(place: {
       return null;
     };
 
-    const dishes = parseDishes(text);
-    if (dishes.length === 0) return drop("no parseable dishes");
+    // The model doesn't always keep to the meal, so check its answer too.
+    const dishes = parseDishes(text).filter(
+      (d) => isBreakfastDish(d.name) === (meal === "breakfast")
+    );
+    if (dishes.length === 0) return drop("no parseable dishes for the meal");
 
     const maps = chunks
       .map((c) => c.maps)

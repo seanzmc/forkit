@@ -133,6 +133,8 @@ function cleanTitle(title: string, chain: string, placeName: string): string {
 // not-a-main filter has seen them, so "Side Dish:" still filters the item.
 const stripSection = (name: string) => name.replace(/^[^:]{2,30}:\s+/, "").trim();
 
+export const isBreakfastDish = (name: string) => BREAKFAST.test(name);
+
 async function searchPage(query: string, offset: number): Promise<MenuItem[]> {
   const url = `${SEARCH_URL}?${new URLSearchParams({
     query,

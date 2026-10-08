@@ -453,13 +453,16 @@ async function fetchNearbyRestaurants(
     await Promise.all(
       [...placePhotos.keys()].map(async (pi) => {
         const place = places[pi];
-        const menu = await fetchPopularDishes({
-          id: place.id,
-          name: place.displayName?.text || "",
-          address: place.formattedAddress || "",
-          lat,
-          lng,
-        });
+        const menu = await fetchPopularDishes(
+          {
+            id: place.id,
+            name: place.displayName?.text || "",
+            address: place.formattedAddress || "",
+            lat,
+            lng,
+          },
+          meal
+        );
         if (menu) grounded.set(pi, menu);
       })
     );
