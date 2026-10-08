@@ -57,9 +57,9 @@ prompt is needed.
 | Apple data type | Collected | Linked to you | Tracking | Purpose |
 | --- | --- | --- | --- | --- |
 | Location → Precise Location | Yes | No | No | App Functionality |
-| Contact Info → Name | Yes | No | No | App Functionality |
-| User Content → Other User Content (swipes) | Yes | No | No | App Functionality |
-| Identifiers → Device ID (push token) | Yes | No | No | App Functionality |
+| Contact Info → Name | Yes | Yes | No | App Functionality |
+| User Content → Other User Content (swipes) | Yes | Yes | No | App Functionality |
+| Identifiers → Device ID (push token) | Yes | Yes | No | App Functionality |
 
 Notes on the choices:
 
@@ -71,8 +71,13 @@ Notes on the choices:
   out, so it doesn't meet Apple's optional-disclosure criteria, and it goes
   on to Google.
 - **Name** is a free-text display name, but users will often type their real
-  first name, so it is disclosed as Name. "Not linked" because there is no
-  account, and it is gone within an hour.
+  first name, so it is disclosed as Name.
+- **Name, swipes and push token are "linked".** There is no account, but the
+  server keys the push token, display name and swipes by the same member ID
+  for the session, so they are tied to a device while it lasts. Apple counts
+  that as linked unless the data is de-identified before collection.
+- **Location is "not linked"**: it arrives in the create-session request,
+  which carries no member ID or token, and is discarded after the lookup.
 - **Push token** as Device ID is the cautious reading; many apps leave it
   out. Disclosing it costs nothing.
 

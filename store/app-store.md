@@ -46,7 +46,7 @@ they are left out here.
 food,restaurant,group,friends,where to eat,what to eat,menu,dish,date night,lunch,picker,recipe,vote
 ```
 
-**Description** [1372 / 4000]
+**Description** [1470 / 4000]
 
 ```
 Can't agree on where to eat? ForkIt turns "I don't know, what do you want?" into a quick game.
@@ -60,7 +60,7 @@ HOW IT WORKS
 • Call, open the website, or get directions right from the match screen
 
 DINE OUT
-Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows the dishes each one is known for. Tap a card to flip through a restaurant's dishes, then swipe on the one that's showing.
+Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows dishes at each one: popular dishes and real menu items where we can find them, and suggestions based on the cuisine where we can't. Tap a card to flip through a restaurant's dishes, then swipe on the one that's showing.
 
 COOK IN
 Staying home? Swipe on recipes instead, and the group lands on something to make together. No location needed.

@@ -19,7 +19,7 @@ ForkIt: Swipe to Decide
 Swipe on dishes with your group. When most of you agree, dinner is decided.
 ```
 
-**Full description** [1372 / 4000]
+**Full description** [1470 / 4000]
 
 Play's metadata policy frowns on all-caps text, so this is the App Store
 text with sentence-case headings.
@@ -36,7 +36,7 @@ How it works
 • Call, open the website, or get directions right from the match screen
 
 Dine out
-Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows the dishes each one is known for. Tap a card to flip through a restaurant's dishes, then swipe on the one that's showing.
+Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows dishes at each one: popular dishes and real menu items where we can find them, and suggestions based on the cuisine where we can't. Tap a card to flip through a restaurant's dishes, then swipe on the one that's showing.
 
 Cook in
 Staying home? Swipe on recipes instead, and the group lands on something to make together. No location needed.
