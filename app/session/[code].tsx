@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { VersionLabel } from "@/components/VersionLabel";
 import { LinearGradient } from "expo-linear-gradient";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import type { Dish } from "@/lib/food-data";
@@ -260,6 +261,7 @@ export default function SessionLobby() {
               </Text>
             </View>
           )}
+          <VersionLabel />
         </Animated.View>
       </View>
     </LinearGradient>

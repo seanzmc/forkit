@@ -25,6 +25,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import Colors from "@/constants/colors";
+import { VersionLabel } from "@/components/VersionLabel";
 import { LinearGradient } from "expo-linear-gradient";
 import { takeLaunchMatch } from "@/lib/push";
 
@@ -163,6 +164,7 @@ export default function WelcomeScreen() {
               <Text style={styles.footerText}>
                 Match with friends on the perfect meal
               </Text>
+              <VersionLabel />
             </Animated.View>
           </View>
         </ScrollView>
@@ -249,6 +251,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
+    gap: 6,
   },
   footerText: {
     fontSize: 13,

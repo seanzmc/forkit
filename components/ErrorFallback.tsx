@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { appVersionLabel } from "@/lib/app-version";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -44,7 +45,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   };
 
   const formatErrorDetails = (): string => {
-    let details = `Error: ${error.message}\n\n`;
+    let details = `App: ${appVersionLabel}\nError: ${error.message}\n\n`;
     if (error.stack) {
       details += `Stack Trace:\n${error.stack}`;
     }
