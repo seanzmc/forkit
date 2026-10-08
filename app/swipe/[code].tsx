@@ -19,6 +19,8 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
   runOnJS,
   interpolate,
   Extrapolate,
@@ -45,6 +47,9 @@ const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 // A touch that moves less than this is a tap, not a drag.
 const TAP_SLOP = 8;
+// Set once someone has flipped through a card's dishes, so the hint on how
+// to do that stops showing.
+const DISH_HINT_KEY = "seenDishFlipHint";
 
 // One card per restaurant (per recipe in cook-in): its dishes are what the
 // deck is about, and it's easier to judge a place with all of them in hand.
@@ -75,6 +80,7 @@ function DishCard({
   isTop,
   scale,
   offset,
+  showHint = false,
 }: {
   dishes: Dish[];
   // Which dish shows. Kept by the screen so its like and pass buttons vote
@@ -85,9 +91,22 @@ function DishCard({
   isTop: boolean;
   scale: number;
   offset: number;
+  // Show the "tap the sides" hint (until the first flip).
+  showHint?: boolean;
 }) {
   const dish = dishes[index] ?? dishes[0];
   const count = dishes.length;
+
+  // A slow pulse so the hint reads as something to act on.
+  const hintPulse = useSharedValue(1);
+  useEffect(() => {
+    if (!showHint) return;
+    hintPulse.value = withRepeat(
+      withSequence(withTiming(1.06, { duration: 700 }), withTiming(1, { duration: 700 })),
+      -1
+    );
+  }, [showHint, hintPulse]);
+  const hintStyle = useAnimatedStyle(() => ({ transform: [{ scale: hintPulse.value }] }));
 
   // Load the other dishes' photos now so flipping to them is instant.
   useEffect(() => {
@@ -181,11 +200,33 @@ function DishCard({
             ))}
           </View>
           <View style={styles.dishCountChip}>
-            <Ionicons name="hand-left-outline" size={12} color="#fff" />
+            <Ionicons name="restaurant-outline" size={12} color="#fff" />
             <Text style={styles.dishCountText}>
-              {index + 1} of {count} dishes · tap for more
+              {index + 1} of {count} dishes here
             </Text>
           </View>
+        </View>
+      )}
+      {/* Tap targets are the card's halves (see the pan handler); these
+          only show where to tap. */}
+      {count > 1 && (
+        <>
+          <View style={[styles.dishArrow, styles.dishArrowLeft]} pointerEvents="none">
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
+          <View style={[styles.dishArrow, styles.dishArrowRight]} pointerEvents="none">
+            <Ionicons name="chevron-forward" size={22} color="#fff" />
+          </View>
+        </>
+      )}
+      {count > 1 && showHint && (
+        <View style={styles.dishHintWrap} pointerEvents="none">
+          <Animated.View style={[styles.dishHint, hintStyle]}>
+            <Ionicons name="hand-left-outline" size={16} color="#fff" />
+            <Text style={styles.dishHintText} numberOfLines={1}>
+              Tap for more dishes
+            </Text>
+          </Animated.View>
         </View>
       )}
       {/* Dark enough under the text block that the Google Maps / photo
@@ -297,6 +338,18 @@ export default function SwipeScreen() {
   const [swipeHistory, setSwipeHistory] = useState<{ dishId: string; vote: "like" | "pass" }[]>([]);
   // Which of the top card's dishes is showing.
   const [dishIndex, setDishIndex] = useState(0);
+  // Until they've flipped a card once; storage errors just keep it showing.
+  const [showDishHint, setShowDishHint] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(DISH_HINT_KEY)
+      .then((seen) => setShowDishHint(!seen))
+      .catch(() => setShowDishHint(true));
+  }, []);
+  const handleDishFlip = useCallback((index: number) => {
+    setDishIndex(index);
+    setShowDishHint(false);
+    AsyncStorage.setItem(DISH_HINT_KEY, "1").catch(() => {});
+  }, []);
   const cards = useMemo(() => groupCards(dishes), [dishes]);
   const userId = paramUserId ?? Crypto.randomUUID();
 
@@ -510,7 +563,8 @@ export default function SwipeScreen() {
                   key={`top-${currentIndex}`}
                   dishes={topCard}
                   index={dishIndex}
-                  onIndexChange={setDishIndex}
+                  onIndexChange={handleDishFlip}
+                  showHint={showDishHint}
                   onSwipe={handleSwipe}
                   isTop={true}
                   scale={1}
@@ -709,6 +763,45 @@ const styles = StyleSheet.create({
   dishCountText: {
     fontSize: 12,
     fontFamily: "Poppins_500Medium",
+    color: "#fff",
+  },
+  dishArrow: {
+    position: "absolute",
+    top: "32%",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  dishArrowLeft: {
+    left: 10,
+  },
+  dishArrowRight: {
+    right: 10,
+  },
+  dishHintWrap: {
+    position: "absolute",
+    top: "32%",
+    left: 52,
+    right: 52,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dishHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: Colors.accent,
+  },
+  dishHintText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
     color: "#fff",
   },
   cardGradient: {

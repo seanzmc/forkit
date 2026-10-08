@@ -76,7 +76,7 @@ Host is whoever joins first (`session.hostId`); on host disconnect it transfers 
 
 **Identity is ephemeral**: `Crypto.randomUUID()` generated per screen mount. `/session/[code]` mints one and passes it to `/swipe/[code]` as a route param — if that param is lost, the user rejoins as a new member and their swipes reset. Only the display name persists (AsyncStorage `userName`).
 
-The swipe screen shows one card per restaurant (the server keeps each place's dishes adjacent; the client groups by `placeId`): tapping the photo's right/left half flips through its dishes, and a swipe or button votes on the dish showing. Progress counts places, not dishes.
+The swipe screen shows one card per restaurant (the server keeps each place's dishes adjacent; the client groups by `placeId`): tapping the photo's right/left half flips through its dishes (edge arrows on every multi-dish card, plus a "Tap for more dishes" hint until the device's first flip, AsyncStorage `seenDishFlipHint`), and a swipe or button votes on the dish showing. Progress counts places, not dishes.
 
 Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset per swipe screen) so the done and match screens can show what you swiped right and left on.
 
