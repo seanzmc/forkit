@@ -102,6 +102,14 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             Try Again
           </Text>
         </Pressable>
+
+        {/* Always shown: the details view is dev-only, and a tester's
+            screenshot of this screen should still name the build. */}
+        {!!appVersionLabel && (
+          <Text style={[styles.version, { color: theme.textSecondary }]}>
+            {appVersionLabel}
+          </Text>
+        )}
       </View>
 
       {__DEV__ ? (
@@ -236,6 +244,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     fontSize: 16,
+  },
+  version: {
+    fontSize: 12,
+    textAlign: "center",
   },
   modalOverlay: {
     flex: 1,
