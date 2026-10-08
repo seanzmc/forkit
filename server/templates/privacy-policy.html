@@ -86,7 +86,7 @@
           other people in your session can see who joined.
         </li>
         <li>
-          <strong>Your approximate location, only in "dine out" mode.</strong>
+          <strong>Your location, only in "dine out" mode.</strong>
           If you grant location permission, your coordinates and chosen search
           radius are sent to our server once, used immediately to look up nearby
           restaurants, and then discarded. They are never saved.
@@ -151,12 +151,13 @@
           chain restaurants. Your name and location are not sent.
         </li>
         <li>
-          <strong>Expo and Apple</strong> deliver match notifications if you
-          allow them. Our server sends your notification token and the matched
-          restaurant or recipe to Expo's push service, which passes it to Apple
-          Push Notification service to show on your device. This is governed by
+          <strong>Expo, Apple and Google</strong> deliver match notifications
+          if you allow them. Our server sends your notification token and the
+          matched restaurant or recipe to Expo's push service, which passes it
+          to Apple Push Notification service on iPhone or Firebase Cloud
+          Messaging on Android to show on your device. This is governed by
           <a href="https://expo.dev/privacy" rel="noopener">Expo's Privacy Policy</a>
-          and Apple's.
+          and Apple's or Google's.
         </li>
         <li>
           <strong>Railway</strong> hosts the server and processes traffic on our
