@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
-import type { Dish } from "@/lib/food-data";
+import type { Dish, Meal } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
@@ -43,20 +43,60 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 32;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
+// A touch that moves less than this is a tap, not a drag.
+const TAP_SLOP = 8;
 
+// One card per restaurant (per recipe in cook-in): its dishes are what the
+// deck is about, and it's easier to judge a place with all of them in hand.
+function groupCards(dishes: Dish[]): Dish[][] {
+  const groups = new Map<string, Dish[]>();
+  for (const dish of dishes) {
+    const key = dish.mode === "cook-in" ? dish.id : (dish.placeId ?? dish.restaurant);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(dish);
+  }
+  return [...groups.values()];
+}
+
+const MEAL_QUESTION: Record<Meal, string> = {
+  breakfast: "What's for breakfast?",
+  lunch: "What's for lunch?",
+  dinner: "What's for dinner?",
+};
+
+// A restaurant's dishes, one at a time: tap the right half for the next
+// dish, the left half for the previous one. A swipe votes on the dish
+// showing, so a match still lands on a dish someone actually liked.
 function DishCard({
-  dish,
+  dishes,
+  index = 0,
+  onIndexChange,
   onSwipe,
   isTop,
   scale,
   offset,
 }: {
-  dish: Dish;
-  onSwipe: (vote: "like" | "pass") => void;
+  dishes: Dish[];
+  // Which dish shows. Kept by the screen so its like and pass buttons vote
+  // on the same dish.
+  index?: number;
+  onIndexChange?: (index: number) => void;
+  onSwipe: (vote: "like" | "pass", dish: Dish) => void;
   isTop: boolean;
   scale: number;
   offset: number;
 }) {
+  const dish = dishes[index] ?? dishes[0];
+  const count = dishes.length;
+
+  // Load the other dishes' photos now so flipping to them is instant.
+  useEffect(() => {
+    if (!isTop) return;
+    dishes.slice(1).forEach((d) => {
+      Image.prefetch(resolveImageUrl(d.image)).catch(() => {});
+    });
+  }, [isTop, dishes]);
+
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotation = useSharedValue(0);
@@ -77,11 +117,21 @@ function DishCard({
       if (gs.dx > SWIPE_THRESHOLD) {
         translateX.value = withTiming(SCREEN_WIDTH * 1.5, { duration: 300 });
         translateY.value = withTiming(gs.dy, { duration: 300 });
-        runOnJS(onSwipe)("like");
+        runOnJS(onSwipe)("like", dish);
       } else if (gs.dx < -SWIPE_THRESHOLD) {
         translateX.value = withTiming(-SCREEN_WIDTH * 1.5, { duration: 300 });
         translateY.value = withTiming(gs.dy, { duration: 300 });
-        runOnJS(onSwipe)("pass");
+        runOnJS(onSwipe)("pass", dish);
+      } else if (
+        onIndexChange &&
+        count > 1 &&
+        Math.abs(gs.dx) < TAP_SLOP &&
+        Math.abs(gs.dy) < TAP_SLOP
+      ) {
+        // Wraps around, so tapping on always comes back to the first dish.
+        const step = gs.x0 < SCREEN_WIDTH / 2 ? -1 : 1;
+        onIndexChange((index + step + count) % count);
+        Haptics.selectionAsync();
       } else {
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
@@ -120,6 +170,24 @@ function DishCard({
         style={styles.cardImage}
         resizeMode="cover"
       />
+      {count > 1 && (
+        <View style={styles.dishPager} pointerEvents="none">
+          <View style={styles.dishSegments}>
+            {dishes.map((d, i) => (
+              <View
+                key={d.id}
+                style={[styles.dishSegment, i === index && styles.dishSegmentActive]}
+              />
+            ))}
+          </View>
+          <View style={styles.dishCountChip}>
+            <Ionicons name="hand-left-outline" size={12} color="#fff" />
+            <Text style={styles.dishCountText}>
+              {index + 1} of {count} dishes · tap for more
+            </Text>
+          </View>
+        </View>
+      )}
       {/* Dark enough under the text block that the Google Maps / photo
           attribution stays legible on bright photos (Places policy). */}
       <LinearGradient
@@ -143,8 +211,6 @@ function DishCard({
       <View style={styles.cardContent}>
         {dish.mode === "cook-in" ? (
           <Text style={styles.dishName} numberOfLines={2}>{dish.name}</Text>
-        ) : dish.restaurantOnly ? (
-          <Text style={styles.dishName} numberOfLines={2}>{dish.restaurant}</Text>
         ) : (
           <>
             <View style={styles.restaurantRow}>
@@ -229,6 +295,9 @@ export default function SwipeScreen() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [session, setSession] = useState<SessionState | null>(null);
   const [swipeHistory, setSwipeHistory] = useState<{ dishId: string; vote: "like" | "pass" }[]>([]);
+  // Which of the top card's dishes is showing.
+  const [dishIndex, setDishIndex] = useState(0);
+  const cards = useMemo(() => groupCards(dishes), [dishes]);
   const userId = paramUserId ?? Crypto.randomUUID();
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -263,7 +332,10 @@ export default function SwipeScreen() {
           setSession(msg.session);
           if (msg.dishes?.length) setDishes(msg.dishes);
           if (msg.session.status === "matched") {
-            router.replace({ pathname: "/match", params: { dish: JSON.stringify(msg.session.matchedDish) } });
+            router.replace({
+              pathname: "/match",
+              params: { dish: JSON.stringify(msg.session.matchedDish), meal: msg.session.meal },
+            });
           }
         } else if (msg.type === "swipe_update") {
           setMemberSwipes((prev) => ({
@@ -274,7 +346,10 @@ export default function SwipeScreen() {
           setSession(msg.session);
         } else if (msg.type === "match") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.replace({ pathname: "/match", params: { dish: JSON.stringify(msg.dish) } });
+          router.replace({
+            pathname: "/match",
+            params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal },
+          });
         }
       } catch {}
     };
@@ -296,9 +371,8 @@ export default function SwipeScreen() {
     };
   }, [connectWs]);
 
-  const handleSwipe = useCallback((vote: "like" | "pass") => {
-    const dish = dishes[currentIndex];
-    if (!dish) return;
+  const handleSwipe = useCallback((vote: "like" | "pass", dish: Dish) => {
+    if (!cards[currentIndex]?.includes(dish)) return;
 
     if (vote === "like") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -312,9 +386,10 @@ export default function SwipeScreen() {
 
     recordSwipe(dish, vote);
     setSwipeHistory((h) => [...h, { dishId: dish.id, vote }]);
+    setDishIndex(0);
     setSwipedCount((c) => c + 1);
     setCurrentIndex((i) => i + 1);
-  }, [currentIndex, dishes]);
+  }, [currentIndex, cards]);
 
   const handleUndo = useCallback(() => {
     if (swipeHistory.length === 0 || currentIndex <= 0) return;
@@ -327,17 +402,24 @@ export default function SwipeScreen() {
     }
 
     undoSwipe(lastSwipe.dishId);
+    // Back on the card, showing the dish that was voted on.
+    const card = cards[currentIndex - 1] ?? [];
+    setDishIndex(Math.max(0, card.findIndex((d) => d.id === lastSwipe.dishId)));
     setSwipeHistory((h) => h.slice(0, -1));
     setSwipedCount((c) => Math.max(0, c - 1));
     setCurrentIndex((i) => i - 1);
-  }, [swipeHistory, currentIndex]);
+  }, [swipeHistory, currentIndex, cards]);
 
+  const topCard = cards[currentIndex];
   const handleButtonSwipe = (vote: "like" | "pass") => {
-    handleSwipe(vote);
+    const dish = topCard?.[dishIndex] ?? topCard?.[0];
+    if (dish) handleSwipe(vote, dish);
   };
 
-  const done = currentIndex >= dishes.length;
-  const progress = dishes.length > 0 ? Math.min(currentIndex / dishes.length, 1) : 0;
+  const done = currentIndex >= cards.length;
+  const progress = cards.length > 0 ? Math.min(currentIndex / cards.length, 1) : 0;
+  const mealWord = session?.meal ?? "dinner";
+  const isCookIn = dishes[0]?.mode === "cook-in";
 
   const members = session?.members ?? [];
   const reviewed = swipeHistory.flatMap(({ dishId, vote }) => {
@@ -358,7 +440,7 @@ export default function SwipeScreen() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>{"What's for dinner?"}</Text>
+            <Text style={styles.headerTitle}>{MEAL_QUESTION[mealWord]}</Text>
             <Text style={styles.headerSub}>Swipe right on dinner, left to pass</Text>
           </View>
           <Pressable
@@ -388,7 +470,7 @@ export default function SwipeScreen() {
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
         </View>
         <Text style={styles.progressText}>
-          {currentIndex}/{dishes.length} dishes
+          {currentIndex}/{cards.length} {isCookIn ? "recipes" : "places"}
         </Text>
 
         <View style={styles.cardStack}>
@@ -398,7 +480,7 @@ export default function SwipeScreen() {
                 <Ionicons name="checkmark-circle" size={56} color={Colors.accent} />
                 <Text style={styles.doneTitle}>All done!</Text>
                 <Text style={styles.doneText}>
-                  Waiting for the others to finish swiping...{"\n"}When enough of you swipe right, dinner is decided.
+                  Waiting for the others to finish swiping...{"\n"}When enough of you swipe right, {mealWord} is decided.
                 </Text>
                 <View style={styles.doneReview}>
                   <SwipeReview swipes={reviewed} />
@@ -413,20 +495,22 @@ export default function SwipeScreen() {
             </Animated.View>
           ) : (
             <>
-              {dishes[currentIndex + 1] && (
+              {cards[currentIndex + 1] && (
                 <DishCard
                   key={`bg-${currentIndex + 1}`}
-                  dish={dishes[currentIndex + 1]}
+                  dishes={cards[currentIndex + 1]}
                   onSwipe={() => {}}
                   isTop={false}
                   scale={0.95}
                   offset={10}
                 />
               )}
-              {dishes[currentIndex] && (
+              {topCard && (
                 <DishCard
                   key={`top-${currentIndex}`}
-                  dish={dishes[currentIndex]}
+                  dishes={topCard}
+                  index={dishIndex}
+                  onIndexChange={setDishIndex}
                   onSwipe={handleSwipe}
                   isTop={true}
                   scale={1}
@@ -487,7 +571,7 @@ export default function SwipeScreen() {
         hostId={session?.hostId}
         myId={userId}
         progress={{ ...memberSwipes, [userId]: currentIndex }}
-        total={dishes.length}
+        total={cards.length}
         swipes={reviewed}
       />
     </LinearGradient>
@@ -590,6 +674,42 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     position: "absolute",
+  },
+  dishPager: {
+    position: "absolute",
+    top: 10,
+    left: 12,
+    right: 12,
+    gap: 8,
+    alignItems: "flex-start",
+  },
+  dishSegments: {
+    flexDirection: "row",
+    gap: 4,
+    alignSelf: "stretch",
+  },
+  dishSegment: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.35)",
+  },
+  dishSegmentActive: {
+    backgroundColor: "#fff",
+  },
+  dishCountChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  dishCountText: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#fff",
   },
   cardGradient: {
     position: "absolute",

@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Dish, SessionMode } from "../lib/food-data";
-import { shuffleDishes, shuffleRecipes } from "../lib/food-data";
+import type { Dish, Meal, SessionMode } from "../lib/food-data";
+import { MEALS, shuffleDishes, shuffleRecipes } from "../lib/food-data";
 import {
   fetchPopularDishes,
   menuGroundingEnabled,
@@ -10,8 +10,9 @@ import {
 } from "./menu-grounding";
 import { isExpoPushToken, sendMatchPush } from "./push";
 import { CUISINE_DISHES } from "./cuisine-dishes";
-import { examplePhotoFor } from "./dish-photos";
+import { examplePhotoFor, type DishPhoto } from "./dish-photos";
 import { chainMenusEnabled, fetchChainDishes, type ChainDish } from "./chain-menus";
+import { curatedChainDishes } from "./curated-chains";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -31,6 +32,7 @@ interface Session {
   dishes: Dish[];
   status: "lobby" | "swiping" | "matched";
   mode: SessionMode;
+  meal?: Meal;
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
@@ -68,6 +70,7 @@ function getSessionState(session: Session) {
     hostId: session.hostId,
     status: session.status,
     mode: session.mode,
+    meal: session.meal,
     members: Array.from(session.members.values()).map((m) => ({
       id: m.id,
       name: m.name,
@@ -226,13 +229,58 @@ function extractCuisine(types: string[]): string {
 // Places formats US addresses as "..., City, ST 12345, USA".
 const isUsAddress = (address?: string) => /,\s*(USA|United States)\s*$/i.test(address || "");
 
-// Daytime-only cuisines. A place typed both breakfast_restaurant and
-// american_restaurant (Golden Corral) gets its dinner dishes.
-const DAYTIME_TYPES = new Set(["breakfast_restaurant", "brunch_restaurant", "cafe", "coffee_shop", "bakery"]);
+// Which meals each place type's suggested dishes suit. The morning types'
+// dishes (pancakes, eggs Benedict, avocado toast) are only for breakfast
+// rooms, and the rest only for lunch and dinner: a place typed both
+// breakfast_restaurant and american_restaurant (Golden Corral) gets its
+// American dishes at dinner and its breakfast ones in the morning.
+const MORNING_TYPES = new Set(["breakfast_restaurant", "brunch_restaurant", "cafe", "coffee_shop", "bakery"]);
+const typeServes = (type: string, meal: Meal) => MORNING_TYPES.has(type) === (meal === "breakfast");
 
-// Two suggested dishes per place, preferring ones no other place in this
-// room has been given yet.
-const SUGGESTIONS_PER_PLACE = 2;
+// When a room's meal is: today at the meal's usual hour, or right now when
+// that falls within the meal, or tomorrow when today's has passed. In the
+// client's local time, which is the nearby places' time too.
+const MEAL_WINDOWS: Record<Meal, { from: number; to: number; usual: number }> = {
+  breakfast: { from: 4 * 60, to: 10 * 60 + 30, usual: 8 * 60 + 30 },
+  lunch: { from: 10 * 60 + 30, to: 15 * 60, usual: 12 * 60 + 30 },
+  dinner: { from: 15 * 60, to: 24 * 60, usual: 18 * 60 + 30 },
+};
+function mealTime(meal: Meal, day: number, minutes: number): { day: number; minutes: number } {
+  const w = MEAL_WINDOWS[meal];
+  if (minutes >= w.from && minutes < w.to) return { day, minutes };
+  // Just past midnight still counts as the evening before.
+  if (meal === "dinner" && minutes < 2 * 60) return { day, minutes };
+  if (minutes < w.from) return { day, minutes: w.usual };
+  return { day: (day + 1) % 7, minutes: w.usual };
+}
+
+interface OpeningPeriod {
+  open?: { day: number; hour?: number; minute?: number };
+  close?: { day: number; hour?: number; minute?: number };
+}
+const WEEK = 7 * 24 * 60;
+// Whether a place is open at a time of the week, from Places'
+// regularOpeningHours periods (day 0 = Sunday, like Date.getDay()). No
+// hours listed counts as open: better a card than a missing restaurant.
+function openAt(periods: OpeningPeriod[] | undefined, at: { day: number; minutes: number }): boolean {
+  if (!periods?.length) return true;
+  const t = at.day * 24 * 60 + at.minutes;
+  const toWeek = (p: { day: number; hour?: number; minute?: number }) =>
+    p.day * 24 * 60 + (p.hour ?? 0) * 60 + (p.minute ?? 0);
+  return periods.some((p) => {
+    if (!p.open) return false;
+    // An open with no close is open around the clock.
+    if (!p.close) return true;
+    const open = toWeek(p.open);
+    let close = toWeek(p.close);
+    if (close <= open) close += WEEK;
+    return (t >= open && t < close) || (t + WEEK >= open && t + WEEK < close);
+  });
+}
+
+// Suggested dishes per place, preferring ones no other place in this room
+// has been given yet.
+const SUGGESTIONS_PER_PLACE = 3;
 function pickSuggestions<T extends { name: string }>(pool: T[], used: Set<string>): T[] {
   const fresh = pickRandom(pool.filter((d) => !used.has(d.name)), SUGGESTIONS_PER_PLACE);
   const picked = [
@@ -245,20 +293,21 @@ function pickSuggestions<T extends { name: string }>(pool: T[], used: Set<string
 
 function suggestedDishesFor(
   types: string[],
-  cuisineLabel: string
+  cuisineLabel: string,
+  meal: Meal
 ): { name: string; desc: string }[] | null {
   if (types.includes("fast_food_restaurant")) return null;
-  const ordered = [
-    ...types.filter((t) => !DAYTIME_TYPES.has(t)),
-    ...types.filter((t) => DAYTIME_TYPES.has(t)),
-  ];
-  for (const type of ordered) {
+  for (const type of types.filter((t) => typeServes(t, meal))) {
     const dishes = CUISINE_DISHES[TYPE_TO_CUISINE[type]];
     if (dishes) return dishes;
   }
+  // Places' display label ("Breakfast Restaurant") when no type matched;
+  // same meal rule, by the type the label stands for.
   const label = cuisineLabel.toLowerCase();
-  for (const [key, val] of Object.entries(CUISINE_DISHES)) {
-    if (label.includes(key.toLowerCase())) return val;
+  for (const [type, cuisine] of Object.entries(TYPE_TO_CUISINE)) {
+    if (label.includes(cuisine.toLowerCase()) && typeServes(type, meal)) {
+      return CUISINE_DISHES[cuisine] ?? null;
+    }
   }
   return null;
 }
@@ -266,6 +315,19 @@ function suggestedDishesFor(
 function pickRandom<T>(arr: T[], count: number): T[] {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
+}
+
+// An example photo of the dish and the credit its license requires.
+function exampleImage(example: DishPhoto) {
+  return {
+    image: `/assets/${example.file}?v=${example.version}`,
+    photoCredit: {
+      author: example.author,
+      license: example.license,
+      licenseUrl: example.licenseUrl,
+      pageUrl: example.pageUrl,
+    },
+  };
 }
 
 async function resolvePhotoUrl(photoName: string): Promise<string> {
@@ -286,7 +348,9 @@ async function resolvePhotoUrl(photoName: string): Promise<string> {
 async function fetchNearbyRestaurants(
   lat: number,
   lng: number,
-  radiusMeters: number
+  radiusMeters: number,
+  meal: Meal,
+  when: { day: number; minutes: number } | null
 ): Promise<Dish[]> {
   if (!GOOGLE_API_KEY) {
     console.warn("No Google Places API key set, using fallback dishes");
@@ -300,9 +364,10 @@ async function fetchNearbyRestaurants(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": GOOGLE_API_KEY,
         // editorialSummary already bills this call at the Enterprise +
-        // Atmosphere SKU, so the phone, website and Maps URL cost nothing extra.
+        // Atmosphere SKU, so the phone, website, Maps URL and opening hours
+        // cost nothing extra.
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri",
+          "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
       },
       body: JSON.stringify({
         includedPrimaryTypes: ["restaurant"],
@@ -324,7 +389,12 @@ async function fetchNearbyRestaurants(
     }
 
     const data = await response.json();
-    const places = data.places || [];
+    // Only places open for the meal: no breakfast spot that closes at 2 pm in
+    // a dinner room, no dinner-only place at breakfast.
+    const places = (data.places || []).filter(
+      (p: { regularOpeningHours?: { periods?: OpeningPeriod[] } }) =>
+        !when || openAt(p.regularOpeningHours?.periods, when)
+    );
 
     if (places.length === 0) {
       console.warn("No restaurants found, using fallback dishes");
@@ -397,16 +467,35 @@ async function fetchNearbyRestaurants(
       console.log(`Grounded dishes for ${grounded.size}/${placePhotos.size} places`);
     }
 
-    // Real menu items for chains (spoonacular), only where grounding found
-    // nothing (lookups cost quota points) and only in the US (its data is
-    // US chain menus; a UK McDonald's serves something else).
-    const chainMenus = new Map<number, ChainDish[]>();
+    // Real menu items for chains, only where grounding found nothing and
+    // only in the US (a UK McDonald's serves something else): our own list
+    // of the big chains first, then spoonacular for the rest (lookups cost
+    // quota points). A chain with nothing for this meal gets [] and no cards.
+    const chainMenus = new Map<
+      number,
+      (ChainDish & { photo?: string; source: "curated" | "spoonacular" })[]
+    >();
     await Promise.all(
       [...placePhotos.keys()]
         .filter((pi) => !grounded.has(pi) && isUsAddress(places[pi].formattedAddress))
         .map(async (pi) => {
-          const items = await fetchChainDishes(places[pi].displayName?.text || "");
-          if (items) chainMenus.set(pi, items);
+          const name = places[pi].displayName?.text || "";
+          const curated = curatedChainDishes(name, meal);
+          if (curated) {
+            chainMenus.set(
+              pi,
+              curated.map((c) => ({
+                name: c.name,
+                breakfast: !!c.breakfast,
+                image: null,
+                photo: c.photo,
+                source: "curated",
+              }))
+            );
+            return;
+          }
+          const items = await fetchChainDishes(name, meal);
+          if (items) chainMenus.set(pi, items.map((i) => ({ ...i, source: "spoonacular" })));
         })
     );
     if (chainMenusEnabled()) {
@@ -448,36 +537,33 @@ async function fetchNearbyRestaurants(
 
       if (chainItems) {
         // Real dishes from this chain's menu, with spoonacular's photo of
-        // the item when it has one, else the place's own photo.
+        // the item when it has one, an example photo of that kind of dish
+        // for our own list, else the place's own photo.
         chainItems.forEach((item, di) => {
           const own = photos[di % photos.length];
+          const example = item.photo ? examplePhotoFor(item.photo) : undefined;
           dishes.push({
             ...shared,
             id: `${place.id}_${di}`,
             name: item.name,
             description: "",
-            ...(item.image ? { image: item.image } : { image: own.url, photoAuthors: own.authors }),
-            menuSource: "spoonacular",
+            ...(item.image
+              ? { image: item.image }
+              : example
+                ? exampleImage(example)
+                : { image: own.url, photoAuthors: own.authors }),
+            menuSource: item.source,
           });
         });
         continue;
       }
 
-      const suggestions = menu ? null : suggestedDishesFor(types, cuisine);
+      const suggestions = menu ? null : suggestedDishesFor(types, cuisine, meal);
 
-      if (!menu && !suggestions) {
-        // One card for the restaurant itself rather than invented dishes.
-        dishes.push({
-          ...shared,
-          id: `${place.id}_0`,
-          name: restaurantName,
-          description: place.editorialSummary?.text || "",
-          image: photos[0].url,
-          photoAuthors: photos[0].authors,
-          restaurantOnly: true,
-        });
-        continue;
-      }
+      // No dish to show (fast food we have no menu for, a cuisine with no
+      // suggestions, nothing for this meal): leave the place out rather
+      // than show a card with no dish on it.
+      if (!menu && !suggestions) continue;
 
       const selectedDishes = menu ? menu.dishes : pickSuggestions(suggestions!, usedSuggestions);
 
@@ -491,17 +577,7 @@ async function fetchNearbyRestaurants(
           id: `${place.id}_${di}`,
           name: dish.name,
           description: dish.desc || `Popular at ${restaurantName}`,
-          ...(example
-            ? {
-                image: `/assets/${example.file}?v=${example.version}`,
-                photoCredit: {
-                  author: example.author,
-                  license: example.license,
-                  licenseUrl: example.licenseUrl,
-                  pageUrl: example.pageUrl,
-                },
-              }
-            : { image: own.url, photoAuthors: own.authors }),
+          ...(example ? exampleImage(example) : { image: own.url, photoAuthors: own.authors }),
           suggested: !menu,
           groundedSources: menu?.sources,
         });
@@ -512,7 +588,15 @@ async function fetchNearbyRestaurants(
       return shuffleDishes();
     }
 
-    return dishes.sort(() => Math.random() - 0.5);
+    // Shuffle the places but keep each one's dishes together: the app shows
+    // a place's dishes on one card.
+    const byPlace = new Map<string, Dish[]>();
+    for (const dish of dishes) {
+      const key = dish.placeId ?? dish.restaurant;
+      if (!byPlace.has(key)) byPlace.set(key, []);
+      byPlace.get(key)!.push(dish);
+    }
+    return pickRandom([...byPlace.values()], byPlace.size).flat();
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     return shuffleDishes();
@@ -548,8 +632,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       code = generateCode();
     }
 
-    const { lat, lng, radius, mode: reqMode } = req.body || {};
+    const { lat, lng, radius, mode: reqMode, meal: reqMeal, day, minutes } = req.body || {};
     const mode: SessionMode = reqMode === "cook-in" ? "cook-in" : "dine-out";
+    // Older app builds send no meal: they get dinner, as before.
+    const meal: Meal = MEALS.includes(reqMeal) ? reqMeal : "dinner";
+    // The client's local weekday and minute of the day, to check opening
+    // hours against. Without them no place is left out for being closed.
+    const when =
+      Number.isInteger(day) && day >= 0 && day < 7 &&
+      Number.isInteger(minutes) && minutes >= 0 && minutes < 24 * 60
+        ? mealTime(meal, day, minutes)
+        : null;
     let dishes: Dish[];
 
     if (mode === "cook-in") {
@@ -558,9 +651,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } else if (lat && lng && radius) {
       const radiusMeters = Math.min(Math.max(radius, 500), 50000);
       console.log(
-        `Fetching restaurants near ${lat},${lng} within ${radiusMeters}m`
+        `Fetching ${meal} restaurants near ${lat},${lng} within ${radiusMeters}m`
       );
-      dishes = await fetchNearbyRestaurants(lat, lng, radiusMeters);
+      dishes = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when);
       console.log(`Found ${dishes.length} dishes from nearby restaurants`);
     } else {
       dishes = shuffleDishes();
@@ -573,6 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       dishes,
       status: "lobby",
       mode,
+      meal: mode === "dine-out" ? meal : undefined,
       createdAt: Date.now(),
       pushTokens: new Map(),
     };
@@ -711,7 +805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Everyone with a token, including connected members: the app
             // hides the banner in the foreground, and a backgrounded phone's
             // socket can look open for a while after iOS suspends it.
-            void sendMatchPush(session.pushTokens.values(), session.code, session.matchedDish!);
+            void sendMatchPush(
+              session.pushTokens.values(),
+              session.code,
+              session.matchedDish!,
+              session.meal
+            );
           }
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);

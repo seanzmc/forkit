@@ -1,5 +1,18 @@
 export type SessionMode = "dine-out" | "cook-in";
 
+// Which meal a dine-out room is deciding. Picks which places (open then) and
+// which dishes (breakfast or not) make the deck.
+export type Meal = "breakfast" | "lunch" | "dinner";
+export const MEALS: Meal[] = ["breakfast", "lunch", "dinner"];
+
+// The meal people most likely mean at this local time.
+export function mealForTime(date: Date): Meal {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  if (minutes >= 4 * 60 && minutes < 10 * 60 + 30) return "breakfast";
+  if (minutes >= 10 * 60 + 30 && minutes < 15 * 60) return "lunch";
+  return "dinner";
+}
+
 export interface GroundedSource {
   title: string;
   uri: string;
@@ -31,12 +44,10 @@ export interface Dish {
   photoCredit?: PhotoCredit;
   // True when the dish name is inferred from cuisine, not the restaurant's menu.
   suggested?: boolean;
-  // "spoonacular" when the dish is a real item from this chain's menu (and
-  // `image` is spoonacular's photo of it); credited wherever it's shown.
-  menuSource?: "spoonacular";
-  // True when there is no dish to suggest (fast food, or a cuisine we have no
-  // dishes for): the card is the restaurant itself and `name` is its name.
-  restaurantOnly?: boolean;
+  // Set when the dish is a real item from this chain's menu: "spoonacular"
+  // when it came from spoonacular (credited wherever it's shown, and `image`
+  // may be its photo), "curated" when from our own list of chain menus.
+  menuSource?: "spoonacular" | "curated";
   ratingCount?: number;
   // Places details for the match screen's actions.
   mapsUrl?: string;

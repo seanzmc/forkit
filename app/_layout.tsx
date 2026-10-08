@@ -16,8 +16,8 @@ function RootLayoutNav() {
   // one that cold-starts the app is picked up by the start screen instead.
   useEffect(
     () =>
-      onMatchTapped(({ dish }) =>
-        router.push({ pathname: "/match", params: { dish: JSON.stringify(dish) } })
+      onMatchTapped(({ dish, meal }) =>
+        router.push({ pathname: "/match", params: { dish: JSON.stringify(dish), meal } })
       ),
     []
   );

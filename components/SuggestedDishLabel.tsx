@@ -9,14 +9,17 @@ import type { Dish } from "@/lib/food-data";
 // restaurant to actually serve the dish shown. Its photo, when an example
 // photo, is what the dish looks like in general, not at this restaurant.
 //
-// Chain dishes from spoonacular are the opposite case: real items from that
-// chain's menu, so they say so instead.
+// Chain dishes are the opposite case: real items from that chain's menu, so
+// they say so instead. Those from our own list may show an example photo of
+// that kind of dish, which says so too.
 export function SuggestedDishLabel({ dish }: { dish: Dish }) {
   if (dish.menuSource) {
     return (
       <View style={styles.row}>
         <Ionicons name="checkmark-circle" size={12} color={Colors.green} />
-        <Text style={[styles.text, styles.onMenu]}>On the menu</Text>
+        <Text style={[styles.text, styles.onMenu]}>
+          {dish.photoCredit ? "On the menu · example photo" : "On the menu"}
+        </Text>
       </View>
     );
   }

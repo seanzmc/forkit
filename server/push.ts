@@ -5,7 +5,7 @@
 // EXPO_ACCESS_TOKEN is optional: set it only if "enhanced push security" is
 // turned on for the Expo project, which then requires it on every send.
 
-import type { Dish } from "../lib/food-data";
+import type { Dish, Meal } from "../lib/food-data";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN || "";
@@ -18,13 +18,19 @@ export function isExpoPushToken(value: unknown): value is string {
   return typeof value === "string" && TOKEN_PATTERN.test(value);
 }
 
-function matchText(dish: Dish): { title: string; body: string } {
+const MEAL_TITLE: Record<Meal, string> = {
+  breakfast: "Breakfast is decided!",
+  lunch: "Lunch is decided!",
+  dinner: "Dinner is decided!",
+};
+
+function matchText(dish: Dish, meal: Meal): { title: string; body: string } {
   if (dish.mode === "cook-in") {
     return { title: "It's a match!", body: `Tonight's recipe: ${dish.name}` };
   }
   return {
-    title: "Dinner is decided!",
-    body: dish.restaurantOnly ? dish.restaurant : `${dish.name} at ${dish.restaurant}`,
+    title: MEAL_TITLE[meal],
+    body: `${dish.name} at ${dish.restaurant}`,
   };
 }
 
@@ -45,17 +51,18 @@ function dishForPayload(dish: Dish): Partial<Dish> {
 export async function sendMatchPush(
   tokens: Iterable<string>,
   code: string,
-  dish: Dish
+  dish: Dish,
+  meal: Meal = "dinner"
 ): Promise<void> {
   const to = [...new Set(tokens)];
   if (to.length === 0) return;
-  const { title, body } = matchText(dish);
+  const { title, body } = matchText(dish, meal);
   const messages = to.map((token) => ({
     to: token,
     title,
     body,
     sound: "default",
-    data: { type: "match", code, dish: dishForPayload(dish) },
+    data: { type: "match", code, meal, dish: dishForPayload(dish) },
   }));
   try {
     const res = await fetch(EXPO_PUSH_URL, {

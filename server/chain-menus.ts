@@ -10,6 +10,8 @@
 // Disabled unless SPOONACULAR_API_KEY is set. Any failure returns null and
 // the caller falls back to suggested dishes.
 
+import type { Meal } from "../lib/food-data";
+
 const API_KEY = (process.env.SPOONACULAR_API_KEY || "").trim();
 const SEARCH_URL = "https://api.spoonacular.com/food/menuItems/search";
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -18,12 +20,14 @@ const TIMEOUT_MS = 8_000;
 // only when the first finds the chain but too few mains after filtering, so
 // a non-chain costs ~1.1 points and a chain ~1.1-2.2.
 const PAGE_SIZE = 10;
-const DISHES_PER_PLACE = 3;
+const DISHES_PER_PLACE = 4;
 
 export const chainMenusEnabled = () => !!API_KEY;
 
 export interface ChainDish {
   name: string;
+  // A breakfast item: shown only in breakfast rooms, and only those show.
+  breakfast: boolean;
   // spoonacular's photo, or null when it has none (most items): the caller
   // shows the place's own photo instead. A real dish beats a suggested one.
   image: string | null;
@@ -31,6 +35,7 @@ export interface ChainDish {
 
 interface Candidate {
   name: string;
+  breakfast: boolean;
   id: number;
   // Image file type, or null when the item lists no image at all.
   ext: string | null;
@@ -46,6 +51,7 @@ interface MenuItem {
 
 const cache = new Map<string, { at: number; dishes: ChainDish[] | null }>();
 
+
 const norm = (s: string) =>
   s
     .toLowerCase()
@@ -59,16 +65,27 @@ const norm = (s: string) =>
 // "Chili's Grill & Bar" (Google) vs "Chili's" (spoonacular): equal, or one
 // is the other plus more words. Sharing only a first word or two is not
 // enough ("The Capital Grille" is not "The Capital Burger").
-function sameChain(a: string, b: string): boolean {
+export function sameChain(a: string, b: string): boolean {
   const [x, y] = [norm(a), norm(b)];
   if (!x || !y) return false;
   return x === y || x.startsWith(`${y} `) || y.startsWith(`${x} `);
 }
 
-// Items the group wouldn't pick dinner by: soft drinks, condiments, sides,
-// breakfast dishes and desserts.
+// Items nobody picks a meal by: soft drinks, condiments, sides and desserts.
 const NOT_A_MAIN =
-  /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|kids?|child|toddler|add on|add-on|extra|topping|cup|packet|ice|refill|vinegar|salt|granola|yogurt|parfait|fruit|oatmeal|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard|concrete|mixer|breakfast|biscuits?|bagels?|croissants?|muffins?|mcmuffin|pancakes?|hotcakes|waffles?|eggs?|omelets?|omelettes?)\b/i;
+  /\b(coke|cola|pepsi|sprite|soda|fanta|dr pepper|mountain dew|lemonade|tea|coffee|latte|cappuccino|espresso|mocha|frappe|juice|water|milk|smoothie|beverage|drink|dressing|sauce|dip|syrup|ketchup|mustard|mayo|gravy|condiment|creamer|side|fries|hash ?browns?|tots|kids?|child|toddler|add on|add-on|extra|topping|garnish|cup|packet|ice|refill|vinegar|salt|fruit|sundae|mcflurry|blizzard|shake|malt|cone|cookie|brownie|pie|cake|dessert|frosty|ice cream|custard|concrete|mixer|donuts?|doughnuts?|cinnamon rolls?)\b/i;
+
+// Toppings and side items menus list on their own ("Red Pepper Strips",
+// "Sliced Jalapeños", "Croutons"): names that end in one. Only the last
+// word counts, so "Jalapeño Popper Burger" or "Chicken Caesar Salad" stay.
+const GARNISH_LAST =
+  /\b((?<!stuffed (bell )?)peppers?|pepper strips|tortilla strips|veggie strips|onions?|onion rings?|pickles?|jalapenos?|jalapeños?|croutons?|lettuce|tomato(es)?|avocado|guacamole|salsa|sour cream|pico de gallo|olives|cilantro|wedges?|crackers|butter|honey|nuts|seeds|sprouts|cucumbers?|carrots?|celery|coleslaw|slaw|corn|beans|steamed rice|white rice|brown rice|mashed potatoes|baked potato|chips|breadsticks?|garlic bread|dinner rolls?)$/i;
+
+// Breakfast items: kept out of lunch and dinner rooms, and the only items
+// in breakfast rooms. Menus rarely say "breakfast", so this goes by what
+// the dish is.
+const BREAKFAST =
+  /\b(breakfast|brunch|biscuits?|bagels?|croissants?|croissanwich|muffins?|mcmuffin|mcgriddles?|pancakes?|hotcakes|waffles?|french toast|crepes?|eggs?(?! ?(rolls?|drop|fried|noodles?|foo))|omelets?|omelettes?|benedict|scramble|scrambled|frittata|quiche|grits|oatmeal|granola|yogurt|parfait|sunrise|morning|minis)\b/i;
 
 // Alcohol counts only as the last word of the name or of a section label
 // ("Signature Wine Cocktails", "House Margarita (Frozen)", "Wine: Merlot"),
@@ -146,8 +163,9 @@ async function workingImage(id: number, ext: string | null): Promise<string | nu
   }
 }
 
-// 3 random dishes, those with their own photo first.
-function pickDishes(dishes: ChainDish[]): ChainDish[] {
+// A few random dishes for the meal, those with their own photo first.
+function pickDishes(all: ChainDish[], meal: Meal): ChainDish[] {
+  const dishes = all.filter((d) => d.breakfast === (meal === "breakfast"));
   const withPhoto = pickRandom(dishes.filter((d) => d.image), DISHES_PER_PLACE);
   const rest = pickRandom(dishes.filter((d) => !d.image), DISHES_PER_PLACE - withPhoto.length);
   return [...withPhoto, ...rest];
@@ -157,13 +175,15 @@ function pickRandom<T>(items: T[], count: number): T[] {
   return [...items].sort(() => Math.random() - 0.5).slice(0, count);
 }
 
-export async function fetchChainDishes(placeName: string): Promise<ChainDish[] | null> {
+// Dishes for the meal, [] when the chain has none for it, or null when the
+// place isn't a chain spoonacular knows (or the lookup failed).
+export async function fetchChainDishes(placeName: string, meal: Meal): Promise<ChainDish[] | null> {
   if (!API_KEY || !placeName) return null;
   const key = norm(placeName);
-  // The whole filtered list is cached; each room gets its own random 3.
+  // The whole filtered list is cached; each room gets its own random few.
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-    return hit.dishes ? pickDishes(hit.dishes) : null;
+    return hit.dishes ? pickDishes(hit.dishes, meal) : null;
   }
 
   try {
@@ -181,8 +201,15 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
         if (NOT_A_MAIN.test(cleaned) || isDrink(cleaned)) continue;
         const name = stripSection(cleaned);
         if (name.length < 3 || name.length > 60 || seen.has(norm(name))) continue;
+        if (GARNISH_LAST.test(name.replace(/\s*\([^)]*\)\s*$/, "").trim())) continue;
         seen.add(norm(name));
-        candidates.push({ name, id: item.id, ext: item.image ? item.imageType || "png" : null });
+        candidates.push({
+          name,
+          // The section label counts too ("Breakfast: Chicken Biscuit").
+          breakfast: BREAKFAST.test(cleaned),
+          id: item.id,
+          ext: item.image ? item.imageType || "png" : null,
+        });
       }
     };
     take(await searchPage(placeName, 0));
@@ -192,9 +219,13 @@ export async function fetchChainDishes(placeName: string): Promise<ChainDish[] |
       take(await searchPage(placeName, PAGE_SIZE));
     }
     const images = await Promise.all(candidates.map((c) => workingImage(c.id, c.ext)));
-    const dishes: ChainDish[] = candidates.map((c, i) => ({ name: c.name, image: images[i] }));
+    const dishes: ChainDish[] = candidates.map((c, i) => ({
+      name: c.name,
+      breakfast: c.breakfast,
+      image: images[i],
+    }));
     cache.set(key, { at: Date.now(), dishes: dishes.length ? dishes : null });
-    return dishes.length ? pickDishes(dishes) : null;
+    return dishes.length ? pickDishes(dishes, meal) : null;
   } catch (error) {
     console.warn(`Chain menu lookup failed for ${placeName}:`, error instanceof Error ? error.message : error);
     return null;

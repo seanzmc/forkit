@@ -171,7 +171,9 @@ export default function SessionLobby() {
                 color={Colors.accent}
               />
               <Text style={styles.modeBadgeText}>
-                {session.mode === "cook-in" ? "Cook In" : "Dine Out"}
+                {session.mode === "cook-in"
+                  ? "Cook In"
+                  : `Dine Out${session.meal ? ` · ${session.meal[0].toUpperCase()}${session.meal.slice(1)}` : ""}`}
               </Text>
             </View>
           )}
