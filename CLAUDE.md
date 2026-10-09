@@ -30,6 +30,8 @@ iOS builds run on EAS: `npx eas-cli@latest build --profile <development|developm
 
 Android builds: `npx eas-cli@latest build --profile production --platform android` (AAB; EAS holds the upload keystore). Google rejects API uploads for an app's first release, so upload the first AAB by hand in Play Console; after that `--auto-submit` sends it to the internal track as a draft via `submit.production.android` in eas.json, which reads the Play service-account key from `./play-service-account.json` (gitignored). Android push needs Firebase (see `GOOGLE_SERVICES_JSON` below).
 
+Store listing text (App Store and Play descriptions, keywords, review notes, privacy labels, Data safety, age ratings) lives in [store/](store/README.md) and is pasted into the consoles by hand. If a change alters what data the app collects or where it goes, update `server/templates/privacy-policy.html` and `store/review-and-privacy.md` in the same PR.
+
 ## Contribution workflow
 
 All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). CI has two jobs, `check` (typecheck, lint, server build, smoke test) and `expo-config` (asserts release-critical `app.json` values). Don't push to `main` directly.
