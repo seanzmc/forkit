@@ -12,7 +12,19 @@ import type { Dish } from "@/lib/food-data";
 // Chain dishes are the opposite case: real items from that chain's menu, so
 // they say so instead. Those from our own list may show an example photo of
 // that kind of dish, which says so too.
+//
+// Dine-out cards with no placeId come from the made-up fallback list (the
+// room has no location, or nothing was found near it): neither the place nor
+// the dish is real.
 export function SuggestedDishLabel({ dish }: { dish: Dish }) {
+  if (dish.mode === "dine-out" && !dish.placeId) {
+    return (
+      <View style={styles.row}>
+        <Ionicons name="information-circle-outline" size={12} color={Colors.accentGold} />
+        <Text style={styles.text}>Sample restaurant · not a real place</Text>
+      </View>
+    );
+  }
   if (dish.menuSource) {
     return (
       <View style={styles.row}>

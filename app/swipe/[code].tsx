@@ -387,7 +387,11 @@ export default function SwipeScreen() {
           if (msg.session.status === "matched") {
             router.replace({
               pathname: "/match",
-              params: { dish: JSON.stringify(msg.session.matchedDish), meal: msg.session.meal },
+              params: {
+                dish: JSON.stringify(msg.session.matchedDish),
+                meal: msg.session.meal,
+                sample: msg.session.sample,
+              },
             });
           }
         } else if (msg.type === "swipe_update") {
@@ -401,7 +405,7 @@ export default function SwipeScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           router.replace({
             pathname: "/match",
-            params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal },
+            params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal, sample: msg.session.sample },
           });
         }
       } catch {}
