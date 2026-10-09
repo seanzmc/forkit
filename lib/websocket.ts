@@ -1,5 +1,5 @@
 import { getApiUrl } from "./query-client";
-import type { Meal, SessionMode } from "./food-data";
+import type { Meal, SampleReason, SessionMode } from "./food-data";
 
 export function getWsUrl(): string {
   const apiUrl = getApiUrl();
@@ -15,6 +15,8 @@ export type SessionState = {
   mode: SessionMode;
   // Dine-out rooms only; absent from older servers.
   meal?: Meal;
+  // Dine-out rooms using made-up restaurants; absent from older servers.
+  sample?: SampleReason;
   members: { id: string; name: string }[];
   matchedRestaurant?: string;
   matchedDish?: import("./food-data").Dish;

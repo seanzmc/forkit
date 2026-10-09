@@ -76,9 +76,12 @@ export default function HomeScreen() {
       const loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      setLocation(coords);
+      return coords;
     } catch {
       console.warn("Could not get location");
+      return null;
     }
   };
 
@@ -88,21 +91,23 @@ export default function HomeScreen() {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject);
         });
-        setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setLocation(coords);
         setLocationStatus("granted");
+        return coords;
       } catch {
         setLocationStatus("denied");
+        return null;
       }
-      return;
     }
 
     const result = await requestPermission();
     if (result?.granted) {
       setLocationStatus("granted");
-      getLocation();
-    } else {
-      setLocationStatus("denied");
+      return getLocation();
     }
+    setLocationStatus("denied");
+    return null;
   };
 
   const handleRadiusChange = (index: number) => {
@@ -121,11 +126,23 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const body: Record<string, string | number> = { mode };
-      if (mode === "dine-out" && location) {
+      if (mode === "dine-out") {
+        // Without coordinates the server builds the room from made-up
+        // restaurants with no address or phone, so a tap before the location
+        // has loaded (or before it was ever asked for) waits for it here.
+        // Only a denied permission falls back to the curated picks.
+        let coords = location;
+        if (!coords && locationStatus !== "denied") {
+          coords = locationPermission?.granted
+            ? await getLocation()
+            : await handleRequestLocation();
+        }
+        if (coords) {
+          body.lat = coords.lat;
+          body.lng = coords.lng;
+          body.radius = RADIUS_OPTIONS[selectedRadius].value;
+        }
         const now = new Date();
-        body.lat = location.lat;
-        body.lng = location.lng;
-        body.radius = RADIUS_OPTIONS[selectedRadius].value;
         body.meal = meal;
         // Local time, so the server can keep only places open for the meal.
         body.day = now.getDay();
@@ -370,7 +387,9 @@ export default function HomeScreen() {
                 ? "Share a room code with your group. Swipe on recipes to cook together."
                 : location
                   ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
-                  : "Share a room code with your group. Using curated restaurant picks."}
+                  : locationStatus === "denied"
+                    ? "Share a room code with your group. Using curated restaurant picks."
+                    : `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of you for real restaurants once location is on.`}
             </Text>
             <Pressable
               onPress={handleCreate}

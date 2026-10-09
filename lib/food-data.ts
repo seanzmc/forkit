@@ -3,6 +3,11 @@ export type SessionMode = "dine-out" | "cook-in";
 // Which meal a dine-out room is deciding. Picks which places (open then) and
 // which dishes (breakfast or not) make the deck.
 export type Meal = "breakfast" | "lunch" | "dinner";
+
+// Why a dine-out room is using the made-up restaurants in DISHES instead of
+// real places: the host sent no location, none were found near it, or the
+// lookup itself failed (no Places key, an API error).
+export type SampleReason = "no-location" | "no-restaurants" | "lookup-failed";
 export const MEALS: Meal[] = ["breakfast", "lunch", "dinner"];
 
 // The meal people most likely mean at this local time.

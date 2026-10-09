@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Dish, Meal, SessionMode } from "../lib/food-data";
+import type { Dish, Meal, SampleReason, SessionMode } from "../lib/food-data";
 import { MEALS, shuffleDishes, shuffleRecipes } from "../lib/food-data";
 import {
   fetchPopularDishes,
@@ -33,6 +33,9 @@ interface Session {
   status: "lobby" | "swiping" | "matched";
   mode: SessionMode;
   meal?: Meal;
+  // Set when a dine-out room fell back to the made-up DISHES restaurants:
+  // the host sent no location, or Places found nothing (or failed).
+  sample?: SampleReason;
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
@@ -71,6 +74,7 @@ function getSessionState(session: Session) {
     status: session.status,
     mode: session.mode,
     meal: session.meal,
+    sample: session.sample,
     members: Array.from(session.members.values()).map((m) => ({
       id: m.id,
       name: m.name,
@@ -351,10 +355,10 @@ async function fetchNearbyRestaurants(
   radiusMeters: number,
   meal: Meal,
   when: { day: number; minutes: number } | null
-): Promise<Dish[]> {
+): Promise<{ dishes: Dish[]; sample?: SampleReason }> {
   if (!GOOGLE_API_KEY) {
     console.warn("No Google Places API key set, using fallback dishes");
-    return shuffleDishes();
+    return { dishes: shuffleDishes(), sample: "lookup-failed" };
   }
 
   try {
@@ -385,7 +389,7 @@ async function fetchNearbyRestaurants(
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google Places API error:", response.status, errorText);
-      return shuffleDishes();
+      return { dishes: shuffleDishes(), sample: "lookup-failed" };
     }
 
     const data = await response.json();
@@ -398,7 +402,7 @@ async function fetchNearbyRestaurants(
 
     if (places.length === 0) {
       console.warn("No restaurants found, using fallback dishes");
-      return shuffleDishes();
+      return { dishes: shuffleDishes(), sample: "no-restaurants" };
     }
 
     const dishes: Dish[] = [];
@@ -588,7 +592,7 @@ async function fetchNearbyRestaurants(
     }
 
     if (dishes.length === 0) {
-      return shuffleDishes();
+      return { dishes: shuffleDishes(), sample: "no-restaurants" };
     }
 
     // Shuffle the places but keep each one's dishes together: the app shows
@@ -599,10 +603,10 @@ async function fetchNearbyRestaurants(
       if (!byPlace.has(key)) byPlace.set(key, []);
       byPlace.get(key)!.push(dish);
     }
-    return pickRandom([...byPlace.values()], byPlace.size).flat();
+    return { dishes: pickRandom([...byPlace.values()], byPlace.size).flat() };
   } catch (error) {
     console.error("Error fetching restaurants:", error);
-    return shuffleDishes();
+    return { dishes: shuffleDishes(), sample: "lookup-failed" };
   }
 }
 
@@ -647,6 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? mealTime(meal, day, minutes)
         : null;
     let dishes: Dish[];
+    let sample: SampleReason | undefined;
 
     if (mode === "cook-in") {
       dishes = shuffleRecipes();
@@ -656,10 +661,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(
         `Fetching ${meal} restaurants near ${lat},${lng} within ${radiusMeters}m`
       );
-      dishes = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when);
+      ({ dishes, sample } = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when));
       console.log(`Found ${dishes.length} dishes from nearby restaurants`);
     } else {
       dishes = shuffleDishes();
+      sample = "no-location";
     }
 
     const session: Session = {
@@ -670,6 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "lobby",
       mode,
       meal: mode === "dine-out" ? meal : undefined,
+      sample,
       createdAt: Date.now(),
       pushTokens: new Map(),
     };
