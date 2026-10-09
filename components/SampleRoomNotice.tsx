@@ -15,7 +15,9 @@ export function SampleRoomNotice({
   isHost?: boolean;
 }) {
   const why =
-    reason === "no-restaurants"
+    reason === "lookup-failed"
+      ? "We couldn't look up restaurants just now"
+      : reason === "no-restaurants"
       ? isHost
         ? "No open restaurants were found near you"
         : "No open restaurants were found near the host"
@@ -26,9 +28,11 @@ export function SampleRoomNotice({
         : // Opened from a notification: the reason isn't known.
           "This room couldn't find real restaurants nearby";
   const fix =
-    reason === "no-restaurants"
-      ? "Try a bigger distance in a new room for real places nearby."
-      : "Make a new room with location on for real places nearby.";
+    reason === "lookup-failed"
+      ? "Try a new room in a little while for real places nearby."
+      : reason === "no-restaurants"
+        ? "Try a bigger distance in a new room for real places nearby."
+        : "Make a new room with location on for real places nearby.";
 
   return (
     <View style={styles.card}>

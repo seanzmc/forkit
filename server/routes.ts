@@ -355,10 +355,10 @@ async function fetchNearbyRestaurants(
   radiusMeters: number,
   meal: Meal,
   when: { day: number; minutes: number } | null
-): Promise<Dish[]> {
+): Promise<{ dishes: Dish[]; sample?: SampleReason }> {
   if (!GOOGLE_API_KEY) {
     console.warn("No Google Places API key set, using fallback dishes");
-    return shuffleDishes();
+    return { dishes: shuffleDishes(), sample: "lookup-failed" };
   }
 
   try {
@@ -389,7 +389,7 @@ async function fetchNearbyRestaurants(
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google Places API error:", response.status, errorText);
-      return shuffleDishes();
+      return { dishes: shuffleDishes(), sample: "lookup-failed" };
     }
 
     const data = await response.json();
@@ -402,7 +402,7 @@ async function fetchNearbyRestaurants(
 
     if (places.length === 0) {
       console.warn("No restaurants found, using fallback dishes");
-      return shuffleDishes();
+      return { dishes: shuffleDishes(), sample: "no-restaurants" };
     }
 
     const dishes: Dish[] = [];
@@ -592,7 +592,7 @@ async function fetchNearbyRestaurants(
     }
 
     if (dishes.length === 0) {
-      return shuffleDishes();
+      return { dishes: shuffleDishes(), sample: "no-restaurants" };
     }
 
     // Shuffle the places but keep each one's dishes together: the app shows
@@ -603,10 +603,10 @@ async function fetchNearbyRestaurants(
       if (!byPlace.has(key)) byPlace.set(key, []);
       byPlace.get(key)!.push(dish);
     }
-    return pickRandom([...byPlace.values()], byPlace.size).flat();
+    return { dishes: pickRandom([...byPlace.values()], byPlace.size).flat() };
   } catch (error) {
     console.error("Error fetching restaurants:", error);
-    return shuffleDishes();
+    return { dishes: shuffleDishes(), sample: "lookup-failed" };
   }
 }
 
@@ -651,20 +651,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? mealTime(meal, day, minutes)
         : null;
     let dishes: Dish[];
-    const hasLocation = !!(lat && lng && radius);
+    let sample: SampleReason | undefined;
 
     if (mode === "cook-in") {
       dishes = shuffleRecipes();
       console.log(`Created cook-in session with ${dishes.length} recipes`);
-    } else if (hasLocation) {
+    } else if (lat && lng && radius) {
       const radiusMeters = Math.min(Math.max(radius, 500), 50000);
       console.log(
         `Fetching ${meal} restaurants near ${lat},${lng} within ${radiusMeters}m`
       );
-      dishes = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when);
+      ({ dishes, sample } = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when));
       console.log(`Found ${dishes.length} dishes from nearby restaurants`);
     } else {
       dishes = shuffleDishes();
+      sample = "no-location";
     }
 
     const session: Session = {
@@ -675,11 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "lobby",
       mode,
       meal: mode === "dine-out" ? meal : undefined,
-      // Every real card has a placeId; none means the fallback list.
-      sample:
-        mode === "dine-out" && !dishes.some((d) => d.placeId)
-          ? hasLocation ? "no-restaurants" : "no-location"
-          : undefined,
+      sample,
       createdAt: Date.now(),
       pushTokens: new Map(),
     };
