@@ -25,11 +25,12 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
-import type { Dish, Meal } from "@/lib/food-data";
+import type { Dish, Meal, SampleReason } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
 import { MatchActions } from "@/components/MatchActions";
+import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 import { SwipeReview } from "@/components/SwipeReview";
 import { getSwipes } from "@/lib/swipe-review";
 import { resolveImageUrl } from "@/lib/query-client";
@@ -64,7 +65,11 @@ const MEAL_DECIDED: Record<Meal, string> = {
 };
 
 export default function MatchScreen() {
-  const { dish: dishParam, meal } = useLocalSearchParams<{ dish: string; meal?: Meal }>();
+  const { dish: dishParam, meal, sample } = useLocalSearchParams<{
+    dish: string;
+    meal?: Meal;
+    sample?: SampleReason;
+  }>();
   const insets = useSafeAreaInsets();
   const [swipes] = useState(getSwipes);
 
@@ -236,7 +241,11 @@ export default function MatchScreen() {
 
         {dish && (
           <Animated.View entering={FadeInDown.delay(500)}>
-            <MatchActions dish={dish} />
+            {dish.mode === "dine-out" && !dish.placeId ? (
+              <SampleRoomNotice reason={sample} />
+            ) : (
+              <MatchActions dish={dish} />
+            )}
           </Animated.View>
         )}
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Dish, Meal, SessionMode } from "../lib/food-data";
+import type { Dish, Meal, SampleReason, SessionMode } from "../lib/food-data";
 import { MEALS, shuffleDishes, shuffleRecipes } from "../lib/food-data";
 import {
   fetchPopularDishes,
@@ -33,6 +33,9 @@ interface Session {
   status: "lobby" | "swiping" | "matched";
   mode: SessionMode;
   meal?: Meal;
+  // Set when a dine-out room fell back to the made-up DISHES restaurants:
+  // the host sent no location, or Places found nothing (or failed).
+  sample?: SampleReason;
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
@@ -71,6 +74,7 @@ function getSessionState(session: Session) {
     status: session.status,
     mode: session.mode,
     meal: session.meal,
+    sample: session.sample,
     members: Array.from(session.members.values()).map((m) => ({
       id: m.id,
       name: m.name,
@@ -647,11 +651,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? mealTime(meal, day, minutes)
         : null;
     let dishes: Dish[];
+    const hasLocation = !!(lat && lng && radius);
 
     if (mode === "cook-in") {
       dishes = shuffleRecipes();
       console.log(`Created cook-in session with ${dishes.length} recipes`);
-    } else if (lat && lng && radius) {
+    } else if (hasLocation) {
       const radiusMeters = Math.min(Math.max(radius, 500), 50000);
       console.log(
         `Fetching ${meal} restaurants near ${lat},${lng} within ${radiusMeters}m`
@@ -670,6 +675,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "lobby",
       mode,
       meal: mode === "dine-out" ? meal : undefined,
+      // Every real card has a placeId; none means the fallback list.
+      sample:
+        mode === "dine-out" && !dishes.some((d) => d.placeId)
+          ? hasLocation ? "no-restaurants" : "no-location"
+          : undefined,
       createdAt: Date.now(),
       pushTokens: new Map(),
     };

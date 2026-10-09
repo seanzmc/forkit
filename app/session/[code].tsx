@@ -22,6 +22,7 @@ import type { Dish } from "@/lib/food-data";
 import * as Crypto from "expo-crypto";
 import { shareSessionCode } from "@/lib/share-session";
 import { getPushToken } from "@/lib/push";
+import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -183,6 +184,12 @@ export default function SessionLobby() {
             <Text style={styles.copyText}>Tap to share with your group</Text>
           </Pressable>
         </Animated.View>
+
+        {session?.sample && (
+          <Animated.View entering={FadeInDown.delay(175)}>
+            <SampleRoomNotice reason={session.sample} isHost={isHost} />
+          </Animated.View>
+        )}
 
         <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
           <View style={styles.sectionHeader}>
