@@ -64,15 +64,35 @@ async function currentCoords(): Promise<{ lat: number; lng: number } | null> {
   try {
     const last = await Location.getLastKnownPositionAsync({ maxAge: 30 * 60 * 1000 });
     if (last) return toCoords(last);
-    const gps = Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-      mayShowUserSettingsDialog: false,
-    });
-    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
-    const loc = await Promise.race([gps, timeout]);
-    return loc ? toCoords(loc) : null;
+    return await gpsFix(15000);
   } catch {
     return null;
+  }
+}
+
+// One GPS fix, or null after `ms`. A subscription rather than
+// getCurrentPositionAsync, so the GPS request stops when the time runs out
+// instead of running on after the promise is abandoned.
+async function gpsFix(ms: number): Promise<{ lat: number; lng: number } | null> {
+  let sub: Location.LocationSubscription | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let done = false;
+  try {
+    return await new Promise((resolve, reject) => {
+      timer = setTimeout(() => resolve(null), ms);
+      Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, mayShowUserSettingsDialog: false },
+        (loc) => resolve({ lat: loc.coords.latitude, lng: loc.coords.longitude })
+      ).then((s) => {
+        // Settled before the subscription arrived: stop it right away.
+        if (done) s.remove();
+        else sub = s;
+      }, reject);
+    });
+  } finally {
+    done = true;
+    clearTimeout(timer);
+    sub?.remove();
   }
 }
 
