@@ -37,6 +37,65 @@ const RADIUS_OPTIONS = [
   { label: "25 mi", value: 40234 },
 ];
 
+// Set once someone says "No thanks" to Android's Location Accuracy dialog,
+// so it isn't shown again on every tap for the rest of the app run.
+let accuracyDeclined = false;
+
+// On Android, a Balanced fix needs Google's network location. With it off,
+// expo-location shows the Location Accuracy dialog first and fails if it is
+// declined, though GPS alone would do for a restaurant search. So after a
+// failure fall back to a recent known fix, then to GPS without the dialog.
+async function currentCoords(): Promise<{ lat: number; lng: number } | null> {
+  const toCoords = (loc: Location.LocationObject) => ({
+    lat: loc.coords.latitude,
+    lng: loc.coords.longitude,
+  });
+  try {
+    return toCoords(
+      await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        mayShowUserSettingsDialog: !accuracyDeclined,
+      })
+    );
+  } catch {
+    if (Platform.OS !== "android") return null;
+    accuracyDeclined = true;
+  }
+  try {
+    const last = await Location.getLastKnownPositionAsync({ maxAge: 30 * 60 * 1000 });
+    if (last) return toCoords(last);
+    return await gpsFix(15000);
+  } catch {
+    return null;
+  }
+}
+
+// One GPS fix, or null after `ms`. A subscription rather than
+// getCurrentPositionAsync, so the GPS request stops when the time runs out
+// instead of running on after the promise is abandoned.
+async function gpsFix(ms: number): Promise<{ lat: number; lng: number } | null> {
+  let sub: Location.LocationSubscription | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let done = false;
+  try {
+    return await new Promise((resolve, reject) => {
+      timer = setTimeout(() => resolve(null), ms);
+      Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, mayShowUserSettingsDialog: false },
+        (loc) => resolve({ lat: loc.coords.latitude, lng: loc.coords.longitude })
+      ).then((s) => {
+        // Settled before the subscription arrived: stop it right away.
+        if (done) s.remove();
+        else sub = s;
+      }, reject);
+    });
+  } finally {
+    done = true;
+    clearTimeout(timer);
+    sub?.remove();
+  }
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState("");
@@ -72,17 +131,10 @@ export default function HomeScreen() {
   }, [locationPermission]);
 
   const getLocation = async () => {
-    try {
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-      setLocation(coords);
-      return coords;
-    } catch {
-      console.warn("Could not get location");
-      return null;
-    }
+    const coords = await currentCoords();
+    if (coords) setLocation(coords);
+    else console.warn("Could not get location");
+    return coords;
   };
 
   const handleRequestLocation = async () => {

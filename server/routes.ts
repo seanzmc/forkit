@@ -358,7 +358,7 @@ async function fetchNearbyRestaurants(
 ): Promise<{ dishes: Dish[]; sample?: SampleReason }> {
   if (!GOOGLE_API_KEY) {
     console.warn("No Google Places API key set, using fallback dishes");
-    return { dishes: shuffleDishes(), sample: "lookup-failed" };
+    return { dishes: shuffleDishes(meal), sample: "lookup-failed" };
   }
 
   try {
@@ -389,7 +389,7 @@ async function fetchNearbyRestaurants(
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google Places API error:", response.status, errorText);
-      return { dishes: shuffleDishes(), sample: "lookup-failed" };
+      return { dishes: shuffleDishes(meal), sample: "lookup-failed" };
     }
 
     const data = await response.json();
@@ -402,7 +402,7 @@ async function fetchNearbyRestaurants(
 
     if (places.length === 0) {
       console.warn("No restaurants found, using fallback dishes");
-      return { dishes: shuffleDishes(), sample: "no-restaurants" };
+      return { dishes: shuffleDishes(meal), sample: "no-restaurants" };
     }
 
     const dishes: Dish[] = [];
@@ -592,7 +592,7 @@ async function fetchNearbyRestaurants(
     }
 
     if (dishes.length === 0) {
-      return { dishes: shuffleDishes(), sample: "no-restaurants" };
+      return { dishes: shuffleDishes(meal), sample: "no-restaurants" };
     }
 
     // Shuffle the places but keep each one's dishes together: the app shows
@@ -606,7 +606,7 @@ async function fetchNearbyRestaurants(
     return { dishes: pickRandom([...byPlace.values()], byPlace.size).flat() };
   } catch (error) {
     console.error("Error fetching restaurants:", error);
-    return { dishes: shuffleDishes(), sample: "lookup-failed" };
+    return { dishes: shuffleDishes(meal), sample: "lookup-failed" };
   }
 }
 
@@ -664,7 +664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ({ dishes, sample } = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when));
       console.log(`Found ${dishes.length} dishes from nearby restaurants`);
     } else {
-      dishes = shuffleDishes();
+      dishes = shuffleDishes(meal);
       sample = "no-location";
     }
 
@@ -819,7 +819,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               session.pushTokens.values(),
               session.code,
               session.matchedDish!,
-              session.meal
+              session.meal,
+              session.sample
             );
           }
         } else if (msg.type === "undo") {

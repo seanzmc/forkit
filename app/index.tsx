@@ -60,7 +60,11 @@ export default function WelcomeScreen() {
         if (launchMatch) {
           router.replace({
             pathname: "/match",
-            params: { dish: JSON.stringify(launchMatch.dish), meal: launchMatch.meal },
+            params: {
+              dish: JSON.stringify(launchMatch.dish),
+              meal: launchMatch.meal,
+              sample: launchMatch.sample,
+            },
           });
         } else if (storedName) {
           goNext();
