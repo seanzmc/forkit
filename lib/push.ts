@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type * as NotificationsModule from "expo-notifications";
-import type { Dish, Meal } from "./food-data";
+import type { Dish, Meal, SampleReason } from "./food-data";
 
 // expo-notifications needs native code. Builds made before it was added (and
 // the web build) don't have it, so load it defensively and treat push as
@@ -74,13 +74,21 @@ export interface MatchNotification {
   id: string;
   dish: Dish;
   meal?: Meal;
+  sample?: SampleReason;
 }
 
 function toMatch(response: NotificationsModule.NotificationResponse | null): MatchNotification | null {
   const content = response?.notification.request.content;
-  const data = content?.data as { type?: string; dish?: Dish; meal?: Meal } | undefined;
+  const data = content?.data as
+    | { type?: string; dish?: Dish; meal?: Meal; sample?: SampleReason }
+    | undefined;
   if (data?.type !== "match" || !data.dish?.name) return null;
-  return { id: response!.notification.request.identifier, dish: data.dish, meal: data.meal };
+  return {
+    id: response!.notification.request.identifier,
+    dish: data.dish,
+    meal: data.meal,
+    sample: data.sample,
+  };
 }
 
 const handled = new Set<string>();

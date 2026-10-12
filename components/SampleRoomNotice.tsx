@@ -25,7 +25,7 @@ export function SampleRoomNotice({
         ? isHost
           ? "Your location was off when you made this room"
           : "The host's location was off when they made this room"
-        : // Opened from a notification: the reason isn't known.
+        : // A notification from an older server, which sent no reason.
           "This room couldn't find real restaurants nearby";
   const fix =
     reason === "lookup-failed"

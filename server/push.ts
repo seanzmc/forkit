@@ -5,7 +5,7 @@
 // EXPO_ACCESS_TOKEN is optional: set it only if "enhanced push security" is
 // turned on for the Expo project, which then requires it on every send.
 
-import type { Dish, Meal } from "../lib/food-data";
+import type { Dish, Meal, SampleReason } from "../lib/food-data";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN || "";
@@ -52,7 +52,8 @@ export async function sendMatchPush(
   tokens: Iterable<string>,
   code: string,
   dish: Dish,
-  meal: Meal = "dinner"
+  meal: Meal = "dinner",
+  sample?: SampleReason
 ): Promise<void> {
   const to = [...new Set(tokens)];
   if (to.length === 0) return;
@@ -62,7 +63,12 @@ export async function sendMatchPush(
     title,
     body,
     sound: "default",
-    data: { type: "match", code, meal, dish: dishForPayload(dish) },
+    // The high-importance "Matches" channel lib/push.ts creates. Without it
+    // Android files the push under FCM's fallback channel, which shows no
+    // heads-up banner.
+    channelId: "default",
+    // sample lets the match screen say why a sample room's places are made up.
+    data: { type: "match", code, meal, sample, dish: dishForPayload(dish) },
   }));
   try {
     const res = await fetch(EXPO_PUSH_URL, {

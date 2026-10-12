@@ -65,6 +65,8 @@ export interface Dish {
   servings?: string;
   difficulty?: string;
   mode?: SessionMode;
+  // Made-up DISHES only: served in breakfast rooms, and only there.
+  breakfast?: boolean;
 }
 
 export const DISHES: Dish[] = [
@@ -167,6 +169,7 @@ export const DISHES: Dish[] = [
     image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&q=80",
     price: "$15",
     mode: "dine-out",
+    breakfast: true,
   },
   {
     id: "d11",
@@ -217,6 +220,71 @@ export const DISHES: Dish[] = [
     image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80",
     price: "$42",
     mode: "dine-out",
+  },  {
+    id: "d16",
+    name: "Buttermilk Pancake Stack",
+    restaurant: "Sunny Side Diner",
+    cuisine: "American",
+    description: "Three fluffy buttermilk pancakes, maple syrup, whipped butter, fresh blueberries",
+    image: "https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=800&q=80",
+    price: "$13",
+    mode: "dine-out",
+    breakfast: true,
+  },
+  {
+    id: "d17",
+    name: "Classic Eggs Benedict",
+    restaurant: "The Morning Table",
+    cuisine: "Brunch",
+    description: "Poached eggs, Canadian bacon, hollandaise, toasted English muffin, home fries",
+    image: "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=800&q=80",
+    price: "$17",
+    mode: "dine-out",
+    breakfast: true,
+  },
+  {
+    id: "d18",
+    name: "Brioche French Toast",
+    restaurant: "Golden Crust Bakery",
+    cuisine: "Bakery",
+    description: "Thick-cut brioche, vanilla custard, caramelized banana, berries, maple syrup",
+    image: "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=800&q=80",
+    price: "$14",
+    mode: "dine-out",
+    breakfast: true,
+  },
+  {
+    id: "d19",
+    name: "Shakshuka",
+    restaurant: "Little Levant",
+    cuisine: "Mediterranean",
+    description: "Eggs baked in spiced tomato and pepper sauce, feta, herbs, warm pita",
+    image: "https://images.unsplash.com/photo-1590412200988-a436970781fa?w=800&q=80",
+    price: "$16",
+    mode: "dine-out",
+    breakfast: true,
+  },
+  {
+    id: "d20",
+    name: "Butter Croissant Basket",
+    restaurant: "Le Petit Matin",
+    cuisine: "French",
+    description: "Two flaky butter croissants, house jam, cultured butter, fresh fruit",
+    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&q=80",
+    price: "$11",
+    mode: "dine-out",
+    breakfast: true,
+  },
+  {
+    id: "d21",
+    name: "Chorizo Breakfast Burrito",
+    restaurant: "Casa Amanecer",
+    cuisine: "Mexican",
+    description: "Scrambled eggs, chorizo, potatoes, cheddar, pico de gallo, flour tortilla",
+    image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=800&q=80",
+    price: "$12",
+    mode: "dine-out",
+    breakfast: true,
   },
 ];
 
@@ -483,8 +551,12 @@ export const RECIPES: Dish[] = [
   },
 ];
 
-export function shuffleDishes(): Dish[] {
-  return [...DISHES].sort(() => Math.random() - 0.5);
+// The made-up restaurants for a sample room: breakfast dishes in breakfast
+// rooms, everything else at lunch and dinner, like the real deck.
+export function shuffleDishes(meal: Meal): Dish[] {
+  return DISHES.filter((d) => !!d.breakfast === (meal === "breakfast")).sort(
+    () => Math.random() - 0.5
+  );
 }
 
 export function shuffleRecipes(): Dish[] {
