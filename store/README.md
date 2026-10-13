@@ -30,7 +30,9 @@ a PR alongside the app changes that make them necessary.
 
 [screenshots/play/](screenshots/play/) holds the Play phone screenshots,
 uploaded in file-name order: 1080 × 1920 PNG (9:16, which Play needs before
-it will feature an app), from Android build 6 on an emulator.
+it will feature an app), from Android build 6 on an emulator. Play takes only
+JPEG or 24-bit PNG with no alpha, and `adb screencap` writes RGBA, so flatten
+retakes with `magick in.png -alpha off -define png:color-type=2 out.png`.
 
 The swipe and match shots use a room built from the made-up sample
 restaurants, not real ones: a real room shows a real business's name,
