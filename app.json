@@ -7,12 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "forkit",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#232121"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.seandm.forkit",
@@ -64,6 +58,15 @@
         }
       ],
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 380,
+          "resizeMode": "contain",
+          "backgroundColor": "#232121"
+        }
+      ],
       "expo-web-browser",
       [
         "expo-location",

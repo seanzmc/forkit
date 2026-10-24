@@ -121,21 +121,29 @@ export default function HomeScreen() {
     });
   }, []);
 
-  useEffect(() => {
-    if (locationPermission?.granted) {
-      setLocationStatus("granted");
-      getLocation();
-    } else if (locationPermission?.status === "denied") {
-      setLocationStatus("denied");
-    }
-  }, [locationPermission]);
-
   const getLocation = async () => {
     const coords = await currentCoords();
     if (coords) setLocation(coords);
     else console.warn("Could not get location");
     return coords;
   };
+
+  // On native the OS permission is the source of truth; derive the status from
+  // it instead of copying it into state from an effect. Web keeps its own
+  // status in state (set by handleRequestLocation).
+  const effectiveLocationStatus: typeof locationStatus = locationPermission?.granted
+    ? "granted"
+    : locationPermission?.status === "denied"
+      ? "denied"
+      : locationStatus;
+
+  useEffect(() => {
+    if (!locationPermission?.granted) return;
+    currentCoords().then((coords) => {
+      if (coords) setLocation(coords);
+      else console.warn("Could not get location");
+    });
+  }, [locationPermission?.granted]);
 
   const handleRequestLocation = async () => {
     if (Platform.OS === "web") {
@@ -184,7 +192,7 @@ export default function HomeScreen() {
         // has loaded (or before it was ever asked for) waits for it here.
         // Only a denied permission falls back to the curated picks.
         let coords = location;
-        if (!coords && locationStatus !== "denied") {
+        if (!coords && effectiveLocationStatus !== "denied") {
           coords = locationPermission?.granted
             ? await getLocation()
             : await handleRequestLocation();
@@ -287,7 +295,7 @@ export default function HomeScreen() {
         {mode === "dine-out" && (
           <>
             <Animated.View entering={FadeInDown.delay(200)} style={styles.locationCard}>
-              {locationStatus === "granted" && location ? (
+              {effectiveLocationStatus === "granted" && location ? (
                 <View style={styles.locationGranted}>
                   <View style={styles.locationDot}>
                     <Ionicons name="location" size={18} color={Colors.green} />
@@ -300,7 +308,7 @@ export default function HomeScreen() {
                   </View>
                   <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
                 </View>
-              ) : locationStatus === "denied" ? (
+              ) : effectiveLocationStatus === "denied" ? (
                 <View style={styles.locationDenied}>
                   <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
                   <View style={styles.locationDeniedContent}>
@@ -333,7 +341,7 @@ export default function HomeScreen() {
                 </Pressable>
               )}
             </Animated.View>
-            {locationStatus === "granted" && (
+            {effectiveLocationStatus === "granted" && (
               <Animated.View entering={FadeInDown.delay(225)} style={styles.radiusSection}>
                 <Text style={styles.radiusSectionTitle}>Deciding</Text>
                 <View style={styles.radiusOptions}>
@@ -370,7 +378,7 @@ export default function HomeScreen() {
                 </View>
               </Animated.View>
             )}
-            {locationStatus === "granted" && (
+            {effectiveLocationStatus === "granted" && (
               <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
                 <Text style={styles.radiusSectionTitle}>Search Radius</Text>
                 <View style={styles.radiusOptions}>
@@ -439,7 +447,7 @@ export default function HomeScreen() {
                 ? "Share a room code with your group. Swipe on recipes to cook together."
                 : location
                   ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
-                  : locationStatus === "denied"
+                  : effectiveLocationStatus === "denied"
                     ? "Share a room code with your group. Using curated restaurant picks."
                     : `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of you for real restaurants once location is on.`}
             </Text>

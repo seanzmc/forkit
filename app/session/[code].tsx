@@ -31,7 +31,6 @@ export default function SessionLobby() {
   const [, setDishes] = useState<Dish[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [userId] = useState(() => Crypto.randomUUID());
-  const [, setUserName] = useState("");
   const [status, setStatus] = useState<"connecting" | "connected" | "error">("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -42,7 +41,6 @@ export default function SessionLobby() {
       router.replace({ pathname: "/", params: { join: code?.toUpperCase() } });
       return;
     }
-    setUserName(name);
 
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
