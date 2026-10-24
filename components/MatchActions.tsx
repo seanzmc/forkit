@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActionSheetIOS,
+  Alert,
   Linking,
   Platform,
   Pressable,
@@ -15,10 +16,12 @@ import type { Dish } from "@/lib/food-data";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
-// What to do once the group has picked a restaurant. Delivery apps and
-// reservation sites have no public links we can rely on, so ordering and
-// booking go through the restaurant's Google Maps page, which shows its own
-// Order and Reserve buttons where the restaurant offers them.
+// What to do once the group has picked a restaurant. Delivery apps publish no
+// links to a specific store, so Order delivery opens a search for the
+// restaurant's name in DoorDash or Uber Eats (their apps open these https links
+// when installed). Uber Eats asks for an address first if it has none, then
+// runs the search. Reservations go through the restaurant's Google Maps page,
+// which shows its own Order and Reserve buttons where the restaurant offers them.
 export function MatchActions({ dish }: { dish: Dish }) {
   if (dish.mode === "cook-in" || !dish.placeId) return null;
 
@@ -36,6 +39,9 @@ export function MatchActions({ dish }: { dish: Dish }) {
       encodeURIComponent(destination) +
       "&query_place_id=" +
       encodeURIComponent(dish.placeId);
+  const doorDash =
+    "https://www.doordash.com/search/store/" + encodeURIComponent(dish.restaurant) + "/";
+  const uberEats = "https://www.ubereats.com/search?q=" + encodeURIComponent(dish.restaurant);
 
   const open = (url: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -53,11 +59,33 @@ export function MatchActions({ dish }: { dish: Dish }) {
     );
   };
 
+  const delivery = () => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ["DoorDash", "Uber Eats", "Cancel"], cancelButtonIndex: 2 },
+        (i) => {
+          if (i === 0) open(doorDash);
+          else if (i === 1) open(uberEats);
+        }
+      );
+    } else if (Platform.OS === "android") {
+      Alert.alert(`Order from ${dish.restaurant}`, undefined, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Uber Eats", onPress: () => open(uberEats) },
+        { text: "DoorDash", onPress: () => open(doorDash) },
+      ]);
+    } else {
+      // react-native-web's Alert shows nothing.
+      open(doorDash);
+    }
+  };
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.heading}>{"Let's go"}</Text>
       <View style={styles.grid}>
         <Action icon="navigate" label="Directions" onPress={directions} primary />
+        <Action icon="bicycle-outline" label="Order delivery" onPress={delivery} />
         <Action icon="map-outline" label="Google Maps" onPress={() => open(mapsPage)} />
         {!!dish.phone && (
           <Action
@@ -71,8 +99,9 @@ export function MatchActions({ dish }: { dish: Dish }) {
         )}
       </View>
       <Text style={styles.hint}>
-        Menu, ordering and reservations are on the Google Maps page when the
-        restaurant offers them.
+        Order delivery searches DoorDash or Uber Eats for this restaurant.
+        Menu and reservations are on the Google Maps page when the restaurant
+        offers them.
       </Text>
     </View>
   );
