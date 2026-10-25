@@ -78,6 +78,9 @@ function getSessionState(session: Session) {
     members: Array.from(session.members.values()).map((m) => ({
       id: m.id,
       name: m.name,
+      // Lets a client that reconnects, or missed swipe_updates while its
+      // socket was down, resync everyone's progress.
+      swiped: Object.keys(m.swipes).length,
     })),
     matchedRestaurant: session.matchedRestaurant,
     matchedDish: session.matchedDish,
@@ -163,6 +166,38 @@ function checkForMatch(session: Session): boolean {
   }
 
   return false;
+}
+
+// Swipes a reconnecting swipe screen replays in its join. Only votes on this
+// room's dishes count; anything else in the message is ignored.
+function replayedSwipes(session: Session, raw: unknown): Record<string, "like" | "pass"> {
+  const swipes: Record<string, "like" | "pass"> = {};
+  if (session.status !== "swiping" || !raw || typeof raw !== "object") return swipes;
+  for (const [dishId, vote] of Object.entries(raw)) {
+    if ((vote === "like" || vote === "pass") && session.dishes.some((d) => d.id === dishId)) {
+      swipes[dishId] = vote;
+    }
+  }
+  return swipes;
+}
+
+function announceMatch(session: Session) {
+  // No excludeId, so this already reaches the member who triggered it
+  broadcastToSession(session, {
+    type: "match",
+    session: getSessionState(session),
+    dish: session.matchedDish,
+  });
+  // Everyone with a token, including connected members: the app hides the
+  // banner in the foreground, and a backgrounded phone's socket can look open
+  // for a while after iOS suspends it.
+  void sendMatchPush(
+    session.pushTokens.values(),
+    session.code,
+    session.matchedDish!,
+    session.meal,
+    session.sample
+  );
 }
 
 function cleanupStaleSessions() {
@@ -747,11 +782,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             session.hostId = memberId;
           }
 
+          // A swipe screen that lost its socket rejoins with every swipe it
+          // has made, so the server doesn't forget the ones from before the
+          // drop (closing the socket removed the member) or the ones made
+          // while offline. A first join sends none.
+          const swipes = replayedSwipes(session, msg.swipes);
           session.members.set(memberId, {
             id: memberId,
             name: cleanName || "Guest",
             ws,
-            swipes: {},
+            swipes,
           });
 
           ws.send(
@@ -771,6 +811,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             memberId
           );
+
+          if (Object.keys(swipes).length > 0 && checkForMatch(session)) {
+            announceMatch(session);
+          }
         } else if (msg.type === "start") {
           const session = sessions.get(sessionCode);
           if (!session || session.hostId !== memberId) return;
@@ -804,25 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             memberId
           );
 
-          if (checkForMatch(session)) {
-            const matchMsg = {
-              type: "match",
-              session: getSessionState(session),
-              dish: session.matchedDish,
-            };
-            // No excludeId, so this already reaches the swiper who triggered it
-            broadcastToSession(session, matchMsg);
-            // Everyone with a token, including connected members: the app
-            // hides the banner in the foreground, and a backgrounded phone's
-            // socket can look open for a while after iOS suspends it.
-            void sendMatchPush(
-              session.pushTokens.values(),
-              session.code,
-              session.matchedDish!,
-              session.meal,
-              session.sample
-            );
-          }
+          if (checkForMatch(session)) announceMatch(session);
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);
           if (!session || session.status !== "swiping") return;

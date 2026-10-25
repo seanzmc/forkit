@@ -74,6 +74,8 @@ Both paths funnel into `checkForMatch()`, which runs on every swipe. Majority is
 
 **Client↔server protocol** is hand-rolled JSON over one WebSocket at `/ws`. Message types are declared in [lib/websocket.ts](lib/websocket.ts) (`WsMessage`) but the server does not validate inbound messages — inbound kinds are `join` (optionally with `pushToken`), `push_token`, `start`, `swipe`, `undo`, `ping`, matched by string in the `ws.on("message")` block. Adding a message type means editing both files.
 
+**Reconnects**: the lobby and swipe screens both reconnect on a dropped socket (backoff, a 45 s silence watchdog, a retry when the app returns to the foreground, a status banner). Closing a socket removes the member and their swipes on the server, so the swipe screen's `join` carries every swipe the device has made (`swipes: { [dishId]: vote }`, from `lib/swipe-review.ts`, including swipes made while offline); the server keeps only votes on the room's dishes, replaces the member's swipes with them and re-checks for a match. While a member is disconnected they don't count toward the majority, as with leaving.
+
 Host is whoever joins first (`session.hostId`); on host disconnect it transfers to the next member. Only the host's `start` is honored.
 
 **Identity is ephemeral**: `Crypto.randomUUID()` generated per screen mount. `/session/[code]` mints one and passes it to `/swipe/[code]` as a route param — if that param is lost, the user rejoins as a new member and their swipes reset. Only the display name persists (AsyncStorage `userName`).
