@@ -377,6 +377,9 @@ export default function SwipeScreen() {
   // When the current socket last received anything. A ref so coming back to
   // the foreground can restart the silence window.
   const lastHeardRef = useRef(0);
+  // The retry timer calls the latest connect through this ref; a callback
+  // can't name itself before its declaration finishes.
+  const connectWsRef = useRef<() => void>(() => {});
 
   // Other members' progress as the server counts it, so a reconnect picks up
   // the swipe_updates missed while the socket was down.
@@ -404,7 +407,7 @@ export default function SwipeScreen() {
       }
       setStatus("reconnecting");
       const delay = RECONNECT_DELAYS_MS[attemptsRef.current++];
-      retryRef.current = setTimeout(() => connectWs(), delay);
+      retryRef.current = setTimeout(() => connectWsRef.current(), delay);
     };
 
     ws.onopen = () => {
@@ -502,6 +505,10 @@ export default function SwipeScreen() {
     // onclose follows onerror and handles both.
     ws.onclose = handleDrop;
   }, [code, userId, syncProgress]);
+
+  useEffect(() => {
+    connectWsRef.current = connectWs;
+  }, [connectWs]);
 
   const reconnectNow = useCallback(() => {
     if (closingRef.current) return;
