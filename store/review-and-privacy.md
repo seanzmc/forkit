@@ -114,8 +114,9 @@ Notes:
 Answer **None / No** to every content question (violence, sexual content,
 profanity, horror, drugs, alcohol, gambling, contests, medical). Then:
 
-- Unrestricted web access: **No**. Website and directions links open the
-  system browser or Maps; there is no in-app browser.
+- Unrestricted web access: **No**. Website, directions and delivery
+  (DoorDash / Uber Eats search) links open the system browser, Maps or the
+  delivery app; there is no in-app browser.
 - User-generated content / messaging: **No**. The only thing users see of
   each other is a display name inside a room they joined by code. If Apple
   asks about it, the answer is: no chat, no profiles, no public content.
