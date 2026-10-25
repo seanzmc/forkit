@@ -7,6 +7,8 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  ActivityIndicator,
+  AppState,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,6 +26,14 @@ import { shareSessionCode } from "@/lib/share-session";
 import { getPushToken } from "@/lib/push";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 
+// Backoff before each reconnect attempt; after the last one the lobby shows a
+// Retry button instead of trying forever.
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 8000];
+// The server answers every 20 s ping with a pong; this much silence means the
+// socket is dead even if it still reports OPEN.
+const SILENCE_LIMIT_MS = 45000;
+const PING_INTERVAL_MS = 20000;
+
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const insets = useSafeAreaInsets();
@@ -31,12 +41,24 @@ export default function SessionLobby() {
   const [, setDishes] = useState<Dish[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [userId] = useState(() => Crypto.randomUUID());
-  const [status, setStatus] = useState<"connecting" | "connected" | "error">("connecting");
+  const [status, setStatus] = useState<
+    "connecting" | "connected" | "reconnecting" | "offline" | "error"
+  >("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptsRef = useRef(0);
+  const joinedRef = useRef(false);
+  // Set when we close the socket on purpose (leaving, or the room is gone) so
+  // onclose doesn't try to reconnect.
+  const closingRef = useRef(false);
+  // When the current socket last received anything. A ref so coming back to
+  // the foreground can restart the silence window.
+  const lastHeardRef = useRef(0);
 
   const connect = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
+    if (closingRef.current) return;
     if (!name) {
       router.replace({ pathname: "/", params: { join: code?.toUpperCase() } });
       return;
@@ -45,25 +67,73 @@ export default function SessionLobby() {
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
+    lastHeardRef.current = Date.now();
+
+    const handleDrop = () => {
+      if (wsRef.current !== ws) return;
+      if (pingRef.current) clearInterval(pingRef.current);
+      if (closingRef.current) return;
+      if (attemptsRef.current >= RECONNECT_DELAYS_MS.length) {
+        setStatus("offline");
+        return;
+      }
+      setStatus("reconnecting");
+      const delay = RECONNECT_DELAYS_MS[attemptsRef.current++];
+      retryRef.current = setTimeout(() => connect(), delay);
+    };
 
     ws.onopen = () => {
+      // Same userId on a reconnect, so the server treats it as the same member.
       ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name }));
+      if (pingRef.current) clearInterval(pingRef.current);
+      let lastTick = Date.now();
       pingRef.current = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        const late = now - lastTick > PING_INTERVAL_MS * 1.5;
+        lastTick = now;
+        if (late) {
+          // Timers were suspended in the background, so the silence is ours,
+          // not the server's. Give the socket a fresh window and a ping to
+          // answer instead of closing a healthy one (for the last member of
+          // a lobby, closing it deletes the room).
+          lastHeardRef.current = now;
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
+        } else if (now - lastHeardRef.current > SILENCE_LIMIT_MS) {
+          // Closing a dead socket can take a long time to fire onclose.
+          ws.onclose = null;
+          ws.close();
+          handleDrop();
+        } else if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "ping" }));
         }
-      }, 20000);
+      }, PING_INTERVAL_MS);
     };
 
     ws.onmessage = (e) => {
+      lastHeardRef.current = Date.now();
       try {
         const msg: WsMessage = JSON.parse(e.data);
 
         if (msg.type === "joined") {
+          joinedRef.current = true;
+          attemptsRef.current = 0;
           setSession(msg.session);
           setDishes(msg.dishes);
           setIsHost(msg.isHost);
           setStatus("connected");
+          // The host started while we were disconnected.
+          if (msg.session.status === "swiping") {
+            router.replace({
+              pathname: "/swipe/[code]",
+              params: { code: code!, userId, dishes: JSON.stringify(msg.dishes) },
+            });
+          }
+        } else if (msg.type === "match") {
+          // The room matched while we were disconnected.
+          router.replace({
+            pathname: "/match",
+            params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal, sample: msg.session.sample },
+          });
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);
         } else if (msg.type === "game_started") {
@@ -78,12 +148,18 @@ export default function SessionLobby() {
             },
           });
         } else if (msg.type === "error") {
+          closingRef.current = true;
           setStatus("error");
-          // Usually an old invite: rooms end when everyone leaves.
+          // Usually an old invite: rooms end when everyone leaves. After a
+          // dropped connection it means we were the last one in the room.
           const notFound = msg.message === "Session not found";
           Alert.alert(
             notFound ? "Room not found" : "Error",
-            notFound ? "This room has ended or the code is wrong." : msg.message,
+            notFound
+              ? joinedRef.current
+                ? "This room closed while you were disconnected. Create a new room to keep going."
+                : "This room has ended or the code is wrong."
+              : msg.message,
             [
               {
                 text: "OK",
@@ -99,11 +175,19 @@ export default function SessionLobby() {
       } catch {}
     };
 
-    ws.onerror = () => setStatus("error");
-    ws.onclose = () => {
-      if (pingRef.current) clearInterval(pingRef.current);
-    };
+    // onclose follows onerror and handles both.
+    ws.onclose = handleDrop;
   }, [code, userId]);
+
+  const reconnectNow = useCallback(() => {
+    if (closingRef.current) return;
+    const state = wsRef.current?.readyState;
+    if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+    if (retryRef.current) clearTimeout(retryRef.current);
+    attemptsRef.current = 0;
+    setStatus("reconnecting");
+    connect();
+  }, [connect]);
 
   // Ask for notification permission here, while there's a reason to say yes:
   // the swipe screen sends the token so a match reaches members who leave.
@@ -112,17 +196,43 @@ export default function SessionLobby() {
   }, []);
 
   useEffect(() => {
+    closingRef.current = false;
     connect();
     return () => {
+      closingRef.current = true;
       if (pingRef.current) clearInterval(pingRef.current);
+      if (retryRef.current) clearTimeout(retryRef.current);
       wsRef.current?.close();
     };
   }, [connect]);
 
+  // A long stay in the background can kill the socket without the retries
+  // getting a chance to run, so check again when the app comes back.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      const ws = wsRef.current;
+      if (ws?.readyState === WebSocket.OPEN) {
+        // It may still look open after dying in the background: probe it
+        // with a fresh silence window rather than trusting or closing it.
+        lastHeardRef.current = Date.now();
+        ws.send(JSON.stringify({ type: "ping" }));
+      } else {
+        reconnectNow();
+      }
+    });
+    return () => sub.remove();
+  }, [reconnectNow]);
+
   const handleStart = () => {
-    if (!wsRef.current) return;
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || status !== "connected") {
+      reconnectNow();
+      Alert.alert("Not connected", "Reconnecting to the room. Try again in a moment.");
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    wsRef.current.send(JSON.stringify({ type: "start" }));
+    ws.send(JSON.stringify({ type: "start" }));
   };
 
   const handleShare = async () => {
@@ -130,6 +240,7 @@ export default function SessionLobby() {
   };
 
   const handleBack = () => {
+    closingRef.current = true;
     wsRef.current?.close();
     // An invite link opens the lobby with nothing behind it.
     if (router.canGoBack()) router.back();
@@ -137,6 +248,8 @@ export default function SessionLobby() {
   };
 
   const members = session?.members ?? [];
+  const connected = status === "connected";
+  // Stays tappable while disconnected so handleStart can say why it won't start.
   const canStart = isHost && members.length >= 1;
 
   return (
@@ -189,6 +302,24 @@ export default function SessionLobby() {
           </Animated.View>
         )}
 
+        {(status === "reconnecting" || status === "offline") && (
+          <View style={styles.connectionBanner}>
+            {status === "reconnecting" ? (
+              <ActivityIndicator size="small" color={Colors.accent} />
+            ) : (
+              <Ionicons name="cloud-offline-outline" size={18} color={Colors.accent} />
+            )}
+            <Text style={styles.connectionText}>
+              {status === "reconnecting" ? "Connection lost. Reconnecting..." : "Can't reach the room."}
+            </Text>
+            {status === "offline" && (
+              <Pressable onPress={reconnectNow} hitSlop={8}>
+                <Text style={styles.retryText}>Retry</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Members</Text>
@@ -198,7 +329,7 @@ export default function SessionLobby() {
           </View>
 
           <ScrollView style={styles.memberList} showsVerticalScrollIndicator={false}>
-            {status === "connecting" && (
+            {status === "connecting" && members.length === 0 && (
               <View style={styles.memberRow}>
                 <View style={styles.avatarLoading} />
                 <Text style={styles.memberConnecting}>Connecting...</Text>
@@ -242,7 +373,10 @@ export default function SessionLobby() {
                 disabled={!canStart}
                 style={({ pressed }) => [
                   styles.startBtn,
-                  { opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                  {
+                    opacity: !connected ? 0.5 : pressed ? 0.85 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  },
                 ]}
               >
                 <LinearGradient
@@ -355,6 +489,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,
+  },
+  connectionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,107,53,0.3)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  connectionText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Poppins_500Medium",
+    color: Colors.text,
+  },
+  retryText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accent,
   },
   section: {
     flex: 1,
