@@ -41,7 +41,6 @@ export default function SessionLobby() {
   const [, setDishes] = useState<Dish[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [userId] = useState(() => Crypto.randomUUID());
-  const [, setUserName] = useState("");
   const [status, setStatus] = useState<
     "connecting" | "connected" | "reconnecting" | "offline" | "error"
   >("connecting");
@@ -56,6 +55,9 @@ export default function SessionLobby() {
   // When the current socket last received anything. A ref so coming back to
   // the foreground can restart the silence window.
   const lastHeardRef = useRef(0);
+  // The retry timer calls the latest connect through this ref; a callback
+  // can't name itself before its declaration finishes.
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
@@ -64,7 +66,6 @@ export default function SessionLobby() {
       router.replace({ pathname: "/", params: { join: code?.toUpperCase() } });
       return;
     }
-    setUserName(name);
 
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
@@ -81,7 +82,7 @@ export default function SessionLobby() {
       }
       setStatus("reconnecting");
       const delay = RECONNECT_DELAYS_MS[attemptsRef.current++];
-      retryRef.current = setTimeout(() => connect(), delay);
+      retryRef.current = setTimeout(() => connectRef.current(), delay);
     };
 
     ws.onopen = () => {
@@ -180,6 +181,10 @@ export default function SessionLobby() {
     // onclose follows onerror and handles both.
     ws.onclose = handleDrop;
   }, [code, userId]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const reconnectNow = useCallback(() => {
     if (closingRef.current) return;

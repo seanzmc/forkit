@@ -99,7 +99,7 @@ CORS allows only `REPLIT_DEV_DOMAIN` / `REPLIT_DOMAINS` origins plus any `localh
 ## Gotchas
 
 - `metro.config.js` blocks `.local/skills/.tmp-*` from the resolver — temp agent-skill dirs crashed Metro. Don't remove it.
-- `postinstall` runs `patch-package` (`patches/expo-asset+12.0.13.patch`); use `npm install`, not a raw node_modules copy.
+- Expo SDK 58 / React Native 0.88 / React 19.3 / TypeScript 6. iOS uses the UIScene life cycle (`SceneDelegate.swift`), required for Xcode 27 builds. Splash is configured through the `expo-splash-screen` plugin in `app.json` (the top-level `splash` key was removed).
 - `reactCompiler` is enabled in `app.json` experiments — babel-plugin-react-compiler runs on all app code.
 - Brand: the motto is "Swipe right on dinner" (welcome screen, lobby, swipe header, share text, `/join` page). Logo: `assets/images/icon.svg` is the vector master (used by `/join`); `logo.png` is a 360 px copy of `icon.png` for the welcome screen. `splash-icon.svg` is the splash master; Expo needs a PNG, so `splash-icon.png` is rendered from it at 1024 px and the splash `backgroundColor` matches its edge (`#232121`).
 - Tester guide: `docs/testers-guide.html` is the source of the TestFlight guide published at https://claude.ai/artifact/Ub3PpMhxWVwEow9kmDaddq (testers already have that link). `npm run guide:build` inlines the logo SVGs and writes `dist/testers-guide.html`, which gets republished to the same URL. It quotes on-screen labels (Let's Eat, Create Room, Join Room, Start Swiping, Allow While Using App), so a PR that renames one of those must update the guide too.
