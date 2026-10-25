@@ -9,6 +9,9 @@ import {
   Dimensions,
   Image,
   ScrollView,
+  Alert,
+  ActivityIndicator,
+  AppState,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -35,7 +38,7 @@ import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
 import { SwipeReview } from "@/components/SwipeReview";
 import { SessionPanel } from "@/components/SessionPanel";
-import { recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
+import { getSwipes, recordSwipe, resetSwipes, undoSwipe } from "@/lib/swipe-review";
 import { getPushToken } from "@/lib/push";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import { resolveImageUrl } from "@/lib/query-client";
@@ -50,6 +53,11 @@ const TAP_SLOP = 8;
 // Set once someone has flipped through a card's dishes, so the hint on how
 // to do that stops showing.
 const DISH_HINT_KEY = "seenDishFlipHint";
+// Same reconnect policy as the lobby: backoff before each attempt, then a
+// Retry button. The server answers every 20 s ping, so 45 s of silence means
+// the socket is dead even if it still reports OPEN.
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 8000];
+const SILENCE_LIMIT_MS = 45000;
 
 // One card per restaurant (per recipe in cook-in): its dishes are what the
 // deck is about, and it's easier to judge a place with all of them in hand.
@@ -351,21 +359,56 @@ export default function SwipeScreen() {
     AsyncStorage.setItem(DISH_HINT_KEY, "1").catch(() => {});
   }, []);
   const cards = useMemo(() => groupCards(dishes), [dishes]);
-  const userId = paramUserId ?? Crypto.randomUUID();
+  // Kept in state: a fresh id on every render would reconnect on every render.
+  const [userId] = useState(() => paramUserId ?? Crypto.randomUUID());
+  const [status, setStatus] = useState<"connecting" | "connected" | "reconnecting" | "offline">(
+    "connecting"
+  );
 
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptsRef = useRef(0);
+  const joinedRef = useRef(false);
+  // Set when we close the socket on purpose (leaving, or the room is gone) so
+  // onclose doesn't try to reconnect.
+  const closingRef = useRef(false);
+
+  // Other members' progress as the server counts it, so a reconnect picks up
+  // the swipe_updates missed while the socket was down.
+  const syncProgress = useCallback((s: SessionState) => {
+    if (s.members.some((m) => m.swiped === undefined)) return;
+    setMemberSwipes(Object.fromEntries(s.members.map((m) => [m.id, m.swiped ?? 0])));
+  }, []);
 
   const connectWs = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
-    if (!name) return;
+    if (!name || closingRef.current) return;
 
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
+    let lastHeard = Date.now();
+
+    const handleDrop = () => {
+      if (wsRef.current !== ws) return;
+      if (pingRef.current) clearInterval(pingRef.current);
+      if (closingRef.current) return;
+      if (attemptsRef.current >= RECONNECT_DELAYS_MS.length) {
+        setStatus("offline");
+        return;
+      }
+      setStatus("reconnecting");
+      const delay = RECONNECT_DELAYS_MS[attemptsRef.current++];
+      retryRef.current = setTimeout(() => connectWs(), delay);
+    };
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name }));
+      // Closing the old socket removed this member and their swipes on the
+      // server, so rejoin with the same userId and every swipe made so far,
+      // including any made while offline. Empty on the first join.
+      const swipes = Object.fromEntries(getSwipes().map((s) => [s.dish.id, s.vote]));
+      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name, swipes }));
       // Registered separately so a slow permission prompt or APNs lookup
       // never delays joining and a late token still reaches the server.
       getPushToken().then((pushToken) => {
@@ -373,16 +416,29 @@ export default function SwipeScreen() {
           ws.send(JSON.stringify({ type: "push_token", pushToken }));
         }
       });
+      if (pingRef.current) clearInterval(pingRef.current);
       pingRef.current = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
+        if (Date.now() - lastHeard > SILENCE_LIMIT_MS) {
+          // Closing a dead socket can take a long time to fire onclose.
+          ws.onclose = null;
+          ws.close();
+          handleDrop();
+        } else if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "ping" }));
+        }
       }, 20000);
     };
 
     ws.onmessage = (e) => {
+      lastHeard = Date.now();
       try {
         const msg: WsMessage = JSON.parse(e.data);
         if (msg.type === "joined") {
+          joinedRef.current = true;
+          attemptsRef.current = 0;
+          setStatus("connected");
           setSession(msg.session);
+          syncProgress(msg.session);
           if (msg.dishes?.length) setDishes(msg.dishes);
           if (msg.session.status === "matched") {
             router.replace({
@@ -401,32 +457,70 @@ export default function SwipeScreen() {
           }));
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);
+          syncProgress(msg.session);
         } else if (msg.type === "match") {
+          // Also what a rejoin gets if the room matched while we were away.
+          closingRef.current = true;
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           router.replace({
             pathname: "/match",
             params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal, sample: msg.session.sample },
           });
+        } else if (msg.type === "error") {
+          closingRef.current = true;
+          // After a drop this means everyone else left too and the room
+          // closed; the server keeps an empty game for only 30 s.
+          const notFound = msg.message === "Session not found";
+          Alert.alert(
+            notFound ? "Room closed" : "Error",
+            notFound
+              ? joinedRef.current
+                ? "This room closed while you were disconnected. Create a new room to keep going."
+                : "This room has ended."
+              : msg.message,
+            [{ text: "OK", onPress: () => router.replace("/home") }]
+          );
         }
       } catch {}
     };
 
-    ws.onclose = () => {
-      if (pingRef.current) clearInterval(pingRef.current);
-    };
-  }, [code, userId]);
+    // onclose follows onerror and handles both.
+    ws.onclose = handleDrop;
+  }, [code, userId, syncProgress]);
+
+  const reconnectNow = useCallback(() => {
+    if (closingRef.current) return;
+    const state = wsRef.current?.readyState;
+    if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+    if (retryRef.current) clearTimeout(retryRef.current);
+    attemptsRef.current = 0;
+    setStatus("reconnecting");
+    connectWs();
+  }, [connectWs]);
 
   useEffect(() => {
     resetSwipes();
   }, [code]);
 
   useEffect(() => {
+    closingRef.current = false;
     connectWs();
     return () => {
+      closingRef.current = true;
       if (pingRef.current) clearInterval(pingRef.current);
+      if (retryRef.current) clearTimeout(retryRef.current);
       wsRef.current?.close();
     };
   }, [connectWs]);
+
+  // A long stay in the background can kill the socket without the retries
+  // getting a chance to run, so check again when the app comes back.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") reconnectNow();
+    });
+    return () => sub.remove();
+  }, [reconnectNow]);
 
   const handleSwipe = useCallback((vote: "like" | "pass", dish: Dish) => {
     if (!cards[currentIndex]?.includes(dish)) return;
@@ -437,8 +531,11 @@ export default function SwipeScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
+    // Offline swipes still count: the rejoin replays every recorded swipe.
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "swipe", dishId: dish.id, vote }));
+    } else {
+      reconnectNow();
     }
 
     recordSwipe(dish, vote);
@@ -446,7 +543,7 @@ export default function SwipeScreen() {
     setDishIndex(0);
     setSwipedCount((c) => c + 1);
     setCurrentIndex((i) => i + 1);
-  }, [currentIndex, cards]);
+  }, [currentIndex, cards, reconnectNow]);
 
   const handleUndo = useCallback(() => {
     if (swipeHistory.length === 0 || currentIndex <= 0) return;
@@ -456,6 +553,8 @@ export default function SwipeScreen() {
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "undo", dishId: lastSwipe.dishId }));
+    } else {
+      reconnectNow();
     }
 
     undoSwipe(lastSwipe.dishId);
@@ -465,7 +564,7 @@ export default function SwipeScreen() {
     setSwipeHistory((h) => h.slice(0, -1));
     setSwipedCount((c) => Math.max(0, c - 1));
     setCurrentIndex((i) => i - 1);
-  }, [swipeHistory, currentIndex, cards]);
+  }, [swipeHistory, currentIndex, cards, reconnectNow]);
 
   const topCard = cards[currentIndex];
   const handleButtonSwipe = (vote: "like" | "pass") => {
@@ -576,6 +675,26 @@ export default function SwipeScreen() {
                 />
               )}
             </>
+          )}
+          {/* Over the cards rather than above them: the cards have a fixed
+              height, so pushing them down would run them into the buttons.
+              Swiping keeps working; the rejoin sends those swipes along. */}
+          {(status === "reconnecting" || status === "offline") && (
+            <View style={styles.connectionBanner}>
+              {status === "reconnecting" ? (
+                <ActivityIndicator size="small" color={Colors.accent} />
+              ) : (
+                <Ionicons name="cloud-offline-outline" size={18} color={Colors.accent} />
+              )}
+              <Text style={styles.connectionText}>
+                {status === "reconnecting" ? "Connection lost. Reconnecting..." : "Can't reach the room."}
+              </Text>
+              {status === "offline" && (
+                <Pressable onPress={reconnectNow} hitSlop={8}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </Pressable>
+              )}
+            </View>
           )}
         </View>
 
@@ -714,6 +833,34 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
     alignItems: "center",
+  },
+  connectionBanner: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    right: 12,
+    zIndex: 10,
+    elevation: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,107,53,0.3)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  connectionText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Poppins_500Medium",
+    color: Colors.text,
+  },
+  retryText: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.accent,
   },
   card: {
     position: "absolute",
