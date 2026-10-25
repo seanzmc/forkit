@@ -32,6 +32,7 @@ const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 8000];
 // The server answers every 20 s ping with a pong; this much silence means the
 // socket is dead even if it still reports OPEN.
 const SILENCE_LIMIT_MS = 45000;
+const PING_INTERVAL_MS = 20000;
 
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -52,6 +53,9 @@ export default function SessionLobby() {
   // Set when we close the socket on purpose (leaving, or the room is gone) so
   // onclose doesn't try to reconnect.
   const closingRef = useRef(false);
+  // When the current socket last received anything. A ref so coming back to
+  // the foreground can restart the silence window.
+  const lastHeardRef = useRef(0);
 
   const connect = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
@@ -65,7 +69,7 @@ export default function SessionLobby() {
     const wsUrl = getWsUrl();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
-    let lastHeard = Date.now();
+    lastHeardRef.current = Date.now();
 
     const handleDrop = () => {
       if (wsRef.current !== ws) return;
@@ -84,8 +88,19 @@ export default function SessionLobby() {
       // Same userId on a reconnect, so the server treats it as the same member.
       ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name }));
       if (pingRef.current) clearInterval(pingRef.current);
+      let lastTick = Date.now();
       pingRef.current = setInterval(() => {
-        if (Date.now() - lastHeard > SILENCE_LIMIT_MS) {
+        const now = Date.now();
+        const late = now - lastTick > PING_INTERVAL_MS * 1.5;
+        lastTick = now;
+        if (late) {
+          // Timers were suspended in the background, so the silence is ours,
+          // not the server's. Give the socket a fresh window and a ping to
+          // answer instead of closing a healthy one (for the last member of
+          // a lobby, closing it deletes the room).
+          lastHeardRef.current = now;
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
+        } else if (now - lastHeardRef.current > SILENCE_LIMIT_MS) {
           // Closing a dead socket can take a long time to fire onclose.
           ws.onclose = null;
           ws.close();
@@ -93,11 +108,11 @@ export default function SessionLobby() {
         } else if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "ping" }));
         }
-      }, 20000);
+      }, PING_INTERVAL_MS);
     };
 
     ws.onmessage = (e) => {
-      lastHeard = Date.now();
+      lastHeardRef.current = Date.now();
       try {
         const msg: WsMessage = JSON.parse(e.data);
 
@@ -197,7 +212,16 @@ export default function SessionLobby() {
   // getting a chance to run, so check again when the app comes back.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") reconnectNow();
+      if (state !== "active") return;
+      const ws = wsRef.current;
+      if (ws?.readyState === WebSocket.OPEN) {
+        // It may still look open after dying in the background: probe it
+        // with a fresh silence window rather than trusting or closing it.
+        lastHeardRef.current = Date.now();
+        ws.send(JSON.stringify({ type: "ping" }));
+      } else {
+        reconnectNow();
+      }
     });
     return () => sub.remove();
   }, [reconnectNow]);
