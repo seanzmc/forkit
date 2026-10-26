@@ -76,8 +76,8 @@ line(
   stamp === lockSha
     ? "node_modules matches package-lock.json"
     : stamp
-      ? "package-lock.json changed since the last npm ci"
-      : "unknown (no stamp; scripts/sync-local.sh writes one)",
+      ? "package-lock.json changed since sync-local.sh last installed"
+      : "unknown (no stamp; scripts/sync-local.sh writes one when it installs)",
 );
 
 let health = null;
@@ -93,14 +93,24 @@ if (health?.commit) {
 
 // Apps: the newest production code a device can get is the later of the
 // newest store build and the newest update on the production channel.
-const updates = tryJson("npx --yes eas-cli@latest update:list --branch production --limit 5 --json --non-interactive");
-const updateList = Array.isArray(updates) ? updates : (updates?.currentPage ?? []);
+// update:list gives group summaries without commits; update:view gives each
+// platform's update in a group, with its gitCommitHash.
+const groups =
+  tryJson("npx --yes eas-cli@latest update:list --branch production --limit 10 --json --non-interactive")
+    ?.currentPage ?? [];
+function latestUpdate(platform) {
+  const group = groups.find((g) => (g.platforms ?? "").split(", ").includes(platform));
+  if (!group) return null;
+  const updates = tryJson(`npx --yes eas-cli@latest update:view ${group.group} --json`) ?? [];
+  return updates.find((u) => u.platform === platform) ?? null;
+}
+
 for (const platform of ["ios", "android"]) {
   const builds = tryJson(
     `npx --yes eas-cli@latest build:list --platform ${platform} --build-profile production --status finished --limit 1 --json --non-interactive`,
   );
   const build = builds?.[0];
-  const update = updateList.find((u) => (u.platforms ?? u.platform ?? "").includes(platform));
+  const update = latestUpdate(platform);
   const candidates = [build?.gitCommitHash, update?.gitCommitHash].filter(Boolean);
   // Whichever is closer to main.
   const best = candidates

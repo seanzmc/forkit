@@ -56,14 +56,11 @@ if [ "$before" != "$target" ]; then
 fi
 
 # node_modules: reinstall when the lockfile changed since the last install.
+# No stamp (first run, or node_modules installed by hand) counts as stale:
+# npm ls only checks package.json ranges, not the locked versions, so the
+# only way to know node_modules matches the lockfile is to install from it.
 lock_sha=$(shasum package-lock.json | cut -d' ' -f1)
 installed_sha=$(cat "$STAMP" 2>/dev/null || true)
-
-if [ -z "$installed_sha" ] && [ -d node_modules ] && npm ls --depth=0 >/dev/null 2>&1; then
-  # First run against an existing install that already satisfies package.json.
-  echo "$lock_sha" > "$STAMP"
-  installed_sha=$lock_sha
-fi
 
 if [ "$installed_sha" != "$lock_sha" ]; then
   if pgrep -f "$REPO/node_modules/" >/dev/null 2>&1; then
@@ -73,7 +70,7 @@ if [ "$installed_sha" != "$lock_sha" ]; then
       echo "$lock_sha" > "$REPO/.git/forkit-sync-warned"
     fi
   else
-    log "lockfile changed; running npm ci"
+    log "node_modules not installed from this lockfile; running npm ci"
     if npm ci --no-audit --no-fund >/dev/null 2>&1; then
       echo "$lock_sha" > "$STAMP"
       notify "Reinstalled node_modules for the new package-lock.json"

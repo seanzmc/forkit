@@ -1,0 +1,75 @@
+# Ships the latest main's JS to installed iOS and Android apps as an
+# over-the-air update on the "production" channel. Runs on every push to main
+# (needs the GitHub repo linked to the EAS project). Its partner,
+# production-builds.yml, makes a new binary when native code changes.
+#
+# Per platform: publish only if a production build exists for the current
+# native fingerprint (runtimeVersion uses the fingerprint policy, so the
+# update reaches exactly the binaries it is compatible with). If that build is
+# still being made by the builds workflow, wait for it.
+#
+# The newest update on a channel is the one devices get, so a run for an older
+# commit must never publish after a newer one. A new push cancels the
+# in-progress run; that is safe here because this workflow only publishes.
+# See "Keeping every part current" in CLAUDE.md.
+name: Production updates
+
+on:
+  push:
+    branches: ['main']
+
+concurrency:
+  cancel_in_progress: true
+  group: ${{ workflow.filename }}-${{ github.ref }}
+
+jobs:
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+    environment: production
+
+  get_android_build:
+    name: Find the matching Android build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: production
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  get_ios_build:
+    name: Find the matching iOS build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: production
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  update_android:
+    name: Publish Android update
+    needs: [get_android_build]
+    if: ${{ needs.get_android_build.outputs.build_id }}
+    type: update
+    environment: production
+    # getApiUrl() throws without this, so an update missing it would break
+    # every installed app. Builds get the same value from eas.json.
+    env:
+      EXPO_PUBLIC_DOMAIN: forkit-server-production.up.railway.app
+    params:
+      channel: production
+      platform: android
+
+  update_ios:
+    name: Publish iOS update
+    needs: [get_ios_build]
+    if: ${{ needs.get_ios_build.outputs.build_id }}
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_DOMAIN: forkit-server-production.up.railway.app
+    params:
+      channel: production
+      platform: ios
