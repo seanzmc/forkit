@@ -17,7 +17,8 @@
     "start": "EXPO_PUBLIC_DOMAIN=${EXPO_PUBLIC_DOMAIN:-localhost:5000} npx expo start",
     "lint": "npx expo lint",
     "lint:fix": "npx expo lint --fix",
-    "guide:build": "node scripts/build-testers-guide.js"
+    "guide:build": "node scripts/build-testers-guide.js",
+    "sync:status": "node scripts/sync-status.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/poppins": "^0.4.1",
@@ -48,6 +49,7 @@
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.6",
+    "expo-updates": "~58.0.18",
     "expo-web-browser": "~58.0.6",
     "express": "^5.0.1",
     "http-proxy-middleware": "^3.0.5",

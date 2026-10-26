@@ -1,0 +1,78 @@
+# Keeps the iOS and Android binaries on the latest main's native code. Runs
+# on every push to main (needs the GitHub repo linked to the EAS project:
+# expo.dev → forkit → Project settings → GitHub). Its partner,
+# production-updates.yml, ships the JS.
+#
+# Per platform: if no production build exists for the current native
+# fingerprint (new native dependency, Expo SDK bump, app.json/app.config.js
+# change, ...), build one and submit it: iOS to TestFlight, Android to the
+# Play internal track as a draft. Otherwise do nothing.
+#
+# Runs are never cancelled, so a newer push can't kill a build or submit
+# halfway; that is why this is separate from the updates workflow, which is
+# cancelled. See "Keeping every part current" in CLAUDE.md.
+name: Production builds
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+    environment: production
+
+  get_android_build:
+    name: Check for existing Android build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: production
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      # A build started by the previous push may still be running; wait for it
+      # instead of starting a duplicate.
+      wait_for_in_progress: true
+
+  get_ios_build:
+    name: Check for existing iOS build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: production
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  build_android:
+    name: Build Android
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  build_ios:
+    name: Build iOS
+    needs: [get_ios_build]
+    if: ${{ !needs.get_ios_build.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit_android:
+    name: Submit Android to Play (internal, draft)
+    needs: [build_android]
+    type: submit
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+
+  submit_ios:
+    name: Submit iOS to TestFlight
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}

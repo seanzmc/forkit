@@ -14,17 +14,24 @@ a PR alongside the app changes that make them necessary.
 
 ## Still to do
 
-- **Screenshots and the Play feature graphic.** Play phone screenshots are
-  done (see below). Still needed: iPhone 6.9" (1320 × 2868), Play feature
-  graphic (1024 × 500), Play icon (512 × 512, from `assets/images/icon.svg`).
-  Apple rejects screenshots that don't match the app, so retake them if the
-  UI changes before release.
+- **iPhone screenshots.** The Play screenshots, icon and feature graphic are
+  done (see below). Still needed: iPhone 6.9" (1320 × 2868). Apple rejects
+  screenshots that don't match the app, so retake them if the UI changes
+  before release.
 - **Copyright line and App Review contact** in App Store Connect: fill in the
   developer's legal name and phone.
 - **Store URLs on the home page.** Once a listing is live, set
   `APP_STORE_URL` / `PLAY_STORE_URL` on Railway.
-- **Play app-signing SHA-256.** Once the app is on Play, append it to
-  `ANDROID_CERT_SHA256` so invite links open the Play build.
+
+## Play icon and feature graphic
+
+[graphics/](graphics/) holds what the Play listing uses besides screenshots:
+
+- `play-icon-512.png`: 512 × 512 Play icon, from `assets/images/icon.png`.
+- `feature-graphic.png`: 1024 × 500 feature graphic, rendered from
+  `feature-graphic.html` with headless Chrome (the command is in its header
+  comment). It shows the swipe and match screenshots, so re-render it when
+  those are retaken.
 
 ## Screenshots
 

@@ -16,6 +16,7 @@ npm run lint          # expo lint (eslint-config-expo flat config)
 npm run lint:fix
 npm run typecheck     # tsc --noEmit
 npm run db:push       # drizzle-kit push (requires DATABASE_URL)
+npm run sync:status   # are local main, its node_modules, the server and both apps on origin/main?
 ```
 
 Both processes must run together — the app is useless without the backend. Replit's "Project" workflow (`.replit`) starts both in parallel.
@@ -26,19 +27,28 @@ CI must regenerate `expo-env.d.ts` (via `npx expo customize tsconfig.json`) befo
 
 Production build: `npm run expo:static:build && npm run server:build`, then `npm run server:prod`.
 
-iOS builds run on EAS: `npx eas-cli@latest build --profile <development|development-simulator|preview|production> --platform ios`. TestFlight: `npx eas-cli@latest build --profile production --platform ios --auto-submit` builds and uploads to App Store Connect app 6819387031 ("ForkIt: Swipe to Decide", set in `submit.production` in eas.json). eas-cli is deliberately not a dependency; `cli.version` in [eas.json](eas.json) sets the minimum (24.4.2 fixed Apple sign-in failing with "iTunes service key is empty").
+Merges to `main` build, submit or update the apps on their own (see "Keeping every part current"); the commands below are for doing it by hand. iOS builds run on EAS: `npx eas-cli@latest build --profile <development|development-simulator|preview|production> --platform ios`. TestFlight: `npx eas-cli@latest build --profile production --platform ios --auto-submit` builds and uploads to App Store Connect app 6819387031 ("ForkIt: Swipe to Decide", set in `submit.production` in eas.json). eas-cli is deliberately not a dependency; `cli.version` in [eas.json](eas.json) sets the minimum (24.4.2 fixed Apple sign-in failing with "iTunes service key is empty").
 
-Android builds: `npx eas-cli@latest build --profile production --platform android` (AAB; EAS holds the upload keystore). Google rejects API uploads for an app's first release, so upload the first AAB by hand in Play Console; after that `--auto-submit` sends it to the internal track as a draft via `submit.production.android` in eas.json, which reads the Play service-account key from `./play-service-account.json` (gitignored). Android push needs Firebase (see `GOOGLE_SERVICES_JSON` below).
+Android builds: `npx eas-cli@latest build --profile production --platform android` (AAB; EAS holds the upload keystore). Google rejects API uploads for an app's first release, so upload the first AAB by hand in Play Console; after that `--auto-submit` (and the deploy workflow) sends it to the internal track as a draft via `submit.production.android` in eas.json, using the Play service-account key stored on EAS (`npx eas-cli@latest credentials -p android` → Google Service Account → key for submissions). Never commit the key; `play-service-account.json` stays gitignored. Android push needs Firebase (see `GOOGLE_SERVICES_JSON` below).
 
 Store listing text (App Store and Play descriptions, keywords, review notes, privacy labels, Data safety, age ratings) lives in [store/](store/README.md) and is pasted into the consoles by hand. If a change alters what data the app collects or where it goes, update `server/templates/privacy-policy.html` and `store/review-and-privacy.md` in the same PR.
 
 ## Contribution workflow
 
-All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). CI has two jobs, `check` (typecheck, lint, server build, smoke test) and `expo-config` (asserts release-critical `app.json` values). Don't push to `main` directly.
+All changes go through a PR to `main` (see [CONTRIBUTING.md](CONTRIBUTING.md)). CI has two jobs, `check` (typecheck, lint, server build, smoke test) and `expo-config` (asserts release-critical `app.json` values, including the OTA update settings). Don't push to `main` directly.
+
+## Keeping every part current
+
+Four copies of the code have to follow `main`; each is kept current automatically, and `npm run sync:status` checks all of them (exit 1 if anything is behind).
+
+- **Server**: Railway deploys every push to `main`. `/api/health` reports the deployed commit (`RAILWAY_GIT_COMMIT_SHA`), and `.github/workflows/verify-deploy.yml` fails (GitHub emails the pusher) if the live server isn't on the pushed commit within 20 minutes.
+- **iOS and Android apps**: two EAS workflows run for every push to `main`. `runtimeVersion` uses the `fingerprint` policy, so per platform: `.eas/workflows/production-updates.yml` ships the JS as an over-the-air update on the `production` channel to the production build for the current native fingerprint; `.eas/workflows/production-builds.yml` builds and submits a new binary (TestFlight; Play internal track as a draft) when no build has that fingerprint (new native dependency, SDK bump, `app.json`/`app.config.js` change). A new push cancels an in-progress updates run, so an older commit can't publish over a newer one; builds runs are never cancelled, so a build or submit is never cut off. Installed apps download an update when opened and run it from the next launch. The version label shows `· <update id>` when running one. Needs the GitHub repo linked to the EAS project, the App Store Connect API key and Play service-account key stored in `eas credentials`. Never run `eas update` by hand without `--environment production`: `EXPO_PUBLIC_DOMAIN` must be in the bundle (it is set in the workflow's update jobs and as an EAS env var in all three environments). Store listing text and the TestFlight "Friends" group are still by hand; OTA updates reach Friends without a new build.
+- **Local main checkout** (`~/Projects/Fork-it`): `scripts/install-sync-agent.sh` installs a launchd agent that runs `scripts/sync-local.sh` every 15 minutes: fast-forward only, only on a clean `main`, and `npm ci` whenever `package-lock.json` changed (skipped while Metro or the server runs from that checkout). Log: `~/Library/Logs/forkit-sync.log`. Worktrees are left alone.
+- **Tester guide**: `docs/testers-guide.html` is republished to its artifact by hand (`npm run guide:build`); a PR that changes it should republish.
 
 ## Environment
 
-- `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `npm start` defaults it to `localhost:5000`; `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`; EAS builds get it from the profile `env` in [eas.json](eas.json).
+- `EXPO_PUBLIC_DOMAIN` — **required by the client**. `getApiUrl()` in [lib/query-client.ts](lib/query-client.ts) throws if unset, and every API call plus the WebSocket URL derives from it. `npm start` defaults it to `localhost:5000`; `expo:dev` sets it from `REPLIT_DEV_DOMAIN:5000`; EAS builds get it from the profile `env` in [eas.json](eas.json); OTA updates from the update jobs' `env` in `.eas/workflows/production-updates.yml`, backed by an EAS env var of the same value.
 - `GOOGLE_PLACES_API_KEY` — server-side; absent ⇒ dine-out silently falls back to the curated `DISHES` list.
 - `GEMINI_API_KEY` — server-side; enables real popular dishes per restaurant via Gemini "Grounding with Google Maps" ([server/menu-grounding.ts](server/menu-grounding.ts)). Absent, or no Maps-sourced answer ⇒ that restaurant falls back to cuisine-table dishes labeled "Suggested". `GEMINI_MAPS_MODEL` overrides the model (default `gemini-3.8-flash`: `3.5-flash-lite` calls Maps but returns no grounding chunks, so every answer is dropped; `gemini-2.5-*` returns 404 for projects that never used it). Grounded dishes must render with their Google Maps source links right after them (`components/GroundedSource.tsx`) and must never be persisted — Google's terms.
 - `GOOGLE_SERVICES_JSON` — EAS secret **file** env var (all three environments) holding Firebase project `forkit-f05c9`'s `google-services.json`, which Android needs to get a push token. The repo is public, so the file is gitignored; [app.config.js](app.config.js) sets `android.googleServicesFile` from this var on EAS, or from a local `./google-services.json` copy if present. Sending to Android also needs the FCM V1 service-account key uploaded via `eas credentials` (Android → Push Notifications: FCM V1).
@@ -58,7 +68,7 @@ The server runs on Railway (project `forkit`, service `forkit-server`) at `https
 
 **`numReplicas` must stay 1.** Session state is an in-memory `Map`, so a second replica would split members of one session across servers. Any deploy also drops every live session.
 
-`/api/health` backs the platform healthcheck. `/privacy` serves the store-required privacy policy from `server/templates/privacy-policy.html`. `/` serves the public home page (`server/templates/home.html`, the URL for store listings and the Play developer profile) to browsers; the Expo Go QR preview page moved to `/preview`.
+`/api/health` backs the platform healthcheck and reports the deployed `commit`. `/privacy` serves the store-required privacy policy from `server/templates/privacy-policy.html`. `/` serves the public home page (`server/templates/home.html`, the URL for store listings and the Play developer profile) to browsers; the Expo Go QR preview page moved to `/preview`.
 
 ## Architecture
 

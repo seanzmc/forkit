@@ -16,6 +16,7 @@ Facts the answers below rest on. Verify them again before submitting.
 | Swipes | Server memory | Session only |
 | Push token, if allowed | Server memory, then Expo push → APNs / FCM | Session only (kept after disconnect until the session is swept) |
 | Display name, search radius | AsyncStorage on the device | Until the app is deleted |
+| Update check: app version, platform, random install ID (expo-updates) | Expo's update service (EAS Update), on each launch | Held by Expo; never reaches our server |
 
 No accounts, no analytics or crash SDKs, no ads, no advertising ID, no
 background location, no database. All traffic is HTTPS / WSS.
@@ -80,6 +81,10 @@ Notes on the choices:
   which carries no member ID or token, and is discarded after the lookup.
 - **Push token** as Device ID is the cautious reading; many apps leave it
   out. Disclosing it costs nothing.
+- **The expo-updates install ID** needs no new row: it is a random ID Expo
+  uses to deliver updates and count devices, covered by the Device ID row
+  above (App Functionality). Expo's own privacy manifest for it
+  (`expo-eas-client`) declares no collected data.
 
 ## Google Play Data safety
 
@@ -106,6 +111,8 @@ Notes:
   sharing, nor showing your name to people you chose to play with.
 - **Location optional**: cook in works without it, and dine out falls back
   to a built-in dish list.
+- **Device or other IDs** also covers the random install ID expo-updates
+  sends to Expo when checking for updates; no extra row.
 
 ## Age rating
 

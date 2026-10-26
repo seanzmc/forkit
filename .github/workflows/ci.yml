@@ -100,6 +100,8 @@ jobs:
             if (c.ios?.infoPlist?.ITSAppUsesNonExemptEncryption !== false) errs.push("ios.infoPlist.ITSAppUsesNonExemptEncryption must be false");
             if (c.ios?.supportsTablet !== false) errs.push("ios.supportsTablet must be false");
             if (!c.extra?.eas?.projectId) errs.push("extra.eas.projectId missing");
+            if (c.runtimeVersion?.policy !== "fingerprint") errs.push("runtimeVersion.policy must be fingerprint (OTA updates must only reach compatible binaries)");
+            if (c.updates?.url !== `https://u.expo.dev/${c.extra?.eas?.projectId}`) errs.push("updates.url must be https://u.expo.dev/<projectId>");
             const joinFilter = (c.android?.intentFilters || []).find(f => f.autoVerify && (f.data || []).some(d => d.scheme === "https" && d.pathPrefix === "/join/"));
             if (!joinFilter) errs.push("android.intentFilters must include an autoVerify https /join/ filter");
             const loc = (c.plugins || []).find(p => Array.isArray(p) && p[0] === "expo-location");

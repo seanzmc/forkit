@@ -15,7 +15,10 @@
 4. Push and open a PR against `main`. Fill in the PR template.
 5. CI (`.github/workflows/ci.yml`) must pass. It runs typecheck, lint, an Expo config
    check, a server build, and a boot/health/create-session smoke test.
-6. Squash-merge once CI is green. Merging to `main` deploys the server on Railway.
+6. Squash-merge once CI is green. Merging to `main` deploys the server on Railway
+   and ships the iOS and Android apps through EAS (an over-the-air update, or a
+   new store build when native code changed). `npm run sync:status` shows
+   whether everything caught up.
 
 ## Expo config guard
 

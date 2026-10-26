@@ -1,0 +1,42 @@
+name: Verify server deploy
+
+# Railway deploys main on its own, but that has silently stalled before (a
+# "wait for CI" trigger with no CI to wait for, a Hobby-plan outage). This
+# fails, and GitHub emails whoever pushed, if the live server isn't running
+# the pushed commit within 20 minutes.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # A newer push supersedes this one; only the latest commit needs checking.
+  group: verify-deploy
+  cancel-in-progress: true
+
+jobs:
+  live-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Wait for Railway to serve this commit
+        env:
+          HEALTH_URL: https://forkit-server-production.up.railway.app/api/health
+          EXPECTED: ${{ github.sha }}
+        run: |
+          deadline=$(( $(date +%s) + 20 * 60 ))
+          while :; do
+            live=$(curl -sf -m 10 "$HEALTH_URL" | jq -r '.commit // empty' || true)
+            if [ "$live" = "$EXPECTED" ]; then
+              echo "Live server is on $EXPECTED"
+              exit 0
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::Live server reports commit '${live:-none}', expected $EXPECTED. Check the forkit-server deployments on Railway."
+              exit 1
+            fi
+            echo "Live server on '${live:-none}', waiting for $EXPECTED"
+            sleep 30
+          done
