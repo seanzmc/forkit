@@ -64,9 +64,11 @@ Four copies of the code have to follow `main`; each is kept current automaticall
 
 ## Deployment
 
-The server runs on Railway (project `forkit`, service `forkit-server`) at `https://forkit-server-production.up.railway.app`, configured by [railway.json](railway.json). Pushing to `main` auto-deploys.
+The server runs on Railway (project `forkit`, service `forkit-server`) at `https://forkit-server-production.up.railway.app`. Pushing to `main` auto-deploys.
 
-**`numReplicas` must stay 1.** Session state is an in-memory `Map`, so a second replica would split members of one session across servers. Any deploy also drops every live session.
+Its settings (builder, build and start commands, healthcheck, restart policy, replicas, deploy trigger with "Wait for CI" off, variables left to the dashboard) live in [.railway/railway.ts](.railway/railway.ts), Railway's Infrastructure as Code; it imports the `railway` dev dependency. Railway never reads that file on deploy: after changing it, run `railway config plan`, check that only the settings you meant to change appear, then `railway config apply`. `railway.json` (Config as Code, deprecated, read only until 2026-12-01) holds the same build and deploy settings and overrides the service's own on every deploy while it exists. Delete it only after `railway config apply` has run: until then the service's own settings are blank (builder RAILPACK, no build or start command, no healthcheck), so a deploy without the file would not start the server.
+
+**Replicas must stay 1.** Session state is an in-memory `Map`, so a second replica would split members of one session across servers. Any deploy also drops every live session.
 
 `/api/health` backs the platform healthcheck and reports the deployed `commit`. `/privacy` serves the store-required privacy policy from `server/templates/privacy-policy.html`. `/` serves the public home page (`server/templates/home.html`, the URL for store listings and the Play developer profile) to browsers; the Expo Go QR preview page moved to `/preview`.
 

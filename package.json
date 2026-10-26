@@ -82,6 +82,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.31.0",
     "eslint-config-expo": "~58.0.4",
+    "railway": "^3.16.0",
     "typescript": "~6.0.3"
   },
   "private": true
