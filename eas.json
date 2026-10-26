@@ -47,8 +47,7 @@
     "production": {
       "ios": {
         "ascAppId": "6819387031",
-        "appleTeamId": "N526K73K96",
-        "groups": ["Friends"]
+        "appleTeamId": "N526K73K96"
       },
       "android": {
         "track": "internal",
