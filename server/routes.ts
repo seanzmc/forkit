@@ -665,6 +665,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "ok",
       sessions: sessions.size,
       uptime: Math.round(process.uptime()),
+      // Set by Railway for deploys from GitHub. The verify-deploy workflow
+      // compares it with main so a stalled deploy can't go unnoticed.
+      commit: process.env.RAILWAY_GIT_COMMIT_SHA || null,
     });
   });
 

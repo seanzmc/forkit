@@ -13,7 +13,8 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "development"
     },
     "development-simulator": {
       "extends": "development",
@@ -30,14 +31,16 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "forkit-server-production.up.railway.app"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
@@ -47,7 +50,6 @@
         "appleTeamId": "N526K73K96"
       },
       "android": {
-        "serviceAccountKeyPath": "./play-service-account.json",
         "track": "internal",
         "releaseStatus": "draft"
       }
