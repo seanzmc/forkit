@@ -5,8 +5,9 @@
 #
 # Per platform: if no production build exists for the current native
 # fingerprint (new native dependency, Expo SDK bump, app.json/app.config.js
-# change, ...), build one and submit it: iOS to TestFlight, Android to the
-# Play internal track as a draft. Otherwise do nothing.
+# change, ...), build one and submit it: iOS to TestFlight and its "Friends"
+# group, Android to the Play internal track, rolled out (both set in
+# submit.production in eas.json). Otherwise do nothing.
 #
 # Runs are never cancelled, so a newer push can't kill a build or submit
 # halfway; that is why this is separate from the updates workflow, which is
@@ -64,7 +65,7 @@ jobs:
       profile: production
 
   submit_android:
-    name: Submit Android to Play (internal, draft)
+    name: Submit Android to Play (internal track)
     needs: [build_android]
     type: submit
     params:
