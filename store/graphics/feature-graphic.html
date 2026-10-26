@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  Play feature graphic (1024 x 500). Source for feature-graphic.png.
+  Needs the Play screenshots at ../screenshots/play/ and node_modules installed.
+  Render:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless \
+      --hide-scrollbars --window-size=1024,500 --default-background-color=00000000 \
+      --screenshot=store/graphics/feature-graphic.png store/graphics/feature-graphic.html
+    magick store/graphics/feature-graphic.png -alpha off -define png:color-type=2 store/graphics/feature-graphic.png
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Poppins; font-weight: 700; src: url(../../node_modules/@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf); }
+  @font-face { font-family: Poppins; font-weight: 500; src: url(../../node_modules/@expo-google-fonts/poppins/500Medium/Poppins_500Medium.ttf); }
+  @font-face { font-family: Poppins; font-weight: 400; src: url(../../node_modules/@expo-google-fonts/poppins/400Regular/Poppins_400Regular.ttf); }
+
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1024px; height: 500px; overflow: hidden; }
+  body {
+    position: relative;
+    font-family: Poppins, sans-serif;
+    color: #fff;
+    background:
+      radial-gradient(520px 420px at 760px 260px, rgba(255, 107, 53, 0.28), transparent 70%),
+      radial-gradient(420px 320px at 150px 120px, rgba(255, 107, 53, 0.10), transparent 70%),
+      #0F0F0F;
+  }
+
+  .copy { position: absolute; left: 72px; top: 0; bottom: 0; width: 470px; display: flex; flex-direction: column; justify-content: center; }
+  .brand { display: flex; align-items: center; gap: 18px; margin-bottom: 26px; }
+  .brand img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+  .brand span { font-size: 54px; font-weight: 700; letter-spacing: -1px; }
+  h1 { font-size: 46px; line-height: 1.12; font-weight: 700; letter-spacing: -0.5px; }
+  h1 em { font-style: normal; color: #FF6B35; }
+  p { margin-top: 16px; font-size: 20px; line-height: 1.45; color: #B8B8B8; font-weight: 400; }
+
+  .phone {
+    position: absolute; width: 214px; height: 380px; border-radius: 30px; overflow: hidden;
+    border: 5px solid #262626; background: #000;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+  }
+  .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .back { left: 600px; top: 78px; transform: rotate(-8deg); opacity: 0.9; }
+  .front { left: 760px; top: 58px; transform: rotate(6deg); }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand"><img src="../../assets/images/icon.svg" alt=""><span>ForkIt</span></div>
+    <h1>Swipe right on <em>dinner</em>.</h1>
+    <p>Everyone swipes on dishes nearby. When most of the group agrees, it's a match.</p>
+  </div>
+  <div class="phone back"><img src="../screenshots/play/06-match.png" alt=""></div>
+  <div class="phone front"><img src="../screenshots/play/05-swiping.png" alt=""></div>
+</body>
+</html>
