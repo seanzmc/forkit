@@ -5,8 +5,9 @@
 #
 # Per platform: if no production build exists for the current native
 # fingerprint (new native dependency, Expo SDK bump, app.json/app.config.js
-# change, ...), build one and submit it: iOS to TestFlight, Android to the
-# Play internal track as a draft. Otherwise do nothing.
+# change, ...), build one and ship it: iOS to TestFlight and its external
+# "Friends" group, Android to the Play internal track, rolled out
+# (releaseStatus in eas.json). Otherwise do nothing.
 #
 # Runs are never cancelled, so a newer push can't kill a build or submit
 # halfway; that is why this is separate from the updates workflow, which is
@@ -64,15 +65,22 @@ jobs:
       profile: production
 
   submit_android:
-    name: Submit Android to Play (internal, draft)
+    name: Submit Android to Play (internal track)
     needs: [build_android]
     type: submit
     params:
       build_id: ${{ needs.build_android.outputs.build_id }}
 
-  submit_ios:
-    name: Submit iOS to TestFlight
+  # A testflight job, not submit: eas submit can only add builds to internal
+  # groups, and Friends (the public TestFlight link) is external. Adding to an
+  # external group also submits for Beta App Review, which needs the TestFlight
+  # test information filled in once in App Store Connect.
+  testflight_ios:
+    name: Upload iOS to TestFlight and Friends
     needs: [build_ios]
-    type: submit
+    type: testflight
     params:
       build_id: ${{ needs.build_ios.outputs.build_id }}
+      external_groups: ['Friends']
+      changelog: |
+        New build from the latest main. Check the newest changes and tell us what breaks.
