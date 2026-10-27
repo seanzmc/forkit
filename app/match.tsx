@@ -30,6 +30,7 @@ import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
 import { MatchActions } from "@/components/MatchActions";
+import { RecipeDetails } from "@/components/RecipeDetails";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 import { SwipeReview } from "@/components/SwipeReview";
 import { getSwipes } from "@/lib/swipe-review";
@@ -241,7 +242,9 @@ export default function MatchScreen() {
 
         {dish && (
           <Animated.View entering={FadeInDown.delay(500)}>
-            {dish.mode === "dine-out" && !dish.placeId ? (
+            {dish.mode === "cook-in" ? (
+              <RecipeDetails dish={dish} />
+            ) : dish.mode === "dine-out" && !dish.placeId ? (
               <SampleRoomNotice reason={sample} />
             ) : (
               <MatchActions dish={dish} />
