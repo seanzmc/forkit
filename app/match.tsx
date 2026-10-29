@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
 import { MatchActions } from "@/components/MatchActions";
 import { RecipeDetails } from "@/components/RecipeDetails";
+import { RECIPE_DETAILS } from "@/lib/recipes";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 import { SwipeReview } from "@/components/SwipeReview";
 import { getSwipes } from "@/lib/swipe-review";
@@ -77,6 +78,9 @@ export default function MatchScreen() {
   const dish: Dish | null = (() => {
     try { return JSON.parse(dishParam ?? "null"); } catch { return null; }
   })();
+  const hasRecipe = dish?.mode === "cook-in" && !!RECIPE_DETAILS[dish.id];
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const recipeY = useRef(0);
 
   const heroScale = useSharedValue(0.5);
   const heroOpacity = useSharedValue(0);
@@ -120,6 +124,7 @@ export default function MatchScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.content,
           {
@@ -162,6 +167,21 @@ export default function MatchScreen() {
                 <View style={styles.heartBadge}>
                   <Ionicons name="heart" size={20} color="#fff" />
                 </View>
+                {/* On the photo so it shows on every screen size: the recipe
+                    itself starts below the fold. */}
+                {hasRecipe && (
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      scrollRef.current?.scrollTo({ y: recipeY.current - insets.top - 16, animated: true });
+                    }}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.recipeBtn, { opacity: pressed ? 0.85 : 1 }]}
+                  >
+                    <Text style={styles.recipeBtnText}>See the recipe</Text>
+                    <Ionicons name="arrow-down" size={18} color="#fff" />
+                  </Pressable>
+                )}
               </View>
             </Animated.View>
           </Animated.View>
@@ -241,7 +261,12 @@ export default function MatchScreen() {
         )}
 
         {dish && (
-          <Animated.View entering={FadeInDown.delay(500)}>
+          <Animated.View
+            entering={FadeInDown.delay(500)}
+            onLayout={(e) => {
+              recipeY.current = e.nativeEvent.layout.y;
+            }}
+          >
             {dish.mode === "cook-in" ? (
               <RecipeDetails dish={dish} />
             ) : dish.mode === "dine-out" && !dish.placeId ? (
@@ -489,6 +514,23 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  recipeBtn: {
+    position: "absolute",
+    left: 16,
+    bottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  recipeBtnText: {
+    fontSize: 16,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#fff",
   },
   priceText: {
     fontSize: 20,

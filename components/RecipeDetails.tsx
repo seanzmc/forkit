@@ -4,14 +4,29 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import type { Dish } from "@/lib/food-data";
-import { RECIPE_DETAILS, shoppingListText } from "@/lib/recipes";
+import { RECIPE_DETAILS, ingredientText, shoppingListText } from "@/lib/recipes";
+
+const MIN_SERVINGS = 1;
+const MAX_SERVINGS = 12;
 
 // The matched recipe: ingredients (tap to tick off while shopping or cooking)
-// and the method. Ticks live only on this screen.
+// and the method. The serving stepper rescales the ingredients; ticks and the
+// chosen servings live only on this screen.
 export function RecipeDetails({ dish }: { dish: Dish }) {
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const baseServings = Number.parseInt(dish.servings ?? "", 10) || undefined;
+  const [servings, setServings] = useState(baseServings);
   const recipe = dish.mode === "cook-in" ? RECIPE_DETAILS[dish.id] : undefined;
   if (!recipe) return null;
+  const factor = baseServings && servings ? servings / baseServings : 1;
+
+  const changeServings = (by: number) => {
+    if (!servings) return;
+    const next = Math.min(MAX_SERVINGS, Math.max(MIN_SERVINGS, servings + by));
+    if (next === servings) return;
+    Haptics.selectionAsync();
+    setServings(next);
+  };
 
   const toggle = (key: string) => {
     Haptics.selectionAsync();
@@ -26,7 +41,7 @@ export function RecipeDetails({ dish }: { dish: Dish }) {
   const share = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Share.share({
-      message: shoppingListText(dish.name, recipe),
+      message: shoppingListText(dish.name, recipe, servings, factor),
       title: `Shopping list: ${dish.name}`,
     }).catch(() => {});
   };
@@ -36,7 +51,25 @@ export function RecipeDetails({ dish }: { dish: Dish }) {
       <View style={styles.card}>
         <View style={styles.headingRow}>
           <Text style={styles.heading}>Ingredients</Text>
-          {!!dish.servings && <Text style={styles.headingNote}>Serves {dish.servings}</Text>}
+          {!!servings && (
+            <View style={styles.stepper}>
+              <StepperButton
+                icon="remove"
+                label="Fewer servings"
+                disabled={servings <= MIN_SERVINGS}
+                onPress={() => changeServings(-1)}
+              />
+              <Text style={styles.headingNote} accessibilityLiveRegion="polite">
+                Serves {servings}
+              </Text>
+              <StepperButton
+                icon="add"
+                label="More servings"
+                disabled={servings >= MAX_SERVINGS}
+                onPress={() => changeServings(1)}
+              />
+            </View>
+          )}
         </View>
         {recipe.ingredients.map((group, g) => (
           <View key={g} style={styles.group}>
@@ -57,7 +90,7 @@ export function RecipeDetails({ dish }: { dish: Dish }) {
                     size={20}
                     color={done ? Colors.green : Colors.textMuted}
                   />
-                  <Text style={[styles.ingredientText, done && styles.ingredientDone]}>{item}</Text>
+                  <Text style={[styles.ingredientText, done && styles.ingredientDone]}>{ingredientText(item, factor)}</Text>
                 </Pressable>
               );
             })}
@@ -75,6 +108,12 @@ export function RecipeDetails({ dish }: { dish: Dish }) {
 
       <View style={styles.card}>
         <Text style={styles.heading}>Steps</Text>
+        {factor !== 1 && (
+          <Text style={styles.stepsNote}>
+            Amounts and times in the steps are for {baseServings} servings. With more food,
+            cook in batches so the pan isn’t crowded.
+          </Text>
+        )}
         {recipe.steps.map((step, i) => (
           <View key={i} style={styles.stepRow}>
             <View style={styles.stepNumber}>
@@ -94,6 +133,32 @@ export function RecipeDetails({ dish }: { dish: Dish }) {
   );
 }
 
+function StepperButton({
+  icon,
+  label,
+  disabled,
+  onPress,
+}: {
+  icon: "add" | "remove";
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      hitSlop={8}
+      style={({ pressed }) => [styles.stepperBtn, { opacity: disabled ? 0.35 : pressed ? 0.7 : 1 }]}
+    >
+      <Ionicons name={icon} size={18} color={Colors.accentGold} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     gap: 16,
@@ -108,13 +173,32 @@ const styles = StyleSheet.create({
   },
   headingRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     justifyContent: "space-between",
   },
   heading: {
     fontSize: 16,
     fontFamily: "Poppins_600SemiBold",
     color: Colors.text,
+  },
+  stepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  stepperBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,179,71,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepsNote: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textSecondary,
+    lineHeight: 20,
   },
   headingNote: {
     fontSize: 13,

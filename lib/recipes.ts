@@ -2,6 +2,11 @@
 // keyed by its id. Kept apart from the Dish so session messages and match
 // push payloads stay small; the match screen looks the recipe up here.
 // Written for this app. Quantities make the recipe's listed servings.
+//
+// Amounts that scale with servings are wrapped in braces: "{1½} cups
+// ({300} ml) water". Sizes that don't (a 14 oz can, fillets of 6 oz each,
+// a 3-inch piece) are left bare. ingredientText() renders an item for any
+// number of servings.
 
 export interface IngredientGroup {
   // Omitted when the recipe has one list.
@@ -20,17 +25,17 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "1½ lb (700 g) boneless, skinless chicken thighs",
+          "{1½} lb ({700} g) boneless, skinless chicken thighs",
           "Salt and black pepper",
-          "1 tsp dried Italian seasoning",
-          "1 tbsp olive oil",
-          "1 tbsp butter",
-          "5 cloves garlic, minced",
-          "½ cup sun-dried tomatoes in oil, drained and sliced",
-          "1 cup heavy cream",
-          "½ cup chicken broth",
-          "¾ cup grated parmesan",
-          "3 cups baby spinach",
+          "{1} tsp dried Italian seasoning",
+          "{1} tbsp olive oil",
+          "{1} tbsp butter",
+          "{5} cloves garlic, minced",
+          "{½} cup sun-dried tomatoes in oil, drained and sliced",
+          "{1} cup heavy cream",
+          "{½} cup chicken broth",
+          "{¾} cup grated parmesan",
+          "{3} cups baby spinach",
           "Pinch of red pepper flakes (optional)",
         ],
       },
@@ -49,26 +54,26 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Broth",
         items: [
-          "1 tbsp sesame oil",
-          "4 cloves garlic, grated",
-          "1 tbsp grated fresh ginger",
-          "6 cups chicken broth",
-          "2 cups water",
-          "¼ cup white miso paste",
-          "2 tbsp soy sauce",
-          "1 tbsp mirin",
+          "{1} tbsp sesame oil",
+          "{4} cloves garlic, grated",
+          "{1} tbsp grated fresh ginger",
+          "{6} cups chicken broth",
+          "{2} cups water",
+          "{¼} cup white miso paste",
+          "{2} tbsp soy sauce",
+          "{1} tbsp mirin",
         ],
       },
       {
         title: "Bowls",
         items: [
-          "4 eggs",
-          "12 oz (340 g) pork belly, thinly sliced, or store-bought chashu",
-          "1 tbsp soy sauce plus 1 tsp sugar, for the pork",
-          "4 portions fresh ramen noodles (about 1¼ lb / 560 g)",
-          "1 cup corn kernels",
-          "2 green onions, sliced",
-          "2 sheets nori, cut in strips",
+          "{4} eggs",
+          "{12} oz ({340} g) pork belly, thinly sliced, or store-bought chashu",
+          "{1} tbsp soy sauce plus {1} tsp sugar, for the pork",
+          "{4} portions fresh ramen noodles (about {1¼} lb / {560} g)",
+          "{1} cup corn kernels",
+          "{2} green onions, sliced",
+          "{2} sheets nori, cut in strips",
         ],
       },
     ],
@@ -86,15 +91,15 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "2 salmon fillets (6 oz / 170 g each)",
-          "1 bunch asparagus, woody ends snapped off",
-          "1 cup cherry tomatoes",
-          "1 tbsp olive oil",
+          "{2} salmon fillets (6 oz / 170 g each)",
+          "{1} bunch asparagus, woody ends snapped off",
+          "{1} cup cherry tomatoes",
+          "{1} tbsp olive oil",
           "Salt and black pepper",
-          "2 tbsp butter, melted",
-          "2 cloves garlic, minced",
-          "1 lemon: zest, juice of half, other half sliced",
-          "2 tbsp chopped fresh dill",
+          "{2} tbsp butter, melted",
+          "{2} cloves garlic, minced",
+          "{1} lemon: zest, juice of half, other half sliced",
+          "{2} tbsp chopped fresh dill",
         ],
       },
     ],
@@ -112,35 +117,35 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Marinade",
         items: [
-          "1½ lb (700 g) boneless chicken thighs, cut in bite-size pieces",
-          "½ cup plain yogurt",
-          "1 tbsp lemon juice",
-          "2 tsp garam masala",
-          "1 tsp ground cumin",
-          "1 tsp paprika",
-          "1 tsp salt",
+          "{1½} lb ({700} g) boneless chicken thighs, cut in bite-size pieces",
+          "{½} cup plain yogurt",
+          "{1} tbsp lemon juice",
+          "{2} tsp garam masala",
+          "{1} tsp ground cumin",
+          "{1} tsp paprika",
+          "{1} tsp salt",
         ],
       },
       {
         title: "Sauce",
         items: [
-          "2 tbsp butter or ghee",
-          "1 onion, finely chopped",
-          "4 cloves garlic, minced",
-          "1 tbsp grated fresh ginger",
-          "2 tsp garam masala",
-          "1 tsp ground cumin",
-          "1 tsp ground turmeric",
-          "½ tsp chili powder",
-          "1 can (14 oz / 400 g) crushed tomatoes",
-          "¾ cup heavy cream",
+          "{2} tbsp butter or ghee",
+          "{1} onion, finely chopped",
+          "{4} cloves garlic, minced",
+          "{1} tbsp grated fresh ginger",
+          "{2} tsp garam masala",
+          "{1} tsp ground cumin",
+          "{1} tsp ground turmeric",
+          "{½} tsp chili powder",
+          "{1} can (14 oz / 400 g) crushed tomatoes",
+          "{¾} cup heavy cream",
           "Salt to taste",
           "Fresh cilantro, to serve",
         ],
       },
       {
         title: "To serve",
-        items: ["1½ cups basmati rice", "4 naan breads"],
+        items: ["{1½} cups basmati rice", "{4} naan breads"],
       },
     ],
     steps: [
@@ -157,11 +162,11 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "1 lb (450 g) spaghetti",
-          "6 oz (170 g) guanciale or pancetta, cut in small strips",
-          "4 egg yolks plus 2 whole eggs",
-          "1 cup finely grated pecorino romano, plus more to serve",
-          "2 tsp freshly cracked black pepper",
+          "{1} lb ({450} g) spaghetti",
+          "{6} oz ({170} g) guanciale or pancetta, cut in small strips",
+          "{4} egg yolks plus {2} whole eggs",
+          "{1} cup finely grated pecorino romano, plus more to serve",
+          "{2} tsp freshly cracked black pepper",
           "Salt, for the pasta water",
         ],
       },
@@ -181,33 +186,33 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Beef",
         items: [
-          "1 lb (450 g) flank steak, thinly sliced against the grain",
-          "1 tbsp soy sauce",
-          "1 tbsp cornstarch",
+          "{1} lb ({450} g) flank steak, thinly sliced against the grain",
+          "{1} tbsp soy sauce",
+          "{1} tbsp cornstarch",
         ],
       },
       {
         title: "Sauce",
         items: [
-          "3 tbsp soy sauce",
-          "1 tbsp oyster sauce",
-          "1 tbsp brown sugar",
-          "1 tbsp rice vinegar",
-          "1 tbsp grated fresh ginger",
-          "2 cloves garlic, minced",
-          "1 tsp cornstarch",
-          "¼ cup water",
+          "{3} tbsp soy sauce",
+          "{1} tbsp oyster sauce",
+          "{1} tbsp brown sugar",
+          "{1} tbsp rice vinegar",
+          "{1} tbsp grated fresh ginger",
+          "{2} cloves garlic, minced",
+          "{1} tsp cornstarch",
+          "{¼} cup water",
         ],
       },
       {
         title: "Stir-fry",
         items: [
-          "2 tbsp neutral oil",
-          "2 cups broccoli florets",
-          "1 red bell pepper, sliced",
-          "1 green bell pepper, sliced",
-          "2 green onions, cut in 2-inch pieces",
-          "1 cup jasmine rice",
+          "{2} tbsp neutral oil",
+          "{2} cups broccoli florets",
+          "{1} red bell pepper, sliced",
+          "{1} green bell pepper, sliced",
+          "{2} green onions, cut in 2-inch pieces",
+          "{1} cup jasmine rice",
         ],
       },
     ],
@@ -225,20 +230,20 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Dough (2 pizzas)",
         items: [
-          "3¼ cups (400 g) bread flour or 00 flour",
-          "1¼ cups (300 ml) warm water",
-          "2¼ tsp (1 packet) instant yeast",
-          "1½ tsp salt",
-          "1 tbsp olive oil",
+          "{3¼} cups ({400} g) bread flour or 00 flour",
+          "{1¼} cups ({300} ml) warm water",
+          "{2¼} tsp ({1} packet) instant yeast",
+          "{1½} tsp salt",
+          "{1} tbsp olive oil",
         ],
       },
       {
         title: "Toppings",
         items: [
-          "1 can (14 oz / 400 g) San Marzano tomatoes",
-          "1 clove garlic, grated",
-          "½ tsp salt",
-          "8 oz (225 g) fresh mozzarella, torn and patted dry",
+          "{1} can (14 oz / 400 g) San Marzano tomatoes",
+          "{1} clove garlic, grated",
+          "{½} tsp salt",
+          "{8} oz ({225} g) fresh mozzarella, torn and patted dry",
           "Fresh basil leaves",
           "Extra-virgin olive oil, to drizzle",
         ],
@@ -259,17 +264,17 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "1½ cups jasmine rice",
-          "1 tbsp neutral oil",
-          "3–4 tbsp green curry paste",
-          "2 cans (13.5 oz / 400 ml each) coconut milk",
-          "1½ lb (700 g) boneless chicken thighs, thinly sliced",
-          "1 can (8 oz) bamboo shoots, drained",
-          "1 red bell pepper, sliced",
-          "2 tbsp fish sauce",
-          "1 tbsp brown or palm sugar",
-          "1 cup Thai basil leaves (or regular basil)",
-          "1 lime, cut in wedges",
+          "{1½} cups jasmine rice",
+          "{1} tbsp neutral oil",
+          "{3}–{4} tbsp green curry paste",
+          "{2} cans (13.5 oz / 400 ml each) coconut milk",
+          "{1½} lb ({700} g) boneless chicken thighs, thinly sliced",
+          "{1} can (8 oz) bamboo shoots, drained",
+          "{1} red bell pepper, sliced",
+          "{2} tbsp fish sauce",
+          "{1} tbsp brown or palm sugar",
+          "{1} cup Thai basil leaves (or regular basil)",
+          "{1} lime, cut in wedges",
         ],
       },
     ],
@@ -288,22 +293,22 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Special sauce",
         items: [
-          "½ cup mayonnaise",
-          "2 tbsp ketchup",
-          "1 tbsp yellow mustard",
-          "2 tbsp finely chopped pickles plus 1 tsp pickle juice",
+          "{½} cup mayonnaise",
+          "{2} tbsp ketchup",
+          "{1} tbsp yellow mustard",
+          "{2} tbsp finely chopped pickles plus {1} tsp pickle juice",
         ],
       },
       {
         title: "Burgers",
         items: [
-          "1½ lb (700 g) ground beef, 80/20",
+          "{1½} lb ({700} g) ground beef, 80/20",
           "Salt and black pepper",
-          "8 slices American cheese",
-          "4 brioche buns, split",
-          "1 tbsp butter, softened",
+          "{8} slices American cheese",
+          "{4} brioche buns, split",
+          "{1} tbsp butter, softened",
           "Pickle chips",
-          "½ onion, very thinly sliced (optional)",
+          "{½} onion, very thinly sliced (optional)",
         ],
       },
     ],
@@ -320,16 +325,16 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "12 oz (340 g) linguine",
-          "1 lb (450 g) large shrimp, peeled and deveined",
+          "{12} oz ({340} g) linguine",
+          "{1} lb ({450} g) large shrimp, peeled and deveined",
           "Salt and black pepper",
-          "2 tbsp olive oil",
-          "4 tbsp butter, divided",
-          "5 cloves garlic, thinly sliced",
-          "½ tsp red pepper flakes",
-          "½ cup dry white wine (or chicken broth)",
-          "1 lemon: zest and juice",
-          "¼ cup chopped fresh parsley",
+          "{2} tbsp olive oil",
+          "{4} tbsp butter, divided",
+          "{5} cloves garlic, thinly sliced",
+          "{½} tsp red pepper flakes",
+          "{½} cup dry white wine (or chicken broth)",
+          "{1} lemon: zest and juice",
+          "{¼} cup chopped fresh parsley",
         ],
       },
     ],
@@ -347,36 +352,36 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Sauce",
         items: [
-          "2 tbsp gochujang",
-          "1 tbsp sesame oil",
-          "1 tbsp water",
-          "1 tsp sugar",
-          "1 tsp rice vinegar",
-          "1 tsp toasted sesame seeds",
+          "{2} tbsp gochujang",
+          "{1} tbsp sesame oil",
+          "{1} tbsp water",
+          "{1} tsp sugar",
+          "{1} tsp rice vinegar",
+          "{1} tsp toasted sesame seeds",
         ],
       },
       {
         title: "Quick-pickled radish",
         items: [
-          "1 cup daikon radish, cut in matchsticks",
-          "¼ cup rice vinegar",
-          "1 tbsp sugar",
-          "½ tsp salt",
+          "{1} cup daikon radish, cut in matchsticks",
+          "{¼} cup rice vinegar",
+          "{1} tbsp sugar",
+          "{½} tsp salt",
         ],
       },
       {
         title: "Bowls",
         items: [
-          "1 cup short-grain rice",
-          "2 tbsp neutral oil, divided",
-          "1 carrot, cut in matchsticks",
-          "1 zucchini, cut in matchsticks",
-          "4 oz (115 g) shiitake mushrooms, sliced",
-          "3 cups spinach",
-          "1 cup bean sprouts",
-          "2 cloves garlic, minced",
+          "{1} cup short-grain rice",
+          "{2} tbsp neutral oil, divided",
+          "{1} carrot, cut in matchsticks",
+          "{1} zucchini, cut in matchsticks",
+          "{4} oz ({115} g) shiitake mushrooms, sliced",
+          "{3} cups spinach",
+          "{1} cup bean sprouts",
+          "{2} cloves garlic, minced",
           "Soy sauce and sesame oil, for the vegetables",
-          "2 eggs",
+          "{2} eggs",
         ],
       },
     ],
@@ -394,23 +399,23 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Chicken",
         items: [
-          "1½ lb (700 g) boneless chicken breasts or thighs, sliced in strips",
-          "2 tbsp olive oil",
-          "1 lime, juiced",
-          "2 tsp chili powder",
-          "1 tsp ground cumin",
-          "1 tsp smoked paprika",
-          "½ tsp garlic powder",
-          "1 tsp salt",
+          "{1½} lb ({700} g) boneless chicken breasts or thighs, sliced in strips",
+          "{2} tbsp olive oil",
+          "{1} lime, juiced",
+          "{2} tsp chili powder",
+          "{1} tsp ground cumin",
+          "{1} tsp smoked paprika",
+          "{½} tsp garlic powder",
+          "{1} tsp salt",
         ],
       },
       {
         title: "Vegetables and to serve",
         items: [
-          "1 tbsp oil",
-          "3 bell peppers, mixed colors, sliced",
-          "1 large onion, sliced",
-          "8–12 flour tortillas",
+          "{1} tbsp oil",
+          "{3} bell peppers, mixed colors, sliced",
+          "{1} large onion, sliced",
+          "{8}–{12} flour tortillas",
           "Guacamole",
           "Sour cream",
           "Salsa, cilantro and lime wedges",
@@ -430,17 +435,17 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "6 cups chicken or vegetable broth",
-          "3 tbsp butter, divided",
-          "1 tbsp olive oil",
-          "1 lb (450 g) mixed mushrooms (cremini, shiitake, oyster), sliced",
+          "{6} cups chicken or vegetable broth",
+          "{3} tbsp butter, divided",
+          "{1} tbsp olive oil",
+          "{1} lb ({450} g) mixed mushrooms (cremini, shiitake, oyster), sliced",
           "Salt and black pepper",
-          "1 shallot or small onion, finely chopped",
-          "2 cloves garlic, minced",
-          "1½ cups arborio rice",
-          "½ cup dry white wine",
-          "1 tsp fresh thyme leaves",
-          "¾ cup grated parmesan",
+          "{1} shallot or small onion, finely chopped",
+          "{2} cloves garlic, minced",
+          "{1½} cups arborio rice",
+          "{½} cup dry white wine",
+          "{1} tsp fresh thyme leaves",
+          "{¾} cup grated parmesan",
         ],
       },
     ],
@@ -458,31 +463,31 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Pickled onion and lime crema",
         items: [
-          "1 red onion, thinly sliced",
-          "½ cup lime juice or vinegar, 1 tsp sugar, ½ tsp salt",
-          "½ cup sour cream",
-          "1 lime: zest and juice",
+          "{1} red onion, thinly sliced",
+          "{½} cup lime juice or vinegar, {1} tsp sugar, {½} tsp salt",
+          "{½} cup sour cream",
+          "{1} lime: zest and juice",
         ],
       },
       {
         title: "Chipotle slaw",
         items: [
-          "3 cups shredded cabbage",
-          "¼ cup mayonnaise",
-          "1–2 chipotle peppers in adobo, chopped, plus 1 tsp adobo sauce",
-          "1 tbsp lime juice",
+          "{3} cups shredded cabbage",
+          "{¼} cup mayonnaise",
+          "{1}–{2} chipotle peppers in adobo, chopped, plus {1} tsp adobo sauce",
+          "{1} tbsp lime juice",
         ],
       },
       {
         title: "Beer-battered cod",
         items: [
-          "1½ lb (700 g) cod, cut in finger-size strips",
-          "1 cup flour, plus ¼ cup for dredging",
-          "1 tsp baking powder",
-          "1 tsp salt",
-          "1 cup cold light beer (or sparkling water)",
+          "{1½} lb ({700} g) cod, cut in finger-size strips",
+          "{1} cup flour, plus {¼} cup for dredging",
+          "{1} tsp baking powder",
+          "{1} tsp salt",
+          "{1} cup cold light beer (or sparkling water)",
           "Neutral oil, for frying",
-          "12 corn tortillas",
+          "{12} corn tortillas",
           "Cilantro, to serve",
         ],
       },
@@ -501,17 +506,17 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "2 large chicken breasts, halved horizontally into 4 cutlets",
+          "{2} large chicken breasts, halved horizontally into {4} cutlets",
           "Salt and black pepper",
-          "½ cup flour",
-          "2 eggs, beaten",
-          "1 cup panko breadcrumbs",
-          "½ cup grated parmesan",
-          "1 tsp dried Italian seasoning",
+          "{½} cup flour",
+          "{2} eggs, beaten",
+          "{1} cup panko breadcrumbs",
+          "{½} cup grated parmesan",
+          "{1} tsp dried Italian seasoning",
           "Olive oil, for frying",
-          "2 cups marinara sauce",
-          "1½ cups shredded mozzarella",
-          "12 oz (340 g) spaghetti",
+          "{2} cups marinara sauce",
+          "{1½} cups shredded mozzarella",
+          "{12} oz ({340} g) spaghetti",
           "Fresh basil, to serve",
         ],
       },
@@ -531,27 +536,27 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Broth",
         items: [
-          "1 large onion, halved",
+          "{1} large onion, halved",
           "3-inch piece fresh ginger, halved lengthwise",
-          "3 star anise",
-          "1 cinnamon stick",
-          "4 whole cloves",
-          "1 tsp coriander seeds",
-          "8 cups beef broth",
-          "2 cups water",
-          "3 tbsp fish sauce",
-          "1 tbsp sugar",
+          "{3} star anise",
+          "{1} cinnamon stick",
+          "{4} whole cloves",
+          "{1} tsp coriander seeds",
+          "{8} cups beef broth",
+          "{2} cups water",
+          "{3} tbsp fish sauce",
+          "{1} tbsp sugar",
         ],
       },
       {
         title: "Bowls",
         items: [
-          "14 oz (400 g) dried flat rice noodles",
-          "12 oz (340 g) beef eye of round or sirloin, partly frozen and sliced paper-thin",
-          "2 cups bean sprouts",
+          "{14} oz ({400} g) dried flat rice noodles",
+          "{12} oz ({340} g) beef eye of round or sirloin, partly frozen and sliced paper-thin",
+          "{2} cups bean sprouts",
           "Fresh Thai basil, cilantro and mint",
-          "2 limes, cut in wedges",
-          "1 jalapeño, sliced",
+          "{2} limes, cut in wedges",
+          "{1} jalapeño, sliced",
           "Hoisin and sriracha, to serve",
         ],
       },
@@ -571,17 +576,17 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
     ingredients: [
       {
         items: [
-          "2 tbsp olive oil",
-          "1 onion, chopped",
-          "1 red bell pepper, chopped",
-          "3 cloves garlic, minced",
-          "1 tsp ground cumin",
-          "1 tsp smoked paprika",
-          "¼ tsp chili flakes or cayenne",
-          "1 can (28 oz / 800 g) crushed tomatoes",
+          "{2} tbsp olive oil",
+          "{1} onion, chopped",
+          "{1} red bell pepper, chopped",
+          "{3} cloves garlic, minced",
+          "{1} tsp ground cumin",
+          "{1} tsp smoked paprika",
+          "{¼} tsp chili flakes or cayenne",
+          "{1} can (28 oz / 800 g) crushed tomatoes",
           "Salt and black pepper",
-          "6 eggs",
-          "½ cup crumbled feta",
+          "{6} eggs",
+          "{½} cup crumbled feta",
           "Chopped parsley or cilantro",
           "Crusty sourdough bread, to serve",
         ],
@@ -601,33 +606,33 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Bulgogi",
         items: [
-          "1 lb (450 g) ribeye or sirloin, partly frozen and sliced very thin",
-          "¼ cup soy sauce",
-          "2 tbsp brown sugar",
-          "1 tbsp sesame oil",
-          "½ Asian pear or 1 small apple, grated",
-          "4 cloves garlic, minced",
-          "1 tsp grated fresh ginger",
-          "2 green onions, sliced",
-          "1 tbsp neutral oil",
+          "{1} lb ({450} g) ribeye or sirloin, partly frozen and sliced very thin",
+          "{¼} cup soy sauce",
+          "{2} tbsp brown sugar",
+          "{1} tbsp sesame oil",
+          "{½} Asian pear or {1} small apple, grated",
+          "{4} cloves garlic, minced",
+          "{1} tsp grated fresh ginger",
+          "{2} green onions, sliced",
+          "{1} tbsp neutral oil",
         ],
       },
       {
         title: "Sesame spinach",
         items: [
-          "1 bunch spinach",
-          "1 tsp sesame oil",
-          "1 tsp soy sauce",
-          "1 tsp toasted sesame seeds",
+          "{1} bunch spinach",
+          "{1} tsp sesame oil",
+          "{1} tsp soy sauce",
+          "{1} tsp toasted sesame seeds",
         ],
       },
       {
         title: "Quick pickles and to serve",
         items: [
-          "1 cucumber and 1 carrot, thinly sliced",
-          "¼ cup rice vinegar, 1 tbsp sugar, ½ tsp salt",
-          "1½ cups short-grain rice",
-          "1 cup kimchi",
+          "{1} cucumber and {1} carrot, thinly sliced",
+          "{¼} cup rice vinegar, {1} tbsp sugar, {½} tsp salt",
+          "{1½} cups short-grain rice",
+          "{1} cup kimchi",
         ],
       },
     ],
@@ -645,28 +650,28 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Chicken and pasta",
         items: [
-          "2 chicken breasts",
-          "1 tbsp olive oil",
-          "Salt, black pepper and ½ tsp garlic powder",
-          "1 lb (450 g) fettuccine",
-          "2 cups broccoli florets",
+          "{2} chicken breasts",
+          "{1} tbsp olive oil",
+          "Salt, black pepper and {½} tsp garlic powder",
+          "{1} lb ({450} g) fettuccine",
+          "{2} cups broccoli florets",
         ],
       },
       {
         title: "Alfredo sauce",
         items: [
-          "4 tbsp butter",
-          "3 cloves garlic, minced",
-          "1½ cups heavy cream",
-          "1½ cups finely grated parmesan",
+          "{4} tbsp butter",
+          "{3} cloves garlic, minced",
+          "{1½} cups heavy cream",
+          "{1½} cups finely grated parmesan",
           "Pinch of nutmeg",
         ],
       },
       {
         title: "Garlic bread",
         items: [
-          "1 baguette, halved lengthwise",
-          "4 tbsp butter, softened, mixed with 2 cloves grated garlic and chopped parsley",
+          "{1} baguette, halved lengthwise",
+          "{4} tbsp butter, softened, mixed with {2} cloves grated garlic and chopped parsley",
         ],
       },
     ],
@@ -684,23 +689,23 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       {
         title: "Salmon and teriyaki",
         items: [
-          "2 salmon fillets (6 oz / 170 g each), skin removed, cut in cubes",
-          "¼ cup soy sauce",
-          "2 tbsp mirin",
-          "1 tbsp honey or brown sugar",
-          "1 tsp grated fresh ginger",
-          "1 tsp cornstarch mixed with 1 tbsp water",
-          "1 tbsp neutral oil",
+          "{2} salmon fillets (6 oz / 170 g each), skin removed, cut in cubes",
+          "{¼} cup soy sauce",
+          "{2} tbsp mirin",
+          "{1} tbsp honey or brown sugar",
+          "{1} tsp grated fresh ginger",
+          "{1} tsp cornstarch mixed with {1} tbsp water",
+          "{1} tbsp neutral oil",
         ],
       },
       {
         title: "Bowls",
         items: [
-          "1 cup sushi rice",
-          "1 tbsp rice vinegar, 1 tsp sugar, ¼ tsp salt",
-          "1 cup shelled edamame, thawed",
-          "1 avocado, sliced",
-          "½ cucumber, sliced",
+          "{1} cup sushi rice",
+          "{1} tbsp rice vinegar, {1} tsp sugar, {¼} tsp salt",
+          "{1} cup shelled edamame, thawed",
+          "{1} avocado, sliced",
+          "{½} cucumber, sliced",
           "Toasted sesame seeds and sliced green onion",
         ],
       },
@@ -715,10 +720,158 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
   },
 };
 
-// The ingredients as plain text, for sharing as a shopping list.
-export function shoppingListText(name: string, recipe: Recipe): string {
-  const sections = recipe.ingredients.map((g) =>
-    [g.title, ...g.items.map((i) => `• ${i}`)].filter(Boolean).join("\n")
+const FRACTIONS: [number, string][] = [
+  [0, ""],
+  [1 / 8, "⅛"],
+  [1 / 4, "¼"],
+  [1 / 3, "⅓"],
+  [1 / 2, "½"],
+  [2 / 3, "⅔"],
+  [3 / 4, "¾"],
+  [1, ""],
+];
+// Spoons and things you count come in quarters; only cups and pounds have thirds.
+const QUARTERS = FRACTIONS.filter(([f]) => f !== 1 / 3 && f !== 2 / 3);
+
+// Count nouns whose form follows the amount ("1 cup", "2 cups").
+const PLURALS: Record<string, string> = {
+  apple: "apples",
+  avocado: "avocados",
+  baguette: "baguettes",
+  bread: "breads",
+  breast: "breasts",
+  bun: "buns",
+  bunch: "bunches",
+  can: "cans",
+  carrot: "carrots",
+  clove: "cloves",
+  cucumber: "cucumbers",
+  cup: "cups",
+  cutlet: "cutlets",
+  egg: "eggs",
+  fillet: "fillets",
+  jalapeño: "jalapeños",
+  lemon: "lemons",
+  lime: "limes",
+  onion: "onions",
+  packet: "packets",
+  pear: "pears",
+  pepper: "peppers",
+  portion: "portions",
+  shallot: "shallots",
+  sheet: "sheets",
+  slice: "slices",
+  stick: "sticks",
+  tortilla: "tortillas",
+  yolk: "yolks",
+};
+const SINGULARS = Object.fromEntries(Object.entries(PLURALS).map(([s, p]) => [p, s]));
+
+// Things nobody buys or cooks half of.
+const WHOLE = new Set(["anise", "bun", "clove", "cutlet", "egg", "fillet", "sheet", "slice", "tortilla", "yolk"]);
+
+function parseAmount(text: string): number {
+  const frac = FRACTIONS.find(([, f]) => f && text.endsWith(f));
+  if (!frac) return Number(text);
+  const whole = text.slice(0, -frac[1].length);
+  return (whole ? Number(whole) : 0) + frac[0];
+}
+
+function formatAmount(
+  value: number,
+  kind: "metric" | "whole" | "measure",
+  thirds: boolean
+): { text: string; value: number } {
+  if (kind === "metric") {
+    const step = value >= 50 ? 10 : 5;
+    const v = Math.max(step, Math.round(value / step) * step);
+    return { text: String(v), value: v };
+  }
+  if (kind === "whole" || value >= 10) {
+    const v = Math.max(1, Math.round(value));
+    return { text: String(v), value: v };
+  }
+  let whole = Math.floor(value);
+  let [frac, glyph] = (thirds ? FRACTIONS : QUARTERS).reduce((best, f) =>
+    Math.abs(value - whole - f[0]) < Math.abs(value - whole - best[0]) ? f : best
   );
-  return [`ForkIt shopping list: ${name}`, ...sections].join("\n\n");
+  if (frac === 1) {
+    whole += 1;
+    frac = 0;
+    glyph = "";
+  }
+  if (whole === 0 && frac === 0) return { text: "⅛", value: 1 / 8 };
+  return { text: (whole ? String(whole) : "") + glyph, value: whole + frac };
+}
+
+// The words an amount applies to: up to the next comma, bracket or joining word.
+function clauseAfter(rest: string): string {
+  return rest.split(/[,():;]| plus | and | or | mixed | for | to /)[0];
+}
+
+// Move small or large spoon and cup amounts to the unit a cook would use:
+// ¼ tbsp is ¾ tsp, 6 tsp is 2 tbsp, ⅛ cup is 2 tbsp, 12 tbsp is ¾ cup.
+function convertUnit(value: number, unit: string): [number, string] {
+  if (unit === "tsp" && value >= 3) return convertUnit(value / 3, "tbsp");
+  if (unit === "tbsp" && value < 1) return [value * 3, "tsp"];
+  if (unit === "tbsp" && value >= 8) return [value / 16, "cup"];
+  if (unit === "cup" && value < 1 / 4) return [value * 16, "tbsp"];
+  return [value, unit];
+}
+
+// A count noun used as a description ("lemon juice", "black pepper") keeps
+// its form.
+function isDescriptive(words: string[], i: number): boolean {
+  return /^(juice|flakes|zest|powder)$/.test(words[i + 1] ?? "") || words[i - 1] === "black";
+}
+
+// One ingredient line for `factor` times the recipe's servings.
+export function ingredientText(item: string, factor = 1): string {
+  if (factor === 1) return item.replace(/[{}]/g, "");
+  const parts = item.split(/\{([^}]+)\}/);
+  // parts alternates text, amount, text, amount, ..., text.
+  for (let i = 1; i < parts.length; i += 2) {
+    let rest = parts[i + 1];
+    let value = parseAmount(parts[i]) * factor;
+    const unit = rest.match(/^ (cups?|tbsp|tsp)\b/)?.[1];
+    let thirds = /^ lb\b/.test(rest);
+    // Both ends of a range ("3–4 tbsp") keep the unit they share.
+    const inRange = rest.startsWith("–") || parts[i - 1].endsWith("–");
+    if (unit && !inRange) {
+      const [v, u] = convertUnit(value, unit.replace(/s$/, ""));
+      value = v;
+      thirds = u === "cup";
+      rest = rest.replace(/^ (cups?|tbsp|tsp)\b/, ` ${u}`);
+    }
+    const words = clauseAfter(rest).split(/\s+/).filter(Boolean);
+    // The last count noun is the thing counted: "4 egg yolks" counts yolks.
+    let noun: string | undefined;
+    for (let w = words.length - 1; w >= 0 && !noun; w--) {
+      if ((words[w] in PLURALS || words[w] in SINGULARS) && !isDescriptive(words, w)) noun = words[w];
+    }
+    const singular = noun ? (SINGULARS[noun] ?? noun) : undefined;
+    const kind = /^ (g|ml)\b/.test(rest)
+      ? "metric"
+      : words.some((w) => WHOLE.has(SINGULARS[w] ?? w))
+        ? "whole"
+        : "measure";
+    const scaled = formatAmount(value, kind, thirds || (inRange && !!unit?.startsWith("cup")));
+    parts[i] = scaled.text;
+    // A range ("1–2 chipotle peppers") takes its form from the upper end.
+    if (noun && singular && !rest.startsWith("–")) {
+      const form = scaled.value > 1 ? PLURALS[singular] : singular;
+      rest = rest.replace(new RegExp(`(^|\\s)${noun}(?=\\s|$|[,():;])`), `$1${form}`);
+    }
+    parts[i + 1] = rest;
+  }
+  return parts.join("");
+}
+
+// The ingredients as plain text, for sharing as a shopping list.
+export function shoppingListText(name: string, recipe: Recipe, servings?: number, factor = 1): string {
+  const sections = recipe.ingredients.map((g) =>
+    [g.title, ...g.items.map((i) => `• ${ingredientText(i, factor)}`)].filter(Boolean).join("\n")
+  );
+  const title = `ForkIt shopping list: ${name}` + (servings ? ` (serves ${servings})` : "");
+  return [title, ...sections].join("\n\n");
 }
