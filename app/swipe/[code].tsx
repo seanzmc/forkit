@@ -606,7 +606,9 @@ export default function SwipeScreen() {
 
     // Offline swipes still count: the rejoin replays every recorded swipe.
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "swipe", dishId: dish.id, vote }));
+      wsRef.current.send(
+        JSON.stringify({ type: "swipe", dishId: dish.id, vote, round: roundRef.current })
+      );
     } else {
       reconnectNow();
     }
@@ -625,7 +627,9 @@ export default function SwipeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "undo", dishId: lastSwipe.dishId }));
+      wsRef.current.send(
+        JSON.stringify({ type: "undo", dishId: lastSwipe.dishId, round: roundRef.current })
+      );
     } else {
       reconnectNow();
     }

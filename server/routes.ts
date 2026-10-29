@@ -932,6 +932,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (msg.type === "swipe") {
           const session = sessions.get(sessionCode);
           if (!session || session.status !== "swiping" || session.refreshing) return;
+          // A swipe on an earlier round's deck, sent before this member's
+          // screen caught up with the new round, must not count in this one.
+          if ((msg.round ?? 1) !== session.round) return;
 
           const member = session.members.get(memberId);
           if (!member) return;
@@ -953,6 +956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);
           if (!session || session.status !== "swiping") return;
+          if ((msg.round ?? 1) !== session.round) return;
 
           const member = session.members.get(memberId);
           if (!member) return;
