@@ -365,6 +365,11 @@ export default function SwipeScreen() {
   const [status, setStatus] = useState<"connecting" | "connected" | "reconnecting" | "offline">(
     "connecting"
   );
+  // Someone asked for another round and its deck is on the way.
+  const [roundLoading, setRoundLoading] = useState(false);
+  // The round this screen's deck and swipes are from. A ref so the join
+  // that a reconnect sends has the current one.
+  const roundRef = useRef(1);
 
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -387,6 +392,23 @@ export default function SwipeScreen() {
     if (s.members.some((m) => m.swiped === undefined)) return;
     setMemberSwipes(Object.fromEntries(s.members.map((m) => [m.id, m.swiped ?? 0])));
   }, []);
+
+  // A fresh deck for everyone: no one has swiped any of it yet.
+  const startRound = useCallback(
+    (s: SessionState, deck: Dish[]) => {
+      roundRef.current = s.round ?? 1;
+      resetSwipes();
+      setSwipeHistory([]);
+      setSwipedCount(0);
+      setCurrentIndex(0);
+      setDishIndex(0);
+      setDishes(deck);
+      setSession(s);
+      syncProgress(s);
+      setRoundLoading(false);
+    },
+    [syncProgress]
+  );
 
   const connectWs = useCallback(async () => {
     const name = await AsyncStorage.getItem("userName");
@@ -415,7 +437,16 @@ export default function SwipeScreen() {
       // server, so rejoin with the same userId and every swipe made so far,
       // including any made while offline. Empty on the first join.
       const swipes = Object.fromEntries(getSwipes().map((s) => [s.dish.id, s.vote]));
-      ws.send(JSON.stringify({ type: "join", code: code?.toUpperCase(), userId, name, swipes }));
+      ws.send(
+        JSON.stringify({
+          type: "join",
+          code: code?.toUpperCase(),
+          userId,
+          name,
+          swipes,
+          round: roundRef.current,
+        })
+      );
       // Registered separately so a slow permission prompt or APNs lookup
       // never delays joining and a late token still reaches the server.
       getPushToken().then((pushToken) => {
@@ -455,9 +486,15 @@ export default function SwipeScreen() {
           joinedRef.current = true;
           attemptsRef.current = 0;
           setStatus("connected");
-          setSession(msg.session);
-          syncProgress(msg.session);
-          if (msg.dishes?.length) setDishes(msg.dishes);
+          if ((msg.session.round ?? 1) !== roundRef.current && msg.dishes?.length) {
+            // A new round started while we were away; the server dropped
+            // our swipes from the old one.
+            startRound(msg.session, msg.dishes);
+          } else {
+            setSession(msg.session);
+            syncProgress(msg.session);
+            if (msg.dishes?.length) setDishes(msg.dishes);
+          }
           if (msg.session.status === "matched") {
             router.replace({
               pathname: "/match",
@@ -476,6 +513,11 @@ export default function SwipeScreen() {
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);
           syncProgress(msg.session);
+        } else if (msg.type === "round_loading") {
+          setRoundLoading(true);
+        } else if (msg.type === "new_round") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          startRound(msg.session, msg.dishes);
         } else if (msg.type === "match") {
           // Also what a rejoin gets if the room matched while we were away.
           closingRef.current = true;
@@ -504,7 +546,7 @@ export default function SwipeScreen() {
 
     // onclose follows onerror and handles both.
     ws.onclose = handleDrop;
-  }, [code, userId, syncProgress]);
+  }, [code, userId, syncProgress, startRound]);
 
   useEffect(() => {
     connectWsRef.current = connectWs;
@@ -564,7 +606,9 @@ export default function SwipeScreen() {
 
     // Offline swipes still count: the rejoin replays every recorded swipe.
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "swipe", dishId: dish.id, vote }));
+      wsRef.current.send(
+        JSON.stringify({ type: "swipe", dishId: dish.id, vote, round: roundRef.current })
+      );
     } else {
       reconnectNow();
     }
@@ -583,7 +627,9 @@ export default function SwipeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "undo", dishId: lastSwipe.dishId }));
+      wsRef.current.send(
+        JSON.stringify({ type: "undo", dishId: lastSwipe.dishId, round: roundRef.current })
+      );
     } else {
       reconnectNow();
     }
@@ -597,6 +643,25 @@ export default function SwipeScreen() {
     setCurrentIndex((i) => i - 1);
   }, [swipeHistory, currentIndex, cards, reconnectNow]);
 
+  // The server ignores an ask it can't act on (someone rejoined and hasn't
+  // swiped yet), so don't leave the button spinning forever. Dealing new
+  // places can take ~15 s with menu grounding on.
+  useEffect(() => {
+    if (!roundLoading) return;
+    const t = setTimeout(() => setRoundLoading(false), 40000);
+    return () => clearTimeout(t);
+  }, [roundLoading]);
+
+  const handleNewRound = useCallback(() => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      reconnectNow();
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setRoundLoading(true);
+    wsRef.current.send(JSON.stringify({ type: "new_round" }));
+  }, [reconnectNow]);
+
   const topCard = cards[currentIndex];
   const handleButtonSwipe = (vote: "like" | "pass") => {
     const dish = topCard?.[dishIndex] ?? topCard?.[0];
@@ -609,6 +674,16 @@ export default function SwipeScreen() {
   const isCookIn = dishes[0]?.mode === "cook-in";
 
   const members = session?.members ?? [];
+  const round = session?.round ?? 1;
+  // Everyone in the room has swiped every card and nothing matched: without
+  // another round they'd wait here forever.
+  const finishedCount = members.filter((m) =>
+    m.id === userId ? done : (memberSwipes[m.id] ?? 0) >= cards.length
+  ).length;
+  const everyoneDone = done && cards.length > 0 && finishedCount === members.length;
+  // Real places can be topped up from farther out; recipes and sample
+  // restaurants can only be reshuffled.
+  const freshPlaces = !isCookIn && !session?.sample;
   const reviewed = swipeHistory.flatMap(({ dishId, vote }) => {
     const d = dishes.find((x) => x.id === dishId);
     return d ? [{ dish: d, vote }] : [];
@@ -657,6 +732,7 @@ export default function SwipeScreen() {
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
         </View>
         <Text style={styles.progressText}>
+          {round > 1 && `Round ${round}${session?.repeat ? " · reshuffled" : ""} · `}
           {currentIndex}/{cards.length} {isCookIn ? "recipes" : "places"}
         </Text>
 
@@ -664,11 +740,68 @@ export default function SwipeScreen() {
           {done ? (
             <Animated.View entering={FadeIn} style={styles.doneCard}>
               <ScrollView contentContainerStyle={styles.doneScroll} showsVerticalScrollIndicator={false}>
-                <Ionicons name="checkmark-circle" size={56} color={Colors.accent} />
-                <Text style={styles.doneTitle}>All done!</Text>
-                <Text style={styles.doneText}>
-                  Waiting for the others to finish swiping...{"\n"}When enough of you swipe right, {mealWord} is decided.
-                </Text>
+                {everyoneDone ? (
+                  <>
+                    <Ionicons name="shuffle" size={56} color={Colors.accent} />
+                    <Text style={styles.doneTitle}>No match yet</Text>
+                    <Text style={styles.doneText}>
+                      {"Everyone's swiped and no "}
+                      {isCookIn ? "recipe" : "place"} got enough votes.{"\n"}
+                      {freshPlaces
+                        ? "Try a fresh batch from a bit farther out."
+                        : `Shuffle the ${isCookIn ? "recipes" : "places"} and give them another look.`}
+                    </Text>
+                    <Pressable
+                      onPress={handleNewRound}
+                      disabled={roundLoading}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [
+                        styles.roundBtn,
+                        { opacity: pressed || roundLoading ? 0.8 : 1 },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={[Colors.accent, Colors.accentDeep]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.roundBtnGradient}
+                      >
+                        {roundLoading ? (
+                          <>
+                            <ActivityIndicator size="small" color="#fff" />
+                            <Text style={styles.roundBtnText}>
+                              {freshPlaces ? "Finding places..." : "Shuffling..."}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <Ionicons
+                              name={freshPlaces ? "search" : "shuffle"}
+                              size={20}
+                              color="#fff"
+                            />
+                            <Text style={styles.roundBtnText}>
+                              {freshPlaces ? "Find New Places" : "Shuffle and Go Again"}
+                            </Text>
+                          </>
+                        )}
+                      </LinearGradient>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={56} color={Colors.accent} />
+                    <Text style={styles.doneTitle}>All done!</Text>
+                    <Text style={styles.doneText}>
+                      Waiting for the others to finish swiping...{"\n"}When enough of you swipe right, {mealWord} is decided.
+                    </Text>
+                    {members.length > 1 && (
+                      <Text style={styles.doneCount}>
+                        {finishedCount} of {members.length} done
+                      </Text>
+                    )}
+                  </>
+                )}
                 <View style={styles.doneReview}>
                   <SwipeReview swipes={reviewed} />
                 </View>
@@ -1183,6 +1316,29 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: "center",
     lineHeight: 24,
+  },
+  doneCount: {
+    fontSize: 13,
+    fontFamily: "Poppins_500Medium",
+    color: Colors.textMuted,
+  },
+  roundBtn: {
+    alignSelf: "stretch",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  roundBtnGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  roundBtnText: {
+    fontSize: 16,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#fff",
   },
   doneBtn: {
     marginTop: 8,

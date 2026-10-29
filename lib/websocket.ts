@@ -17,6 +17,10 @@ export type SessionState = {
   meal?: Meal;
   // Dine-out rooms using made-up restaurants; absent from older servers.
   sample?: SampleReason;
+  // Which round of swiping this is, from 1; repeat when this round's deck is
+  // the last one's reshuffled. Absent from older servers.
+  round?: number;
+  repeat?: boolean;
   // swiped: how many swipes the server holds for that member; absent from
   // older servers.
   members: { id: string; name: string; swiped?: number }[];
@@ -25,9 +29,11 @@ export type SessionState = {
 };
 
 // Sent by the client: join (code, userId, name, optional pushToken, and on a
-// swipe screen the member's swipes so far as { [dishId]: "like" | "pass" },
-// which replace whatever the server holds for them), push_token, start, swipe,
-// undo, ping. Received by the client:
+// swipe screen the member's swipes so far as { [dishId]: "like" | "pass" } with
+// the round they're from, which replace whatever the server holds for them),
+// push_token, start, swipe and undo (each with its round, so a vote on an
+// earlier round's deck is dropped), new_round (once everyone has swiped through
+// with no match), ping. Received by the client:
 export type WsMessage =
   | { type: "joined"; session: SessionState; dishes: import("./food-data").Dish[]; isHost: boolean }
   | { type: "member_joined"; session: SessionState }
@@ -36,5 +42,8 @@ export type WsMessage =
   // "undo" when a member takes back their last swipe.
   | { type: "swipe_update"; memberId: string; dishId: string; vote: "like" | "pass" | "undo" }
   | { type: "match"; session: SessionState; dish: import("./food-data").Dish }
+  // Someone asked for another round; its deck follows in new_round.
+  | { type: "round_loading" }
+  | { type: "new_round"; session: SessionState; dishes: import("./food-data").Dish[] }
   | { type: "error"; message: string }
   | { type: "pong" };

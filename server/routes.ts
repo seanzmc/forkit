@@ -17,6 +17,10 @@ import { curatedChainDishes } from "./curated-chains";
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
 const EMPTY_SESSION_GRACE_MS = 30_000;
+// Each new round of a dine-out room searches this much farther out (up to
+// Places' 50 km limit), so it has places the last round didn't.
+const ROUND_RADIUS_GROWTH = 2;
+const MAX_RADIUS_METERS = 50000;
 
 interface SessionMember {
   id: string;
@@ -45,6 +49,25 @@ interface Session {
   // Expo push tokens by member id. Kept when a member disconnects, since the
   // members who left the app are the ones a match notification is for.
   pushTokens: Map<string, string>;
+  // Starts at 1; a room where everyone swiped through without a match can
+  // ask for another round with fresh places (or the same deck reshuffled).
+  round: number;
+  // Whether this round's deck is the last one's reshuffled, because there
+  // were no new places (or it's cook-in, or sample restaurants).
+  repeat?: boolean;
+  // Set while the next round's places are being fetched.
+  refreshing?: boolean;
+  // Where a real dine-out room searched, for the next round's search.
+  search?: {
+    lat: number;
+    lng: number;
+    radius: number;
+    meal: Meal;
+    when: { day: number; minutes: number } | null;
+  };
+  // Place ids and lowercased names already dealt in this room, so a new
+  // round doesn't deal them again.
+  seenPlaces: Set<string>;
 }
 
 const sessions = new Map<string, Session>();
@@ -75,6 +98,8 @@ function getSessionState(session: Session) {
     mode: session.mode,
     meal: session.meal,
     sample: session.sample,
+    round: session.round,
+    repeat: session.repeat,
     members: Array.from(session.members.values()).map((m) => ({
       id: m.id,
       name: m.name,
@@ -179,6 +204,67 @@ function replayedSwipes(session: Session, raw: unknown): Record<string, "like" |
     }
   }
   return swipes;
+}
+
+// How many cards the deck has: one per restaurant in dine-out (the app shows
+// a place's dishes together), one per recipe in cook-in.
+function cardCount(session: Session): number {
+  return new Set(
+    session.dishes.map((d) => (d.mode === "cook-in" ? d.id : (d.placeId ?? d.restaurant)))
+  ).size;
+}
+
+// Everyone still in the room has swiped every card (each swipe is one card),
+// and nothing matched.
+function roundFinished(session: Session): boolean {
+  const cards = cardCount(session);
+  return (
+    session.status === "swiping" &&
+    session.members.size > 0 &&
+    [...session.members.values()].every((m) => Object.keys(m.swipes).length >= cards)
+  );
+}
+
+// The places' order shuffled, each one's dishes kept together.
+function shufflePlaces(dishes: Dish[]): Dish[] {
+  const byPlace = new Map<string, Dish[]>();
+  for (const dish of dishes) {
+    const key = dish.mode === "cook-in" ? dish.id : (dish.placeId ?? dish.restaurant);
+    if (!byPlace.has(key)) byPlace.set(key, []);
+    byPlace.get(key)!.push(dish);
+  }
+  return pickRandom([...byPlace.values()], byPlace.size).flat();
+}
+
+function rememberPlaces(session: Session) {
+  for (const d of session.dishes) {
+    if (d.placeId) session.seenPlaces.add(d.placeId);
+    session.seenPlaces.add(d.restaurant.trim().toLowerCase());
+  }
+}
+
+// The next round's deck: places farther out that haven't been dealt yet, or,
+// when there are none (or it's cook-in, or a sample room), the same deck
+// reshuffled.
+async function dealNextRound(session: Session): Promise<{ dishes: Dish[]; repeat: boolean }> {
+  const search = session.search;
+  if (search) {
+    const radius = Math.min(search.radius * ROUND_RADIUS_GROWTH, MAX_RADIUS_METERS);
+    console.log(`Round ${session.round + 1}: ${search.meal} restaurants within ${radius}m`);
+    const { dishes, sample } = await fetchNearbyRestaurants(
+      search.lat,
+      search.lng,
+      radius,
+      search.meal,
+      search.when,
+      session.seenPlaces
+    );
+    search.radius = radius;
+    // A sample result means nothing new was found (or the lookup failed):
+    // keep the real places from before rather than switch to made-up ones.
+    if (!sample && dishes.length > 0) return { dishes, repeat: false };
+  }
+  return { dishes: shufflePlaces(session.dishes), repeat: true };
 }
 
 function announceMatch(session: Session) {
@@ -389,7 +475,10 @@ async function fetchNearbyRestaurants(
   lng: number,
   radiusMeters: number,
   meal: Meal,
-  when: { day: number; minutes: number } | null
+  when: { day: number; minutes: number } | null,
+  // Place ids and lowercased names to leave out: ones an earlier round of
+  // the room already dealt.
+  exclude?: Set<string>
 ): Promise<{ dishes: Dish[]; sample?: SampleReason }> {
   if (!GOOGLE_API_KEY) {
     console.warn("No Google Places API key set, using fallback dishes");
@@ -431,8 +520,14 @@ async function fetchNearbyRestaurants(
     // Only places open for the meal: no breakfast spot that closes at 2 pm in
     // a dinner room, no dinner-only place at breakfast.
     const places = (data.places || []).filter(
-      (p: { regularOpeningHours?: { periods?: OpeningPeriod[] } }) =>
-        !when || openAt(p.regularOpeningHours?.periods, when)
+      (p: {
+        id?: string;
+        displayName?: { text?: string };
+        regularOpeningHours?: { periods?: OpeningPeriod[] };
+      }) =>
+        (!when || openAt(p.regularOpeningHours?.periods, when)) &&
+        !(exclude && p.id && exclude.has(p.id)) &&
+        !exclude?.has((p.displayName?.text || "").trim().toLowerCase())
     );
 
     if (places.length === 0) {
@@ -632,13 +727,7 @@ async function fetchNearbyRestaurants(
 
     // Shuffle the places but keep each one's dishes together: the app shows
     // a place's dishes on one card.
-    const byPlace = new Map<string, Dish[]>();
-    for (const dish of dishes) {
-      const key = dish.placeId ?? dish.restaurant;
-      if (!byPlace.has(key)) byPlace.set(key, []);
-      byPlace.get(key)!.push(dish);
-    }
-    return { dishes: pickRandom([...byPlace.values()], byPlace.size).flat() };
+    return { dishes: shufflePlaces(dishes) };
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     return { dishes: shuffleDishes(meal), sample: "lookup-failed" };
@@ -690,6 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : null;
     let dishes: Dish[];
     let sample: SampleReason | undefined;
+    let search: Session["search"];
 
     if (mode === "cook-in") {
       dishes = shuffleRecipes();
@@ -701,6 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       ({ dishes, sample } = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when));
       console.log(`Found ${dishes.length} dishes from nearby restaurants`);
+      if (!sample) search = { lat, lng, radius: radiusMeters, meal, when };
     } else {
       dishes = shuffleDishes(meal);
       sample = "no-location";
@@ -717,7 +808,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sample,
       createdAt: Date.now(),
       pushTokens: new Map(),
+      round: 1,
+      search,
+      seenPlaces: new Set(),
     };
+    rememberPlaces(session);
 
     sessions.set(code, session);
     res.json({ code, mode, dishCount: dishes.length });
@@ -789,7 +884,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // has made, so the server doesn't forget the ones from before the
           // drop (closing the socket removed the member) or the ones made
           // while offline. A first join sends none.
-          const swipes = replayedSwipes(session, msg.swipes);
+          // Swipes from an earlier round don't count in this one; apps from
+          // before rounds send no round, and only knew round 1.
+          const swipes =
+            (msg.round ?? 1) === session.round ? replayedSwipes(session, msg.swipes) : {};
           session.members.set(memberId, {
             id: memberId,
             name: cleanName || "Guest",
@@ -833,7 +931,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } else if (msg.type === "swipe") {
           const session = sessions.get(sessionCode);
-          if (!session || session.status !== "swiping") return;
+          if (!session || session.status !== "swiping" || session.refreshing) return;
+          // A swipe on an earlier round's deck, sent before this member's
+          // screen caught up with the new round, must not count in this one.
+          if ((msg.round ?? 1) !== session.round) return;
 
           const member = session.members.get(memberId);
           if (!member) return;
@@ -855,6 +956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);
           if (!session || session.status !== "swiping") return;
+          if ((msg.round ?? 1) !== session.round) return;
 
           const member = session.members.get(memberId);
           if (!member) return;
@@ -871,6 +973,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             memberId
           );
+        } else if (msg.type === "new_round") {
+          // Anyone can ask once everyone has swiped through with no match;
+          // a second ask while the first is dealing is ignored.
+          const session = sessions.get(sessionCode);
+          if (!session || !session.members.has(memberId) || session.refreshing) return;
+          if (!roundFinished(session)) return;
+
+          session.refreshing = true;
+          broadcastToSession(session, { type: "round_loading" });
+          void dealNextRound(session)
+            .catch((err) => {
+              console.error("New round error:", err);
+              return { dishes: shufflePlaces(session.dishes), repeat: true };
+            })
+            .then(({ dishes, repeat }) => {
+              session.refreshing = false;
+              if (sessions.get(session.code) !== session || session.status !== "swiping") return;
+              session.dishes = dishes;
+              session.round += 1;
+              session.repeat = repeat;
+              rememberPlaces(session);
+              session.members.forEach((m) => (m.swipes = {}));
+              broadcastToSession(session, {
+                type: "new_round",
+                session: getSessionState(session),
+                dishes: session.dishes,
+              });
+            });
         } else if (msg.type === "push_token") {
           // Sent after join, once the device has a token (it can take a
           // while on iOS, or wait on the permission prompt).
