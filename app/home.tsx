@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   Alert,
   Linking,
+  KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -110,6 +112,18 @@ export default function HomeScreen() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
   const [locationPermission, requestPermission] = Location.useForegroundPermissions();
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+
+  // The room code field is the last thing on the screen, so on Android
+  // (edge-to-edge, where the window no longer resizes for the keyboard) it
+  // sat under the keyboard. Keep it and Join Room in view, like the name
+  // field on the welcome screen.
+  useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidShow", () =>
+      scrollRef.current?.scrollToEnd({ animated: true })
+    );
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem("userName").then((n) => {
@@ -241,292 +255,298 @@ export default function HomeScreen() {
 
   return (
     <LinearGradient colors={["#0F0F0F", "#1A0A00", "#0F0F0F"]} style={styles.container}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20),
-            paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
-          },
-        ]}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
       >
-        <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Hey {userName}</Text>
-            <Text style={styles.subGreeting}>Ready to swipe right on dinner?</Text>
-          </View>
-          <Pressable onPress={handleLogout} style={styles.avatarBtn}>
-            <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(150)} style={styles.modeToggle}>
-          <Pressable
-            onPress={() => handleModeChange("dine-out")}
-            style={[styles.modeOption, mode === "dine-out" && styles.modeOptionActive]}
-          >
-            <Ionicons
-              name="restaurant"
-              size={22}
-              color={mode === "dine-out" ? Colors.accent : Colors.textMuted}
-            />
-            <Text style={[styles.modeLabel, mode === "dine-out" && styles.modeLabelActive]}>
-              Dine Out
-            </Text>
-            <Text style={styles.modeSub}>Nearby restaurants</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => handleModeChange("cook-in")}
-            style={[styles.modeOption, mode === "cook-in" && styles.modeOptionActive]}
-          >
-            <MaterialCommunityIcons
-              name="pot-steam"
-              size={22}
-              color={mode === "cook-in" ? Colors.accent : Colors.textMuted}
-            />
-            <Text style={[styles.modeLabel, mode === "cook-in" && styles.modeLabelActive]}>
-              Cook In
-            </Text>
-            <Text style={styles.modeSub}>Home recipes</Text>
-          </Pressable>
-        </Animated.View>
-
-        {mode === "dine-out" && (
-          <>
-            <Animated.View entering={FadeInDown.delay(200)} style={styles.locationCard}>
-              {effectiveLocationStatus === "granted" && location ? (
-                <View style={styles.locationGranted}>
-                  <View style={styles.locationDot}>
-                    <Ionicons name="location" size={18} color={Colors.green} />
-                  </View>
-                  <View style={styles.locationTextCol}>
-                    <Text style={styles.locationLabel}>Location active</Text>
-                    <Text style={styles.locationCoords}>
-                      Restaurants near you will be used
-                    </Text>
-                  </View>
-                  <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
-                </View>
-              ) : effectiveLocationStatus === "denied" ? (
-                <View style={styles.locationDenied}>
-                  <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
-                  <View style={styles.locationDeniedContent}>
-                    <Text style={styles.locationDeniedText}>
-                      Location denied — using curated picks instead.
-                    </Text>
-                    {Platform.OS !== "web" && locationPermission?.canAskAgain ? (
-                      <Pressable onPress={handleRequestLocation} style={styles.retryBtn}>
-                        <Text style={styles.retryBtnText}>Try Again</Text>
-                      </Pressable>
-                    ) : Platform.OS !== "web" ? (
-                      <Pressable onPress={() => Linking.openSettings()} style={styles.retryBtn}>
-                        <Text style={styles.retryBtnText}>Open Settings</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </View>
-              ) : (
-                <Pressable onPress={handleRequestLocation} style={styles.locationRequest}>
-                  <View style={styles.locationDot}>
-                    <Ionicons name="location-outline" size={18} color={Colors.accent} />
-                  </View>
-                  <View style={styles.locationTextCol}>
-                    <Text style={styles.locationRequestTitle}>Enable Location</Text>
-                    <Text style={styles.locationRequestSub}>
-                      Find restaurants near you
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
-                </Pressable>
-              )}
-            </Animated.View>
-            {effectiveLocationStatus === "granted" && (
-              <Animated.View entering={FadeInDown.delay(225)} style={styles.radiusSection}>
-                <Text style={styles.radiusSectionTitle}>Deciding</Text>
-                <View style={styles.radiusOptions}>
-                  {MEALS.map((m) => (
-                    <Pressable
-                      key={m}
-                      onPress={() => {
-                        setMeal(m);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: meal === m }}
-                      style={[
-                        styles.radiusChip,
-                        styles.mealChip,
-                        meal === m && styles.radiusChipActive,
-                      ]}
-                    >
-                      <Ionicons
-                        name={MEAL_OPTIONS[m].icon}
-                        size={14}
-                        color={meal === m ? "#fff" : Colors.textSecondary}
-                      />
-                      <Text
-                        style={[
-                          styles.radiusChipText,
-                          meal === m && styles.radiusChipTextActive,
-                        ]}
-                      >
-                        {MEAL_OPTIONS[m].label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </Animated.View>
-            )}
-            {effectiveLocationStatus === "granted" && (
-              <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
-                <Text style={styles.radiusSectionTitle}>Search Radius</Text>
-                <View style={styles.radiusOptions}>
-                  {RADIUS_OPTIONS.map((opt, i) => (
-                    <Pressable
-                      key={opt.value}
-                      onPress={() => handleRadiusChange(i)}
-                      style={[
-                        styles.radiusChip,
-                        selectedRadius === i && styles.radiusChipActive,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.radiusChipText,
-                          selectedRadius === i && styles.radiusChipTextActive,
-                        ]}
-                      >
-                        {opt.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </Animated.View>
-            )}
-          </>
-        )}
-
-        {mode === "cook-in" && (
-          <Animated.View entering={FadeInDown.delay(200)} style={styles.cookInCard}>
-            <MaterialCommunityIcons name="pot-steam" size={24} color={Colors.accent} />
-            <View style={styles.locationTextCol}>
-              <Text style={styles.locationLabel}>Recipe Mode</Text>
-              <Text style={styles.locationCoords}>
-                Swipe through home recipes your group can cook together
-              </Text>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20),
+              paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Hey {userName}</Text>
+              <Text style={styles.subGreeting}>Ready to swipe right on dinner?</Text>
             </View>
-          </Animated.View>
-        )}
-
-        <Animated.View entering={FadeInDown.delay(350)} style={styles.tabs}>
-          <Pressable
-            style={[styles.tabBtn, tab === "create" && styles.tabBtnActive]}
-            onPress={() => setTab("create")}
-          >
-            <Text style={[styles.tabText, tab === "create" && styles.tabTextActive]}>
-              Create Room
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.tabBtn, tab === "join" && styles.tabBtnActive]}
-            onPress={() => setTab("join")}
-          >
-            <Text style={[styles.tabText, tab === "join" && styles.tabTextActive]}>
-              Join Room
-            </Text>
-          </Pressable>
-        </Animated.View>
-
-        {tab === "create" ? (
-          <Animated.View entering={FadeInDown.delay(50)} key="create" style={styles.panel}>
-            <MaterialCommunityIcons name="door-open" size={40} color={Colors.accent} style={styles.panelIcon} />
-            <Text style={styles.panelTitle}>Host a Session</Text>
-            <Text style={styles.panelDesc}>
-              {mode === "cook-in"
-                ? "Share a room code with your group. Swipe on recipes to cook together."
-                : location
-                  ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
-                  : effectiveLocationStatus === "denied"
-                    ? "Share a room code with your group. Using curated restaurant picks."
-                    : `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of you for real restaurants once location is on.`}
-            </Text>
-            <Pressable
-              onPress={handleCreate}
-              disabled={creating}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                { opacity: pressed || creating ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
-              ]}
-            >
-              <LinearGradient
-                colors={[Colors.accent, Colors.accentDeep]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.actionBtnGradient}
-              >
-                {creating ? (
-                  <Text style={styles.actionBtnText}>
-                    {mode === "cook-in" ? "Loading recipes..." : "Finding restaurants..."}
-                  </Text>
-                ) : (
-                  <>
-                    <Ionicons name="add-circle" size={22} color="#fff" />
-                    <Text style={styles.actionBtnText}>Create Room</Text>
-                  </>
-                )}
-              </LinearGradient>
+            <Pressable onPress={handleLogout} style={styles.avatarBtn}>
+              <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>
             </Pressable>
           </Animated.View>
-        ) : (
-          <Animated.View entering={FadeInDown.delay(50)} key="join" style={styles.panel}>
-            <Ionicons name="enter-outline" size={40} color={Colors.accent} style={styles.panelIcon} />
-            <Text style={styles.panelTitle}>Join a Session</Text>
-            <Text style={styles.panelDesc}>
-              Enter the 6-character code shared by your host.
-            </Text>
-            <TextInput
-              style={styles.codeInput}
-              placeholder="Enter code (e.g. ABC123)"
-              placeholderTextColor={Colors.textMuted}
-              value={joinCode}
-              onChangeText={(t) => setJoinCode(t.toUpperCase())}
-              maxLength={6}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={handleJoin}
-            />
+
+          <Animated.View entering={FadeInDown.delay(150)} style={styles.modeToggle}>
             <Pressable
-              onPress={handleJoin}
-              disabled={joining || joinCode.trim().length < 4}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                { opacity: pressed || joining || joinCode.trim().length < 4 ? 0.6 : 1 },
-              ]}
+              onPress={() => handleModeChange("dine-out")}
+              style={[styles.modeOption, mode === "dine-out" && styles.modeOptionActive]}
             >
-              <LinearGradient
-                colors={[Colors.accent, Colors.accentDeep]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.actionBtnGradient}
-              >
-                {joining ? (
-                  <Text style={styles.actionBtnText}>Joining...</Text>
-                ) : (
-                  <>
-                    <Ionicons name="log-in-outline" size={22} color="#fff" />
-                    <Text style={styles.actionBtnText}>Join Room</Text>
-                  </>
-                )}
-              </LinearGradient>
+              <Ionicons
+                name="restaurant"
+                size={22}
+                color={mode === "dine-out" ? Colors.accent : Colors.textMuted}
+              />
+              <Text style={[styles.modeLabel, mode === "dine-out" && styles.modeLabelActive]}>
+                Dine Out
+              </Text>
+              <Text style={styles.modeSub}>Nearby restaurants</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => handleModeChange("cook-in")}
+              style={[styles.modeOption, mode === "cook-in" && styles.modeOptionActive]}
+            >
+              <MaterialCommunityIcons
+                name="pot-steam"
+                size={22}
+                color={mode === "cook-in" ? Colors.accent : Colors.textMuted}
+              />
+              <Text style={[styles.modeLabel, mode === "cook-in" && styles.modeLabelActive]}>
+                Cook In
+              </Text>
+              <Text style={styles.modeSub}>Home recipes</Text>
             </Pressable>
           </Animated.View>
-        )}
-        <View style={styles.versionFooter}>
-          <VersionLabel />
-        </View>
-      </ScrollView>
+
+          {mode === "dine-out" && (
+            <>
+              <Animated.View entering={FadeInDown.delay(200)} style={styles.locationCard}>
+                {effectiveLocationStatus === "granted" && location ? (
+                  <View style={styles.locationGranted}>
+                    <View style={styles.locationDot}>
+                      <Ionicons name="location" size={18} color={Colors.green} />
+                    </View>
+                    <View style={styles.locationTextCol}>
+                      <Text style={styles.locationLabel}>Location active</Text>
+                      <Text style={styles.locationCoords}>
+                        Restaurants near you will be used
+                      </Text>
+                    </View>
+                    <Ionicons name="checkmark-circle" size={20} color={Colors.green} />
+                  </View>
+                ) : effectiveLocationStatus === "denied" ? (
+                  <View style={styles.locationDenied}>
+                    <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
+                    <View style={styles.locationDeniedContent}>
+                      <Text style={styles.locationDeniedText}>
+                        Location denied — using curated picks instead.
+                      </Text>
+                      {Platform.OS !== "web" && locationPermission?.canAskAgain ? (
+                        <Pressable onPress={handleRequestLocation} style={styles.retryBtn}>
+                          <Text style={styles.retryBtnText}>Try Again</Text>
+                        </Pressable>
+                      ) : Platform.OS !== "web" ? (
+                        <Pressable onPress={() => Linking.openSettings()} style={styles.retryBtn}>
+                          <Text style={styles.retryBtnText}>Open Settings</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : (
+                  <Pressable onPress={handleRequestLocation} style={styles.locationRequest}>
+                    <View style={styles.locationDot}>
+                      <Ionicons name="location-outline" size={18} color={Colors.accent} />
+                    </View>
+                    <View style={styles.locationTextCol}>
+                      <Text style={styles.locationRequestTitle}>Enable Location</Text>
+                      <Text style={styles.locationRequestSub}>
+                        Find restaurants near you
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+                  </Pressable>
+                )}
+              </Animated.View>
+              {effectiveLocationStatus === "granted" && (
+                <Animated.View entering={FadeInDown.delay(225)} style={styles.radiusSection}>
+                  <Text style={styles.radiusSectionTitle}>Deciding</Text>
+                  <View style={styles.radiusOptions}>
+                    {MEALS.map((m) => (
+                      <Pressable
+                        key={m}
+                        onPress={() => {
+                          setMeal(m);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: meal === m }}
+                        style={[
+                          styles.radiusChip,
+                          styles.mealChip,
+                          meal === m && styles.radiusChipActive,
+                        ]}
+                      >
+                        <Ionicons
+                          name={MEAL_OPTIONS[m].icon}
+                          size={14}
+                          color={meal === m ? "#fff" : Colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.radiusChipText,
+                            meal === m && styles.radiusChipTextActive,
+                          ]}
+                        >
+                          {MEAL_OPTIONS[m].label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </Animated.View>
+              )}
+              {effectiveLocationStatus === "granted" && (
+                <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
+                  <Text style={styles.radiusSectionTitle}>Search Radius</Text>
+                  <View style={styles.radiusOptions}>
+                    {RADIUS_OPTIONS.map((opt, i) => (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => handleRadiusChange(i)}
+                        style={[
+                          styles.radiusChip,
+                          selectedRadius === i && styles.radiusChipActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.radiusChipText,
+                            selectedRadius === i && styles.radiusChipTextActive,
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </Animated.View>
+              )}
+            </>
+          )}
+
+          {mode === "cook-in" && (
+            <Animated.View entering={FadeInDown.delay(200)} style={styles.cookInCard}>
+              <MaterialCommunityIcons name="pot-steam" size={24} color={Colors.accent} />
+              <View style={styles.locationTextCol}>
+                <Text style={styles.locationLabel}>Recipe Mode</Text>
+                <Text style={styles.locationCoords}>
+                  Swipe through home recipes your group can cook together
+                </Text>
+              </View>
+            </Animated.View>
+          )}
+
+          <Animated.View entering={FadeInDown.delay(350)} style={styles.tabs}>
+            <Pressable
+              style={[styles.tabBtn, tab === "create" && styles.tabBtnActive]}
+              onPress={() => setTab("create")}
+            >
+              <Text style={[styles.tabText, tab === "create" && styles.tabTextActive]}>
+                Create Room
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tabBtn, tab === "join" && styles.tabBtnActive]}
+              onPress={() => setTab("join")}
+            >
+              <Text style={[styles.tabText, tab === "join" && styles.tabTextActive]}>
+                Join Room
+              </Text>
+            </Pressable>
+          </Animated.View>
+
+          {tab === "create" ? (
+            <Animated.View entering={FadeInDown.delay(50)} key="create" style={styles.panel}>
+              <MaterialCommunityIcons name="door-open" size={40} color={Colors.accent} style={styles.panelIcon} />
+              <Text style={styles.panelTitle}>Host a Session</Text>
+              <Text style={styles.panelDesc}>
+                {mode === "cook-in"
+                  ? "Share a room code with your group. Swipe on recipes to cook together."
+                  : location
+                    ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
+                    : effectiveLocationStatus === "denied"
+                      ? "Share a room code with your group. Using curated restaurant picks."
+                      : `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of you for real restaurants once location is on.`}
+              </Text>
+              <Pressable
+                onPress={handleCreate}
+                disabled={creating}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  { opacity: pressed || creating ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                ]}
+              >
+                <LinearGradient
+                  colors={[Colors.accent, Colors.accentDeep]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.actionBtnGradient}
+                >
+                  {creating ? (
+                    <Text style={styles.actionBtnText}>
+                      {mode === "cook-in" ? "Loading recipes..." : "Finding restaurants..."}
+                    </Text>
+                  ) : (
+                    <>
+                      <Ionicons name="add-circle" size={22} color="#fff" />
+                      <Text style={styles.actionBtnText}>Create Room</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
+          ) : (
+            <Animated.View entering={FadeInDown.delay(50)} key="join" style={styles.panel}>
+              <Ionicons name="enter-outline" size={40} color={Colors.accent} style={styles.panelIcon} />
+              <Text style={styles.panelTitle}>Join a Session</Text>
+              <Text style={styles.panelDesc}>
+                Enter the 6-character code shared by your host.
+              </Text>
+              <TextInput
+                style={styles.codeInput}
+                placeholder="Enter code (e.g. ABC123)"
+                placeholderTextColor={Colors.textMuted}
+                value={joinCode}
+                onChangeText={(t) => setJoinCode(t.toUpperCase())}
+                maxLength={6}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleJoin}
+              />
+              <Pressable
+                onPress={handleJoin}
+                disabled={joining || joinCode.trim().length < 4}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  { opacity: pressed || joining || joinCode.trim().length < 4 ? 0.6 : 1 },
+                ]}
+              >
+                <LinearGradient
+                  colors={[Colors.accent, Colors.accentDeep]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.actionBtnGradient}
+                >
+                  {joining ? (
+                    <Text style={styles.actionBtnText}>Joining...</Text>
+                  ) : (
+                    <>
+                      <Ionicons name="log-in-outline" size={22} color="#fff" />
+                      <Text style={styles.actionBtnText}>Join Room</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
+          )}
+          <View style={styles.versionFooter}>
+            <VersionLabel />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
