@@ -145,7 +145,7 @@ export const RECIPE_DETAILS: Record<string, Recipe> = {
       },
       {
         title: "To serve",
-        items: ["1½ cups basmati rice", "4 naan breads"],
+        items: ["{1½} cups basmati rice", "{4} naan breads"],
       },
     ],
     steps: [
