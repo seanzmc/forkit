@@ -50,7 +50,7 @@
         "appleTeamId": "N526K73K96"
       },
       "android": {
-        "track": "internal",
+        "track": "alpha",
         "releaseStatus": "completed"
       }
     }

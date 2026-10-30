@@ -6,8 +6,9 @@
 # Per platform: if no production build exists for the current native
 # fingerprint (new native dependency, Expo SDK bump, app.json/app.config.js
 # change, ...), build one and ship it: iOS to TestFlight and its external
-# "Friends" group, Android to the Play internal track, rolled out
-# (releaseStatus in eas.json). Otherwise do nothing.
+# "Friends" group, Android to the Play closed track ("alpha", where the
+# forkit-testers Google Group gets it), rolled out (releaseStatus in
+# eas.json). Each closed release goes through Google review first. Otherwise do nothing.
 #
 # Runs are never cancelled, so a newer push can't kill a build or submit
 # halfway; that is why this is separate from the updates workflow, which is
@@ -65,7 +66,7 @@ jobs:
       profile: production
 
   submit_android:
-    name: Submit Android to Play (internal track)
+    name: Submit Android to Play (closed track)
     needs: [build_android]
     type: submit
     params:
