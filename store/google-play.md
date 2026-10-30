@@ -82,7 +82,11 @@ Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear when e
   for 14 days in a row before they can apply for production access. If this
   account is one of them, start the closed test as soon as the store
   listing, content rating and data safety form are done; those are required
-  before a closed track can go out.
+  before a closed track can go out. This account is one: the closed track
+  ("Closed testing - Alpha", testers = the `forkit-testers@googlegroups.com`
+  Google Group) was sent for review on 29 October 2026 with build 8, and
+  `eas submit` sends new builds there (`track: "alpha"` in eas.json).
+  Testers join with [docs/android-testers-guide.html](../docs/android-testers-guide.html).
 - **Release notes** for the testing track (500 chars each language):
 
   ```
