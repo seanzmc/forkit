@@ -104,6 +104,8 @@ Each device's own swipes are kept in `lib/swipe-review.ts` (module-level, reset 
 
 **Screens** (`app/`, expo-router file-based, typedRoutes enabled): `index` name entry → `home` mode/create/join → `session/[code]` lobby → `swipe/[code]` game → `match` result. Both `session/` and `swipe/` open their own WebSocket independently.
 
+**First-run walkthrough**: `components/HowItWorks.tsx` is a 4-step modal (start a room, swipe, match, new round) that opens on the first visit to `home`, or to the lobby when an invite link skipped home, until it is closed once (AsyncStorage `seenHowItWorks`). The `?` button on `home` reopens it. Its copy quotes on-screen labels (Dine Out, Cook In, Create Room, Join Room, Find New Places), so renaming one means updating it too.
+
 ## Server-as-Expo-host
 
 `server/index.ts` does more than serve `/api`. It inspects the `expo-platform` header on `/` and `/manifest` to serve native manifests out of `static-build/<platform>/manifest.json`, and otherwise renders `server/templates/home.html` (the Expo Go preview, `landing-page.html`, is at `/preview`). `scripts/build.js` produces `static-build/` by booting Metro, downloading the ios/android bundles and manifests from it, then killing it.

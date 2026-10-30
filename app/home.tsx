@@ -21,6 +21,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { VersionLabel } from "@/components/VersionLabel";
+import { HowItWorks, useHowItWorks } from "@/components/HowItWorks";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest } from "@/lib/query-client";
 import { MEALS, mealForTime, type Meal, type SessionMode } from "@/lib/food-data";
@@ -113,6 +114,7 @@ export default function HomeScreen() {
   const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
   const [locationPermission, requestPermission] = Location.useForegroundPermissions();
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const howItWorks = useHowItWorks();
 
   // The room code field is the last thing on the screen, so on Android
   // (edge-to-edge, where the window no longer resizes for the keyboard) it
@@ -275,9 +277,18 @@ export default function HomeScreen() {
               <Text style={styles.greeting}>Hey {userName}</Text>
               <Text style={styles.subGreeting}>Ready to swipe right on dinner?</Text>
             </View>
-            <Pressable onPress={handleLogout} style={styles.avatarBtn}>
-              <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>
-            </Pressable>
+            <View style={styles.headerBtns}>
+              <Pressable
+                onPress={howItWorks.open}
+                style={styles.avatarBtn}
+                accessibilityLabel="How ForkIt works"
+              >
+                <Ionicons name="help" size={22} color={Colors.textSecondary} />
+              </Pressable>
+              <Pressable onPress={handleLogout} style={styles.avatarBtn}>
+                <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>
+              </Pressable>
+            </View>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(150)} style={styles.modeToggle}>
@@ -547,6 +558,7 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <HowItWorks visible={howItWorks.visible} onClose={howItWorks.close} />
     </LinearGradient>
   );
 }
@@ -567,6 +579,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerBtns: {
+    flexDirection: "row",
+    gap: 10,
   },
   greeting: {
     fontSize: 26,
