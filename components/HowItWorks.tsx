@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -72,6 +81,10 @@ const STEPS: Step[] = [
 
 export function HowItWorks({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  // Shrinks on short phones (an SE gets ~240) so the text still fits above
+  // the buttons; anything left over scrolls.
+  const artHeight = Math.min(300, Math.max(236, Math.round(height * 0.36)));
   const [step, setStep] = useState(0);
   const last = step === STEPS.length - 1;
 
@@ -111,14 +124,19 @@ export function HowItWorks({ visible, onClose }: { visible: boolean; onClose: ()
             )}
           </View>
 
-          <Animated.View key={step} entering={FadeIn.duration(250)} style={styles.stepBody}>
-            <View style={styles.artBox}>{art}</View>
-            <Text style={styles.stepCount}>
-              STEP {step + 1} OF {STEPS.length}
-            </Text>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.body}>{body}</Text>
-          </Animated.View>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+          >
+            <Animated.View key={step} entering={FadeIn.duration(250)} style={styles.stepBody}>
+              <View style={[styles.artBox, { height: artHeight }]}>{art}</View>
+              <Text style={styles.stepCount}>
+                STEP {step + 1} OF {STEPS.length}
+              </Text>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.body}>{body}</Text>
+            </Animated.View>
+          </ScrollView>
 
           <View style={styles.dots}>
             {STEPS.map((s, i) => (
@@ -310,13 +328,17 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     color: Colors.textSecondary,
   },
-  stepBody: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
+  },
+  stepBody: {
     gap: 10,
   },
   artBox: {
-    height: 300,
     marginBottom: 12,
     borderRadius: 24,
     backgroundColor: Colors.surface,
@@ -328,7 +350,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 18,
+    gap: 14,
   },
   stepCount: {
     fontSize: 12,
@@ -454,7 +476,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   demoPhoto: {
-    height: 130,
+    height: 110,
     alignItems: "center",
     justifyContent: "center",
   },
