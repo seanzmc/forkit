@@ -25,6 +25,7 @@ import * as Crypto from "expo-crypto";
 import { shareSessionCode } from "@/lib/share-session";
 import { getPushToken } from "@/lib/push";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
+import { HowItWorks, useHowItWorks } from "@/components/HowItWorks";
 
 // Backoff before each reconnect attempt; after the last one the lobby shows a
 // Retry button instead of trying forever.
@@ -37,6 +38,8 @@ const PING_INTERVAL_MS = 20000;
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const insets = useSafeAreaInsets();
+  // Invite links skip home, so first-timers who arrive that way see it here.
+  const howItWorks = useHowItWorks();
   const [session, setSession] = useState<SessionState | null>(null);
   const [, setDishes] = useState<Dish[]>([]);
   const [isHost, setIsHost] = useState(false);
@@ -410,6 +413,7 @@ export default function SessionLobby() {
           <VersionLabel />
         </Animated.View>
       </View>
+      <HowItWorks visible={howItWorks.visible} onClose={howItWorks.close} />
     </LinearGradient>
   );
 }
