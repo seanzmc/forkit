@@ -42,6 +42,8 @@ export interface Dish {
   rating?: number;
   address?: string;
   placeId?: string;
+  // Set when `image` is the place's own Google photo, not one of the dish:
+  // its authors, whom Places requires us to credit.
   photoAuthors?: string[];
   // Set when `image` is an example photo of the dish (Wikimedia Commons)
   // rather than a photo of this restaurant. Its license requires this credit

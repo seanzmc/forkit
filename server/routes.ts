@@ -505,8 +505,34 @@ function exampleImage(example: DishPhoto) {
   };
 }
 
+// The swipe card is portrait, about 360x500 pt (1100x1500 px on a 3x
+// phone, more on the largest), and crops a landscape photo to its height.
+// An 800x600 request was stretched 2.5x to fill it, so ask for enough
+// height to fill the card; the width cap only bounds panoramas. Every size
+// is the same one billed request.
+const CARD_PHOTO_HEIGHT_PX = 1600;
+const CARD_PHOTO_WIDTH_PX = 2400;
+// A place's photo whose shorter side is under this would still be blown up
+// on the card. Wawa's first photo, its own storefront shot, is 500x400.
+const MIN_CARD_PHOTO_PX = 1000;
+
+// Which of a place's photos to resolve: Google's first (its pick) unless
+// it is too small for the card, then the first big enough one, else the
+// biggest. Places lists each photo's size, so this costs nothing.
+function pickPhotoIndex(photos: { widthPx?: number; heightPx?: number }[]): number {
+  const shortSide = (p: { widthPx?: number; heightPx?: number }) =>
+    Math.min(p.widthPx || 0, p.heightPx || 0);
+  const sharp = photos.findIndex((p) => shortSide(p) >= MIN_CARD_PHOTO_PX);
+  if (sharp >= 0) return sharp;
+  let best = 0;
+  photos.forEach((p, i) => {
+    if (shortSide(p) > shortSide(photos[best])) best = i;
+  });
+  return best;
+}
+
 async function resolvePhotoUrl(photoName: string): Promise<string> {
-  const url = `${PLACES_API_BASE}/${photoName}/media?maxHeightPx=600&maxWidthPx=800&key=${GOOGLE_API_KEY}`;
+  const url = `${PLACES_API_BASE}/${photoName}/media?maxHeightPx=${CARD_PHOTO_HEIGHT_PX}&maxWidthPx=${CARD_PHOTO_WIDTH_PX}&key=${GOOGLE_API_KEY}`;
   try {
     const res = await fetch(url, { redirect: "manual" });
     // Only the redirect target (a googleusercontent URL) is safe to hand to
@@ -592,13 +618,12 @@ async function fetchNearbyRestaurants(
     for (let pi = 0; pi < places.length; pi++) {
       const photos = places[pi].photos || [];
       // One is enough: suggested dishes show example photos, so a place's own
-      // photo is only used for its restaurant-only card or as a fallback.
+      // photo is only used for chain and grounded dishes or as a fallback.
       // Each resolved photo is a billed Places Photo request.
-      const needed = Math.min(1, photos.length);
-      for (let j = 0; j < needed; j++) {
-        photoPromises.push(resolvePhotoUrl(photos[j].name));
-        photoMeta.push({ placeIndex: pi, photoIndex: j });
-      }
+      if (photos.length === 0) continue;
+      const j = pickPhotoIndex(photos);
+      photoPromises.push(resolvePhotoUrl(photos[j].name));
+      photoMeta.push({ placeIndex: pi, photoIndex: j });
     }
 
     const resolvedUrls = await Promise.all(photoPromises);
@@ -660,7 +685,7 @@ async function fetchNearbyRestaurants(
     // quota points). A chain with nothing for this meal gets [] and no cards.
     const chainMenus = new Map<
       number,
-      (ChainDish & { photo?: string; source: "curated" | "spoonacular" })[]
+      (ChainDish & { source: "curated" | "spoonacular" })[]
     >();
     await Promise.all(
       [...placePhotos.keys()]
@@ -675,7 +700,6 @@ async function fetchNearbyRestaurants(
                 name: c.name,
                 breakfast: !!c.breakfast,
                 image: null,
-                photo: c.photo,
                 source: "curated",
               }))
             );
@@ -724,21 +748,17 @@ async function fetchNearbyRestaurants(
 
       if (chainItems) {
         // Real dishes from this chain's menu, with spoonacular's photo of
-        // the item when it has one, an example photo of that kind of dish
-        // for our own list, else the place's own photo.
+        // the item when it has a sharp one, else the place's own photo,
+        // labeled as such. Never a generic example photo: everyone knows
+        // what a Big Mac looks like, and a stock cheeseburger isn't it.
         chainItems.forEach((item, di) => {
           const own = photos[di % photos.length];
-          const example = item.photo ? examplePhotoFor(item.photo) : undefined;
           dishes.push({
             ...shared,
             id: `${place.id}_${di}`,
             name: item.name,
             description: "",
-            ...(item.image
-              ? { image: item.image }
-              : example
-                ? exampleImage(example)
-                : { image: own.url, photoAuthors: own.authors }),
+            ...(item.image ? { image: item.image } : { image: own.url, photoAuthors: own.authors }),
             menuSource: item.source,
           });
         });

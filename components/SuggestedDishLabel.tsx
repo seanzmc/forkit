@@ -10,8 +10,10 @@ import type { Dish } from "@/lib/food-data";
 // photo, is what the dish looks like in general, not at this restaurant.
 //
 // Chain dishes are the opposite case: real items from that chain's menu, so
-// they say so instead. Those from our own list may show an example photo of
-// that kind of dish, which says so too.
+// they say so instead. Their photo is the item itself (spoonacular) or, far
+// more often, the place's own Google photo, which says so: a photo of the
+// restaurant must not pass for the dish. Chain dishes never get example
+// photos; a generic burger is plainly not that chain's burger.
 //
 // Dine-out cards with no placeId come from the made-up fallback list (the
 // room has no location, or nothing was found near it): neither the place nor
@@ -30,7 +32,7 @@ export function SuggestedDishLabel({ dish }: { dish: Dish }) {
       <View style={styles.row}>
         <Ionicons name="checkmark-circle" size={12} color={Colors.green} />
         <Text style={[styles.text, styles.onMenu]}>
-          {dish.photoCredit ? "On the menu · example photo" : "On the menu"}
+          {dish.photoAuthors ? "On the menu · photo of this place" : "On the menu"}
         </Text>
       </View>
     );

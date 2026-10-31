@@ -3,10 +3,11 @@
 // lists ("Red Pepper Strips" at Chick-fil-A). Checked before spoonacular, so
 // these chains cost no quota and never fall back to a dishless card.
 //
-// Names are as the chain words them; `photo` names an example photo in
-// assets/dishes (labeled "example photo") when one fits, else the card shows
-// the place's own Google photo. Breakfast items show only in breakfast
-// rooms, and everything else only at lunch and dinner.
+// Names are as the chain words them. Cards show the place's own Google
+// photo, labeled as a photo of the place: never a generic example photo,
+// since a stock cheeseburger standing in for a Big Mac fools nobody.
+// Breakfast items show only in breakfast rooms, and everything else only at
+// lunch and dinner.
 //
 // Keep to items a chain has sold for years: a retired item is worse than a
 // short list.
@@ -17,11 +18,10 @@ import { sameChain } from "./chain-menus";
 export interface CuratedDish {
   name: string;
   breakfast?: boolean;
-  photo?: string;
 }
 
-const d = (name: string, photo?: string): CuratedDish => ({ name, photo });
-const b = (name: string, photo?: string): CuratedDish => ({ name, photo, breakfast: true });
+const d = (name: string): CuratedDish => ({ name });
+const b = (name: string): CuratedDish => ({ name, breakfast: true });
 
 // Each chain's names as Google tends to give them; a place matches when its
 // name equals one or extends it ("Chili's Grill & Bar" -> "Chili's").
@@ -29,16 +29,16 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["McDonald's"],
     dishes: [
-      d("Big Mac", "classic-cheeseburger"),
-      d("Quarter Pounder with Cheese", "classic-cheeseburger"),
+      d("Big Mac"),
+      d("Quarter Pounder with Cheese"),
       d("Chicken McNuggets"),
       d("McChicken"),
       d("Filet-O-Fish"),
-      d("Double Cheeseburger", "classic-cheeseburger"),
-      b("Egg McMuffin", "breakfast-sandwich"),
+      d("Double Cheeseburger"),
+      b("Egg McMuffin"),
       b("Sausage McGriddles"),
-      b("Hotcakes", "pancake-stack"),
-      b("Sausage Burrito", "breakfast-burrito"),
+      b("Hotcakes"),
+      b("Sausage Burrito"),
     ],
   },
   {
@@ -47,14 +47,14 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
       d("Chick-fil-A Chicken Sandwich"),
       d("Spicy Chicken Sandwich"),
       d("Chick-fil-A Nuggets"),
-      d("Chick-n-Strips", "chicken-tenders"),
+      d("Chick-n-Strips"),
       d("Grilled Chicken Sandwich"),
-      d("Cobb Salad", "cobb-salad"),
+      d("Cobb Salad"),
       d("Spicy Southwest Salad"),
       b("Chick-fil-A Chicken Biscuit"),
       b("Chick-n-Minis"),
-      b("Hash Brown Scramble Burrito", "breakfast-burrito"),
-      b("Egg White Grill", "breakfast-sandwich"),
+      b("Hash Brown Scramble Burrito"),
+      b("Egg White Grill"),
     ],
   },
   {
@@ -73,34 +73,34 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Wendy's"],
     dishes: [
-      d("Dave's Single", "classic-cheeseburger"),
-      d("Baconator", "bacon-bbq-burger"),
+      d("Dave's Single"),
+      d("Baconator"),
       d("Spicy Chicken Sandwich"),
       d("Classic Chicken Sandwich"),
       d("Jr. Bacon Cheeseburger"),
-      b("Breakfast Baconator", "breakfast-sandwich"),
+      b("Breakfast Baconator"),
       b("Honey Butter Chicken Biscuit"),
     ],
   },
   {
     names: ["Burger King"],
     dishes: [
-      d("Whopper", "classic-cheeseburger"),
+      d("Whopper"),
       d("Bacon King"),
       d("Original Chicken Sandwich"),
-      d("Impossible Whopper", "impossible-burger"),
+      d("Impossible Whopper"),
       d("Big Fish"),
-      b("Croissan'wich", "breakfast-sandwich"),
-      b("French Toast Sticks", "french-toast"),
+      b("Croissan'wich"),
+      b("French Toast Sticks"),
     ],
   },
   {
     names: ["Subway"],
     dishes: [
-      d("Italian B.M.T.", "italian-sub"),
+      d("Italian B.M.T."),
       d("Meatball Marinara"),
-      d("Spicy Italian", "italian-sub"),
-      d("Steak & Cheese", "philly-cheesesteak"),
+      d("Spicy Italian"),
+      d("Steak & Cheese"),
       d("Turkey Breast"),
       d("Tuna"),
     ],
@@ -108,24 +108,24 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Chipotle", "Chipotle Mexican Grill"],
     dishes: [
-      d("Chicken Burrito", "carne-asada-burrito"),
+      d("Chicken Burrito"),
       d("Steak Burrito Bowl"),
       d("Carnitas Tacos"),
       d("Chicken Quesadilla"),
-      d("Barbacoa Burrito", "carne-asada-burrito"),
+      d("Barbacoa Burrito"),
       d("Sofritas Bowl"),
     ],
   },
   {
     names: ["Sonic", "Sonic Drive-In"],
     dishes: [
-      d("SuperSONIC Double Cheeseburger", "classic-cheeseburger"),
-      d("Sonic Cheeseburger", "classic-cheeseburger"),
+      d("SuperSONIC Double Cheeseburger"),
+      d("Sonic Cheeseburger"),
       d("Footlong Quarter Pound Coney"),
       d("Crispy Chicken Sandwich"),
-      d("Super Crunch Chicken Strips", "chicken-tenders"),
-      b("Breakfast Burrito", "breakfast-burrito"),
-      b("Breakfast Toaster", "breakfast-sandwich"),
+      d("Super Crunch Chicken Strips"),
+      b("Breakfast Burrito"),
+      b("Breakfast Toaster"),
     ],
   },
   {
@@ -133,7 +133,7 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     dishes: [
       d("The Original Orange Chicken"),
       d("Beijing Beef"),
-      d("Kung Pao Chicken", "kung-pao-chicken"),
+      d("Kung Pao Chicken"),
       d("Broccoli Beef"),
       d("Honey Walnut Shrimp"),
       d("Grilled Teriyaki Chicken"),
@@ -146,7 +146,7 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
       d("Classic Chicken Sandwich"),
       d("Spicy Chicken Sandwich"),
       d("Bonafide Chicken"),
-      d("Chicken Tenders", "chicken-tenders"),
+      d("Chicken Tenders"),
       d("Popcorn Shrimp"),
     ],
   },
@@ -158,7 +158,7 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
       d("Famous Bowl"),
       d("Chicken Pot Pie"),
       d("KFC Chicken Sandwich"),
-      d("Extra Crispy Tenders", "chicken-tenders"),
+      d("Extra Crispy Tenders"),
     ],
   },
   {
@@ -166,8 +166,8 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     dishes: [
       d("Classic Roast Beef"),
       d("Beef 'n Cheddar"),
-      d("Smokehouse Brisket", "smoked-brisket"),
-      d("Reuben", "reuben-sandwich"),
+      d("Smokehouse Brisket"),
+      d("Reuben"),
       d("Classic French Dip & Swiss"),
       d("Greek Gyro"),
     ],
@@ -175,34 +175,34 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Jack in the Box"],
     dishes: [
-      d("Jumbo Jack", "classic-cheeseburger"),
+      d("Jumbo Jack"),
       d("Sourdough Jack"),
-      d("Ultimate Cheeseburger", "classic-cheeseburger"),
+      d("Ultimate Cheeseburger"),
       d("Spicy Chicken Sandwich"),
       d("Chicken Teriyaki Bowl"),
-      b("Supreme Croissant", "breakfast-sandwich"),
-      b("Breakfast Jack", "breakfast-sandwich"),
+      b("Supreme Croissant"),
+      b("Breakfast Jack"),
     ],
   },
   {
     names: ["Whataburger"],
     dishes: [
-      d("Whataburger", "classic-cheeseburger"),
-      d("Double Meat Whataburger", "classic-cheeseburger"),
+      d("Whataburger"),
+      d("Double Meat Whataburger"),
       d("Patty Melt"),
       d("Honey BBQ Chicken Strip Sandwich"),
       d("Whatachick'n Sandwich"),
-      d("Whatachick'n Strips", "chicken-tenders"),
+      d("Whatachick'n Strips"),
       b("Honey Butter Chicken Biscuit"),
       b("Taquito with Cheese"),
-      b("Breakfast on a Bun", "breakfast-sandwich"),
+      b("Breakfast on a Bun"),
     ],
   },
   {
     names: ["Five Guys"],
     dishes: [
-      d("Cheeseburger", "classic-cheeseburger"),
-      d("Bacon Cheeseburger", "classic-cheeseburger"),
+      d("Cheeseburger"),
+      d("Bacon Cheeseburger"),
       d("Little Bacon Burger"),
       d("Cheese Dog"),
       d("Veggie Sandwich"),
@@ -211,8 +211,8 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["In-N-Out", "In-N-Out Burger"],
     dishes: [
-      d("Double-Double", "classic-cheeseburger"),
-      d("Cheeseburger", "classic-cheeseburger"),
+      d("Double-Double"),
+      d("Cheeseburger"),
       d("Hamburger"),
       d("Animal Style Double-Double"),
       d("Protein Style Double-Double"),
@@ -221,40 +221,40 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Culver's"],
     dishes: [
-      d("ButterBurger The Original", "classic-cheeseburger"),
+      d("ButterBurger The Original"),
       d("The Culver's Deluxe"),
       d("Crispy Chicken Sandwich"),
       d("North Atlantic Cod Filet Sandwich"),
-      d("Pot Roast Sandwich", "pot-roast"),
-      d("Chicken Tenders", "chicken-tenders"),
+      d("Pot Roast Sandwich"),
+      d("Chicken Tenders"),
     ],
   },
   {
     names: ["Raising Cane's", "Raising Cane's Chicken Fingers"],
     dishes: [
-      d("The Box Combo", "chicken-tenders"),
-      d("3 Finger Combo", "chicken-tenders"),
-      d("Caniac Combo", "chicken-tenders"),
+      d("The Box Combo"),
+      d("3 Finger Combo"),
+      d("Caniac Combo"),
       d("The Sandwich Combo"),
     ],
   },
   {
     names: ["Wingstop"],
     dishes: [
-      d("Lemon Pepper Wings", "buffalo-wings"),
-      d("Original Hot Wings", "buffalo-wings"),
+      d("Lemon Pepper Wings"),
+      d("Original Hot Wings"),
       d("Garlic Parmesan Boneless Wings"),
-      d("Crispy Tenders", "chicken-tenders"),
+      d("Crispy Tenders"),
       d("Chicken Sandwich"),
     ],
   },
   {
     names: ["Zaxby's"],
     dishes: [
-      d("Chicken Fingerz Plate", "chicken-tenders"),
-      d("Wings & Things", "buffalo-wings"),
+      d("Chicken Fingerz Plate"),
+      d("Wings & Things"),
       d("Kickin' Chicken Sandwich"),
-      d("Cobb Zalad", "cobb-salad"),
+      d("Cobb Zalad"),
       d("Big Zax Snak"),
     ],
   },
@@ -262,22 +262,22 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["Panera Bread", "Panera"],
     dishes: [
       d("Broccoli Cheddar Soup"),
-      d("Mac & Cheese", "mac-and-cheese"),
+      d("Mac & Cheese"),
       d("Chipotle Chicken Avo Melt"),
-      d("Green Goddess Cobb Salad", "cobb-salad"),
+      d("Green Goddess Cobb Salad"),
       d("Caesar Salad with Chicken"),
-      d("Classic Grilled Cheese", "grilled-cheese-deluxe"),
-      b("Bacon, Egg & Cheese on Brioche", "breakfast-sandwich"),
-      b("Avocado, Egg White & Spinach", "breakfast-sandwich"),
+      d("Classic Grilled Cheese"),
+      b("Bacon, Egg & Cheese on Brioche"),
+      b("Avocado, Egg White & Spinach"),
     ],
   },
   {
     names: ["Jersey Mike's", "Jersey Mike's Subs"],
     dishes: [
-      d("The Original Italian", "italian-sub"),
-      d("Big Kahuna Cheese Steak", "philly-cheesesteak"),
-      d("Chipotle Cheese Steak", "philly-cheesesteak"),
-      d("Club Supreme", "club-sandwich"),
+      d("The Original Italian"),
+      d("Big Kahuna Cheese Steak"),
+      d("Chipotle Cheese Steak"),
+      d("Club Supreme"),
       d("Turkey and Provolone"),
       d("Tuna Fish"),
     ],
@@ -285,9 +285,9 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Jimmy John's"],
     dishes: [
-      d("Vito", "italian-sub"),
-      d("Italian Night Club", "italian-sub"),
-      d("Beach Club", "club-sandwich"),
+      d("Vito"),
+      d("Italian Night Club"),
+      d("Beach Club"),
       d("Turkey Tom"),
       d("The Gargantuan"),
     ],
@@ -297,16 +297,16 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     dishes: [
       d("Hook & Ladder"),
       d("Firehouse Meatball"),
-      d("Italian", "italian-sub"),
-      d("Smokehouse Beef & Cheddar Brisket", "smoked-brisket"),
-      d("Steak & Cheese", "philly-cheesesteak"),
+      d("Italian"),
+      d("Smokehouse Beef & Cheddar Brisket"),
+      d("Steak & Cheese"),
     ],
   },
   {
     names: ["Qdoba", "Qdoba Mexican Eats", "Qdoba Mexican Grill"],
     dishes: [
-      d("Chicken Burrito", "carne-asada-burrito"),
-      d("Steak Burrito", "carne-asada-burrito"),
+      d("Chicken Burrito"),
+      d("Steak Burrito"),
       d("Chicken Burrito Bowl"),
       d("Chicken Quesadilla"),
       d("Knockout Tacos"),
@@ -315,29 +315,29 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Carl's Jr."],
     dishes: [
-      d("Famous Star with Cheese", "classic-cheeseburger"),
-      d("Western Bacon Cheeseburger", "bacon-bbq-burger"),
-      d("Super Star with Cheese", "classic-cheeseburger"),
-      d("Hand-Breaded Chicken Tenders", "chicken-tenders"),
+      d("Famous Star with Cheese"),
+      d("Western Bacon Cheeseburger"),
+      d("Super Star with Cheese"),
+      d("Hand-Breaded Chicken Tenders"),
     ],
   },
   {
     names: ["Hardee's"],
     dishes: [
-      d("Original Thickburger", "classic-cheeseburger"),
-      d("Mushroom 'N' Swiss Thickburger", "mushroom-swiss-burger"),
+      d("Original Thickburger"),
+      d("Mushroom 'N' Swiss Thickburger"),
       d("Frisco Burger"),
-      d("Hand-Breaded Chicken Tenders", "chicken-tenders"),
+      d("Hand-Breaded Chicken Tenders"),
       b("Monster Biscuit"),
       b("Sausage Biscuit"),
-      b("Frisco Breakfast Sandwich", "breakfast-sandwich"),
+      b("Frisco Breakfast Sandwich"),
     ],
   },
   {
     names: ["Shake Shack"],
     dishes: [
-      d("ShackBurger", "smash-burger"),
-      d("SmokeShack", "smash-burger"),
+      d("ShackBurger"),
+      d("SmokeShack"),
       d("Shack Stack"),
       d("Chicken Shack"),
       d("'Shroom Burger"),
@@ -346,9 +346,9 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Domino's", "Domino's Pizza"],
     dishes: [
-      d("Pepperoni Pizza", "pepperoni-pizza"),
-      d("ExtravaganZZa", "meat-lovers-pizza"),
-      d("MeatZZa", "meat-lovers-pizza"),
+      d("Pepperoni Pizza"),
+      d("ExtravaganZZa"),
+      d("MeatZZa"),
       d("Pacific Veggie Pizza"),
       d("Philly Cheese Steak Pizza"),
       d("Chicken Alfredo Pasta"),
@@ -357,37 +357,37 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Pizza Hut"],
     dishes: [
-      d("Pepperoni Pan Pizza", "pepperoni-pizza"),
-      d("Meat Lover's Pizza", "meat-lovers-pizza"),
+      d("Pepperoni Pan Pizza"),
+      d("Meat Lover's Pizza"),
       d("Supreme Pizza"),
       d("Veggie Lover's Pizza"),
-      d("Traditional Wings", "buffalo-wings"),
+      d("Traditional Wings"),
     ],
   },
   {
     names: ["Papa Johns", "Papa John's", "Papa Johns Pizza"],
     dishes: [
-      d("Pepperoni Pizza", "pepperoni-pizza"),
+      d("Pepperoni Pizza"),
       d("The Works Pizza"),
-      d("The Meats Pizza", "meat-lovers-pizza"),
+      d("The Meats Pizza"),
       d("Garden Fresh Pizza"),
     ],
   },
   {
     names: ["Little Caesars", "Little Caesars Pizza"],
     dishes: [
-      d("Classic Pepperoni Pizza", "pepperoni-pizza"),
+      d("Classic Pepperoni Pizza"),
       d("Deep Deep Dish Pizza"),
-      d("3 Meat Treat Pizza", "meat-lovers-pizza"),
+      d("3 Meat Treat Pizza"),
       d("Ultimate Supreme Pizza"),
-      d("Caesar Wings", "buffalo-wings"),
+      d("Caesar Wings"),
     ],
   },
   {
     names: ["Dairy Queen", "DQ Grill & Chill", "Dairy Queen Grill & Chill"],
     dishes: [
-      d("Chicken Strip Basket", "chicken-tenders"),
-      d("Original Cheeseburger", "classic-cheeseburger"),
+      d("Chicken Strip Basket"),
+      d("Original Cheeseburger"),
       d("FlameThrower Burger"),
       d("Crispy Chicken Sandwich"),
       d("Chili Cheese Dog"),
@@ -397,7 +397,7 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["Bojangles", "Bojangles'"],
     dishes: [
       d("Cajun Fried Chicken"),
-      d("Chicken Supremes", "chicken-tenders"),
+      d("Chicken Supremes"),
       d("Cajun Filet Sandwich"),
       b("Cajun Filet Biscuit"),
       b("Sausage Biscuit"),
@@ -415,10 +415,10 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["Noodles & Company", "Noodles and Company"],
     dishes: [
-      d("Wisconsin Mac & Cheese", "mac-and-cheese"),
+      d("Wisconsin Mac & Cheese"),
       d("Japanese Pan Noodles"),
       d("Penne Rosa"),
-      d("Pad Thai", "pad-thai"),
+      d("Pad Thai"),
       d("Spicy Korean Beef Noodles"),
     ],
   },
@@ -428,7 +428,7 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
       d("Harissa Avocado Bowl"),
       d("Chicken + Rice Bowl"),
       d("Spicy Lamb + Avocado Bowl"),
-      d("Greek Salad", "greek-salad"),
+      d("Greek Salad"),
     ],
   },
   {
@@ -444,8 +444,8 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["Waffle House"],
     dishes: [
       d("Texas Bacon Patty Melt"),
-      d("Texas Cheesesteak Melt", "philly-cheesesteak"),
-      d("Double Cheeseburger Deluxe", "classic-cheeseburger"),
+      d("Texas Cheesesteak Melt"),
+      d("Double Cheeseburger Deluxe"),
       b("All-Star Special"),
       b("Classic Waffle"),
       b("Pecan Waffle"),
@@ -454,21 +454,21 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
   {
     names: ["IHOP"],
     dishes: [
-      d("Ultimate Steakburger", "classic-cheeseburger"),
-      d("Crispy Chicken Strips & Fries", "chicken-tenders"),
-      d("Chicken & Waffles", "chicken-and-waffles"),
-      b("Original Buttermilk Pancakes", "pancake-stack"),
+      d("Ultimate Steakburger"),
+      d("Crispy Chicken Strips & Fries"),
+      d("Chicken & Waffles"),
+      b("Original Buttermilk Pancakes"),
       b("Breakfast Sampler"),
-      b("Stuffed French Toast", "french-toast"),
+      b("Stuffed French Toast"),
     ],
   },
   {
     names: ["Denny's"],
     dishes: [
-      d("Bacon Slamburger", "classic-cheeseburger"),
-      d("Country-Fried Steak", "chicken-fried-steak"),
+      d("Bacon Slamburger"),
+      d("Country-Fried Steak"),
       d("Sirloin Steak"),
-      d("Club Sandwich", "club-sandwich"),
+      d("Club Sandwich"),
       b("Original Grand Slam"),
       b("Moons Over My Hammy"),
       b("Lumberjack Slam"),
@@ -478,20 +478,20 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["Cracker Barrel", "Cracker Barrel Old Country Store"],
     dishes: [
       d("Chicken n' Dumplins"),
-      d("Meatloaf", "meatloaf"),
-      d("Country Fried Steak", "chicken-fried-steak"),
+      d("Meatloaf"),
+      d("Country Fried Steak"),
       d("Homestyle Chicken"),
       d("Hamburger Steak"),
       b("Old Timer's Breakfast"),
-      b("Momma's Pancake Breakfast", "pancake-stack"),
+      b("Momma's Pancake Breakfast"),
     ],
   },
   {
     names: ["Bob Evans"],
     dishes: [
-      d("Country Fried Steak", "chicken-fried-steak"),
+      d("Country Fried Steak"),
       d("Turkey & Dressing"),
-      d("Pot Roast", "pot-roast"),
+      d("Pot Roast"),
       b("Farmer's Choice Breakfast"),
       b("Rise & Shine"),
     ],
@@ -500,8 +500,8 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["First Watch"],
     dishes: [
       b("Chickichanga"),
-      b("Lemon Ricotta Pancakes", "pancake-stack"),
-      b("Avocado Toast", "avocado-toast"),
+      b("Lemon Ricotta Pancakes"),
+      b("Avocado Toast"),
     ],
   },
   {
@@ -509,9 +509,9 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     dishes: [
       d("Fettuccine Alfredo"),
       d("Tour of Italy"),
-      d("Chicken Parmigiana", "chicken-parmigiana"),
+      d("Chicken Parmigiana"),
       d("Lasagna Classico"),
-      d("Shrimp Scampi", "shrimp-scampi"),
+      d("Shrimp Scampi"),
       d("Zuppa Toscana"),
     ],
   },
@@ -519,18 +519,18 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["Applebee's", "Applebee's Grill + Bar"],
     dishes: [
       d("Bourbon Street Chicken & Shrimp"),
-      d("Chicken Tenders Platter", "chicken-tenders"),
-      d("Classic Bacon Cheeseburger", "classic-cheeseburger"),
+      d("Chicken Tenders Platter"),
+      d("Classic Bacon Cheeseburger"),
       d("Fiesta Lime Chicken"),
-      d("Boneless Wings", "buffalo-wings"),
+      d("Boneless Wings"),
     ],
   },
   {
     names: ["Chili's", "Chili's Grill & Bar"],
     dishes: [
-      d("Baby Back Ribs", "bbq-ribs"),
-      d("Oldtimer with Cheese", "classic-cheeseburger"),
-      d("Chicken Crispers", "chicken-tenders"),
+      d("Baby Back Ribs"),
+      d("Oldtimer with Cheese"),
+      d("Chicken Crispers"),
       d("Cajun Chicken Pasta"),
       d("Chicken Fajitas"),
       d("Triple Dipper"),
@@ -540,9 +540,9 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     names: ["Texas Roadhouse"],
     dishes: [
       d("Sirloin Steak"),
-      d("Ft. Worth Ribeye", "ribeye-steak"),
-      d("Dallas Filet", "filet-mignon"),
-      d("Fall-Off-The-Bone Ribs", "bbq-ribs"),
+      d("Ft. Worth Ribeye"),
+      d("Dallas Filet"),
+      d("Fall-Off-The-Bone Ribs"),
       d("Grilled BBQ Chicken"),
     ],
   },
@@ -551,20 +551,20 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     dishes: [
       d("Bloomin' Onion"),
       d("Center-Cut Sirloin"),
-      d("Victoria's Filet Mignon", "filet-mignon"),
-      d("Bone-In Ribeye", "ribeye-steak"),
+      d("Victoria's Filet Mignon"),
+      d("Bone-In Ribeye"),
       d("Alice Springs Chicken"),
-      d("Baby Back Ribs", "bbq-ribs"),
+      d("Baby Back Ribs"),
     ],
   },
   {
     names: ["LongHorn Steakhouse"],
     dishes: [
-      d("Flo's Filet", "filet-mignon"),
-      d("Outlaw Ribeye", "ribeye-steak"),
+      d("Flo's Filet"),
+      d("Outlaw Ribeye"),
       d("Renegade Sirloin"),
       d("Parmesan Crusted Chicken"),
-      d("LongHorn Salmon", "grilled-salmon"),
+      d("LongHorn Salmon"),
     ],
   },
   {
@@ -573,17 +573,17 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
       d("Ultimate Feast"),
       d("Admiral's Feast"),
       d("Walt's Favorite Shrimp"),
-      d("Salmon New Orleans", "grilled-salmon"),
+      d("Salmon New Orleans"),
       d("Parrot Isle Jumbo Coconut Shrimp"),
     ],
   },
   {
     names: ["Buffalo Wild Wings"],
     dishes: [
-      d("Traditional Wings", "buffalo-wings"),
-      d("Boneless Wings", "buffalo-wings"),
-      d("All-American Cheeseburger", "classic-cheeseburger"),
-      d("Chicken Tenders", "chicken-tenders"),
+      d("Traditional Wings"),
+      d("Boneless Wings"),
+      d("All-American Cheeseburger"),
+      d("Chicken Tenders"),
     ],
   },
   {
@@ -591,56 +591,56 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
     dishes: [
       d("Chicken Madeira"),
       d("Louisiana Chicken Pasta"),
-      d("Chicken Parmesan", "chicken-parmigiana"),
+      d("Chicken Parmesan"),
       d("Avocado Eggrolls"),
-      d("Factory Burrito Grande", "carne-asada-burrito"),
-      d("Fish Tacos", "fish-tacos"),
+      d("Factory Burrito Grande"),
+      d("Fish Tacos"),
     ],
   },
   {
     names: ["Red Robin", "Red Robin Gourmet Burgers and Brews"],
     dishes: [
-      d("Whiskey River BBQ Burger", "bacon-bbq-burger"),
+      d("Whiskey River BBQ Burger"),
       d("Royal Red Robin Burger"),
       d("Banzai Burger"),
-      d("Gourmet Cheeseburger", "classic-cheeseburger"),
-      d("Clucks & Fries", "chicken-tenders"),
+      d("Gourmet Cheeseburger"),
+      d("Clucks & Fries"),
     ],
   },
   {
     names: ["TGI Fridays", "TGI Friday's"],
     dishes: [
-      d("Whiskey-Glazed Ribs", "bbq-ribs"),
-      d("Whiskey-Glazed Burger", "bacon-bbq-burger"),
+      d("Whiskey-Glazed Ribs"),
+      d("Whiskey-Glazed Burger"),
       d("Loaded Potato Skins"),
       d("Bruschetta Chicken Pasta"),
-      d("Sesame Jack Chicken Strips", "chicken-tenders"),
+      d("Sesame Jack Chicken Strips"),
     ],
   },
   {
     names: ["Steak 'n Shake"],
     dishes: [
-      d("Original Double 'n Cheese Steakburger", "smash-burger"),
+      d("Original Double 'n Cheese Steakburger"),
       d("Frisco Melt"),
-      d("Garlic Double Steakburger", "smash-burger"),
+      d("Garlic Double Steakburger"),
       d("Chili 3-Way"),
     ],
   },
   {
     names: ["Freddy's", "Freddy's Frozen Custard & Steakburgers"],
     dishes: [
-      d("Original Double Steakburger", "smash-burger"),
-      d("California Style Steakburger", "smash-burger"),
+      d("Original Double Steakburger"),
+      d("California Style Steakburger"),
       d("Patty Melt"),
-      d("Chicken Tenders", "chicken-tenders"),
+      d("Chicken Tenders"),
     ],
   },
   {
     names: ["Smashburger"],
     dishes: [
-      d("Classic Smash", "smash-burger"),
-      d("Truffle Mushroom Swiss", "mushroom-swiss-burger"),
-      d("BBQ Bacon Cheddar", "bacon-bbq-burger"),
+      d("Classic Smash"),
+      d("Truffle Mushroom Swiss"),
+      d("BBQ Bacon Cheddar"),
       d("Crispy Chicken Sandwich"),
     ],
   },
@@ -651,7 +651,7 @@ const CHAINS: { names: string[]; dishes: CuratedDish[] }[] = [
       d("Chicago-Style Hot Dog"),
       d("Maxwell Street Polish"),
       d("Chopped Salad"),
-      d("Char-Grilled Cheeseburger", "classic-cheeseburger"),
+      d("Char-Grilled Cheeseburger"),
     ],
   },
   {
