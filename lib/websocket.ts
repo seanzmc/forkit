@@ -21,9 +21,10 @@ export type SessionState = {
   // the last one's reshuffled. Absent from older servers.
   round?: number;
   repeat?: boolean;
-  // swiped: how many swipes the server holds for that member; absent from
+  // swiped: how many swipes the server holds for that member; away: their
+  // socket is closed but they keep their place for a while. Both absent from
   // older servers.
-  members: { id: string; name: string; swiped?: number }[];
+  members: { id: string; name: string; swiped?: number; away?: boolean }[];
   matchedRestaurant?: string;
   matchedDish?: import("./food-data").Dish;
 };
@@ -33,7 +34,8 @@ export type SessionState = {
 // the round they're from, which replace whatever the server holds for them),
 // push_token, start, swipe and undo (each with its round, so a vote on an
 // earlier round's deck is dropped), new_round (once everyone has swiped through
-// with no match), ping. Received by the client:
+// with no match), leave (left the room on purpose, so the server drops the
+// member at once instead of keeping them as away), ping. Received by the client:
 export type WsMessage =
   | { type: "joined"; session: SessionState; dishes: import("./food-data").Dish[]; isHost: boolean }
   | { type: "member_joined"; session: SessionState }

@@ -433,10 +433,13 @@ export default function SwipeScreen() {
     };
 
     ws.onopen = () => {
-      // Closing the old socket removed this member and their swipes on the
-      // server, so rejoin with the same userId and every swipe made so far,
-      // including any made while offline. Empty on the first join.
-      const swipes = Object.fromEntries(getSwipes().map((s) => [s.dish.id, s.vote]));
+      // On a reconnect, send every swipe made so far, including any made or
+      // undone while offline; they replace what the server holds. The first
+      // join sends none, so after the app was restarted the server keeps
+      // the swipes it already has for this member.
+      const swipes = joinedRef.current
+        ? Object.fromEntries(getSwipes().map((s) => [s.dish.id, s.vote]))
+        : undefined;
       ws.send(
         JSON.stringify({
           type: "join",
@@ -529,7 +532,7 @@ export default function SwipeScreen() {
         } else if (msg.type === "error") {
           closingRef.current = true;
           // After a drop this means everyone else left too and the room
-          // closed; the server keeps an empty game for only 30 s.
+          // closed; the server keeps a member who's away for 15 minutes.
           const notFound = msg.message === "Session not found";
           Alert.alert(
             notFound ? "Room closed" : "Error",

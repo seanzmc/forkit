@@ -16,7 +16,15 @@ import { curatedChainDishes } from "./curated-chains";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
-const EMPTY_SESSION_GRACE_MS = 30_000;
+// How long a member whose socket closed (app backgrounded, killed, or lost
+// signal) stays in the room as "away": their swipes still count and they still
+// count toward the majority, so a quick trip to another app can neither close
+// the room nor let the others decide without them. Leaving on purpose drops
+// them at once.
+const AWAY_GRACE_MS = 15 * 60_000;
+// Rooms nobody has touched for this long are swept, matched ones included (a
+// matched room stays so members coming back to the app still see the result).
+const IDLE_SESSION_MS = 60 * 60_000;
 // Each new round of a dine-out room searches this much farther out (up to
 // Places' 50 km limit), so it has places the last round didn't.
 const ROUND_RADIUS_GROWTH = 2;
@@ -27,6 +35,8 @@ interface SessionMember {
   name: string;
   ws: WebSocket;
   swipes: Record<string, "like" | "pass">;
+  // Set while the member's socket is closed; drops them when it fires.
+  awayTimer?: ReturnType<typeof setTimeout>;
 }
 
 interface Session {
@@ -43,9 +53,8 @@ interface Session {
   matchedRestaurant?: string;
   matchedDish?: Dish;
   createdAt: number;
-  // Pending deletion of an in-progress session that went empty; cleared on
-  // rejoin and restarted on every new empty transition.
-  emptyTimer?: ReturnType<typeof setTimeout>;
+  // Last message or join from anyone, for the idle sweep.
+  lastActive: number;
   // Expo push tokens by member id. Kept when a member disconnects, since the
   // members who left the app are the ones a match notification is for.
   pushTokens: Map<string, string>;
@@ -106,6 +115,7 @@ function getSessionState(session: Session) {
       // Lets a client that reconnects, or missed swipe_updates while its
       // socket was down, resync everyone's progress.
       swiped: Object.keys(m.swipes).length,
+      away: !!m.awayTimer,
     })),
     matchedRestaurant: session.matchedRestaurant,
     matchedDish: session.matchedDish,
@@ -289,10 +299,50 @@ function announceMatch(session: Session) {
 function cleanupStaleSessions() {
   const now = Date.now();
   sessions.forEach((session, code) => {
-    if (now - session.createdAt > 3600000) {
+    if (now - session.lastActive > IDLE_SESSION_MS) {
+      session.members.forEach((m) => clearTimeout(m.awayTimer));
       sessions.delete(code);
     }
   });
+}
+
+// Hosting only matters in the lobby (only the host can start), so it moves
+// to a connected member when the host goes away or leaves there. Once the
+// game is on, the host's lobby socket closing just before their swipe screen
+// rejoins would otherwise hand the role to someone else.
+function passHostIfAway(session: Session) {
+  if (session.status !== "lobby") return;
+  const host = session.members.get(session.hostId);
+  if (host && !host.awayTimer) return;
+  const next = [...session.members.values()].find((m) => !m.awayTimer);
+  if (next) session.hostId = next.id;
+}
+
+// Takes a member out of the room for good: they left on purpose, or stayed
+// away too long. An empty room closes, unless it matched: members coming back
+// to it still get the result, until the idle sweep.
+function removeMember(session: Session, memberId: string) {
+  const member = session.members.get(memberId);
+  if (!member) return;
+  clearTimeout(member.awayTimer);
+  session.members.delete(memberId);
+
+  if (session.members.size === 0) {
+    if (session.status !== "matched") sessions.delete(session.code);
+    return;
+  }
+
+  passHostIfAway(session);
+  broadcastToSession(session, {
+    type: "member_left",
+    memberId,
+    session: getSessionState(session),
+  });
+  // One fewer member lowers the majority, so the likes already in may now
+  // be enough.
+  if (session.status === "swiping" && !session.refreshing && checkForMatch(session)) {
+    announceMatch(session);
+  }
 }
 
 const PRICE_MAP: Record<string, string> = {
@@ -807,6 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       meal: mode === "dine-out" ? meal : undefined,
       sample,
       createdAt: Date.now(),
+      lastActive: Date.now(),
       pushTokens: new Map(),
       round: 1,
       search,
@@ -833,6 +884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on("message", (data) => {
       try {
         const msg = JSON.parse(data.toString());
+        const current = sessions.get(sessionCode);
+        if (current) current.lastActive = Date.now();
 
         if (msg.type === "join") {
           const session = sessions.get(msg.code?.toUpperCase());
@@ -867,18 +920,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           memberId = msg.userId;
           sessionCode = session.code;
+          session.lastActive = Date.now();
           if (isExpoPushToken(msg.pushToken)) {
             session.pushTokens.set(memberId, msg.pushToken);
           }
 
-          if (session.emptyTimer) {
-            clearTimeout(session.emptyTimer);
-            session.emptyTimer = undefined;
-          }
-
-          if (!session.hostId) {
-            session.hostId = memberId;
-          }
+          const existing = session.members.get(memberId);
+          clearTimeout(existing?.awayTimer);
 
           // A swipe screen that lost its socket rejoins with every swipe it
           // has made, so the server doesn't forget the ones from before the
@@ -886,14 +934,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // while offline. A first join sends none.
           // Swipes from an earlier round don't count in this one; apps from
           // before rounds send no round, and only knew round 1.
-          const swipes =
+          // A join that sends no swipes at all (the lobby's, or a swipe
+          // screen's first after the app was restarted) keeps what the server
+          // already holds for this member; an empty set (everything undone
+          // while offline) replaces it.
+          const replayed =
             (msg.round ?? 1) === session.round ? replayedSwipes(session, msg.swipes) : {};
+          const swipes = msg.swipes === undefined ? (existing?.swipes ?? {}) : replayed;
           session.members.set(memberId, {
             id: memberId,
             name: cleanName || "Guest",
             ws,
             swipes,
           });
+
+          // The first one in hosts; so does whoever arrives while the host
+          // is away from the lobby, so the room can still start.
+          if (!session.members.has(session.hostId)) session.hostId = memberId;
+          passHostIfAway(session);
 
           ws.send(
             JSON.stringify({
@@ -913,9 +971,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             memberId
           );
 
-          if (Object.keys(swipes).length > 0 && checkForMatch(session)) {
+          if (Object.keys(replayed).length > 0 && checkForMatch(session)) {
             announceMatch(session);
           }
+        } else if (msg.type === "leave") {
+          // Left the room on purpose: don't hold their place.
+          const session = sessions.get(sessionCode);
+          if (session && session.members.get(memberId)?.ws === ws) {
+            removeMember(session, memberId);
+          }
+          memberId = "";
         } else if (msg.type === "start") {
           const session = sessions.get(sessionCode);
           if (!session || session.hostId !== memberId) return;
@@ -1028,33 +1093,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // dropped every swipe).
       if (session.members.get(memberId)?.ws !== ws) return;
 
-      session.members.delete(memberId);
-
-      if (session.members.size === 0) {
-        // A game in progress can be momentarily empty while a member hops
-        // between screens; give them a moment to rejoin before dropping it.
-        if (session.status === "lobby") {
-          sessions.delete(sessionCode);
-        } else {
-          // Restart the grace period on each empty transition so an earlier
-          // timer can't cut a later disconnect's window short.
-          if (session.emptyTimer) clearTimeout(session.emptyTimer);
-          const code = sessionCode;
-          session.emptyTimer = setTimeout(() => {
-            const s = sessions.get(code);
-            if (s === session && s.members.size === 0) sessions.delete(code);
-          }, EMPTY_SESSION_GRACE_MS);
+      // Away, not gone: they keep their place (and their swipes) until they
+      // rejoin with the same userId or the grace period runs out.
+      const member = session.members.get(memberId)!;
+      const id = memberId;
+      clearTimeout(member.awayTimer);
+      member.awayTimer = setTimeout(() => {
+        if (sessions.get(session.code) === session && session.members.get(id) === member) {
+          removeMember(session, id);
         }
-        return;
-      }
+      }, AWAY_GRACE_MS);
 
-      // Hosting only matters in the lobby (only the host can start). Once the
-      // game is on, the host's lobby socket closing just before their swipe
-      // screen rejoins would otherwise hand the role to someone else.
-      if (session.hostId === memberId && session.status === "lobby") {
-        session.hostId = session.members.keys().next().value ?? "";
-      }
-
+      passHostIfAway(session);
       broadcastToSession(session, {
         type: "member_left",
         memberId,
