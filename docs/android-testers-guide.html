@@ -254,6 +254,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
         </a>
         <p class="linktext">play.google.com/apps/testing/com.seandm.forkit</p>
         <p>If it says the app isn't available, wait a few minutes after joining the group and try again.</p>
+        <div class="callout"><span class="i" aria-hidden="true">&#9432;</span><span><b>Once it says you're a tester, wait about 5 minutes before step 3.</b> Google needs a moment to let you in. If you open the Play Store too soon, it can get stuck on "Item not found".</span></div>
         <p class="after">&#8617; Then come back here for step 3</p>
       </li>
       <li class="step">
@@ -264,7 +265,13 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
           <span class="lbl"><strong>Get ForkIt on Google Play</strong><span>Opens the Play Store</span></span>
           <span class="arr" aria-hidden="true">›</span>
         </a>
-        <p>If the Play Store says the item isn't found, step 2 hasn't caught up yet. Wait a few minutes and tap the button again.</p>
+        <div class="comeback" role="note">
+          <p class="cb-kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>Says "Item not found"?</p>
+          <p class="cb-big">That's normal. <mark>The Play Store needs a refresh.</mark></p>
+          <p>It remembered "not found" from before you were let in. To clear it:</p>
+          <p class="cb-how"><b>1.</b> Open <b>Settings</b>, tap <b>Apps</b>, then <b>Google Play Store</b>, then <b>Force stop</b>.<br><b>2.</b> Come back here and tap the green button again.</p>
+          <p class="cb-how">Still not found? Check that the Play Store is signed in to the same Google account you used in steps 1 and 2 (tap your profile picture in the Play Store). If it is, wait half an hour and try again.</p>
+        </div>
       </li>
       <li class="step">
         <div class="step-head"><h3>Keep it for 14 days</h3></div>
@@ -384,7 +391,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <h2 id="help-h">If something goes wrong</h2>
     <div class="faq">
       <details><summary>"Become a tester" says the app isn't available</summary><p>Make sure you joined the testers group in step 1 with the same Google account you're signed in with now. Then wait a few minutes and open the step 2 link again.</p></details>
-      <details><summary>The Play Store says "Item not found"</summary><p>Tap your profile picture in the Play Store and check it's the account you joined the group with. If it is, wait a few minutes after step 2 and try again.</p></details>
+      <details><summary>The Play Store says "Item not found"</summary><p>Force stop the Play Store (<b>Settings</b>, <b>Apps</b>, <b>Google Play Store</b>, <b>Force stop</b>) and tap the install button again. If that doesn't work, tap your profile picture in the Play Store and check it's the account you joined the group with. If it is, wait half an hour and try again.</p></details>
       <details><summary>No restaurants show up</summary><p>Location may be off for ForkIt. Open <b>Settings</b>, tap <b>Apps</b>, then <b>ForkIt</b>, <b>Permissions</b>, <b>Location</b>, and choose <b>Allow only while using the app</b>. Or try a bigger Search Radius.</p></details>
       <details><summary>I can't find the app on my phone</summary><p>Swipe up from the bottom of your home screen to see all your apps, and search "ForkIt". You can also open it from its page in the Play Store.</p></details>
       <details><summary>The room code doesn't work</summary><p>Rooms close when everyone leaves, and sometimes when Sean updates the app. Ask the host to make a new room.</p></details>
