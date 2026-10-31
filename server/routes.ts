@@ -934,11 +934,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // while offline. A first join sends none.
           // Swipes from an earlier round don't count in this one; apps from
           // before rounds send no round, and only knew round 1.
-          // A join with none (the app was restarted, or this is the lobby's
-          // socket) keeps what the server already holds for this member.
+          // A join that sends no swipes at all (the lobby's, or a swipe
+          // screen's first after the app was restarted) keeps what the server
+          // already holds for this member; an empty set (everything undone
+          // while offline) replaces it.
           const replayed =
             (msg.round ?? 1) === session.round ? replayedSwipes(session, msg.swipes) : {};
-          const swipes = Object.keys(replayed).length > 0 ? replayed : (existing?.swipes ?? {});
+          const swipes = msg.swipes === undefined ? (existing?.swipes ?? {}) : replayed;
           session.members.set(memberId, {
             id: memberId,
             name: cleanName || "Guest",

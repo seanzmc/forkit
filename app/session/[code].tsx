@@ -55,6 +55,9 @@ export default function SessionLobby() {
   // Set when we close the socket on purpose (leaving, or the room is gone) so
   // onclose doesn't try to reconnect.
   const closingRef = useRef(false);
+  // Set when the lobby hands over to the swipe or match screen, which isn't
+  // leaving the room.
+  const handoffRef = useRef(false);
   // When the current socket last received anything. A ref so coming back to
   // the foreground can restart the silence window.
   const lastHeardRef = useRef(0);
@@ -129,6 +132,7 @@ export default function SessionLobby() {
           setStatus("connected");
           // The host started while we were disconnected.
           if (msg.session.status === "swiping") {
+            handoffRef.current = true;
             router.replace({
               pathname: "/swipe/[code]",
               params: { code: code!, userId: userId!, dishes: JSON.stringify(msg.dishes) },
@@ -136,6 +140,7 @@ export default function SessionLobby() {
           }
         } else if (msg.type === "match") {
           // The room matched while we were disconnected.
+          handoffRef.current = true;
           router.replace({
             pathname: "/match",
             params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal, sample: msg.session.sample },
@@ -147,6 +152,7 @@ export default function SessionLobby() {
         } else if (msg.type === "game_started") {
           setSession(msg.session);
           setDishes(msg.dishes);
+          handoffRef.current = true;
           router.replace({
             pathname: "/swipe/[code]",
             params: {
@@ -219,6 +225,11 @@ export default function SessionLobby() {
       closingRef.current = true;
       if (pingRef.current) clearInterval(pingRef.current);
       if (retryRef.current) clearTimeout(retryRef.current);
+      // Android's back button and the iOS back gesture leave without
+      // handleBack, so say so here unless the swipe screen is taking over.
+      if (!handoffRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "leave" }));
+      }
       wsRef.current?.close();
     };
   }, [connect]);
