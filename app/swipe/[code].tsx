@@ -529,7 +529,7 @@ export default function SwipeScreen() {
         } else if (msg.type === "error") {
           closingRef.current = true;
           // After a drop this means everyone else left too and the room
-          // closed; the server keeps an empty game for only 30 s.
+          // closed; the server keeps a member who's away for 15 minutes.
           const notFound = msg.message === "Session not found";
           Alert.alert(
             notFound ? "Room closed" : "Error",

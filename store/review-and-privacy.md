@@ -11,7 +11,8 @@ Facts the answers below rest on. Verify them again before submitting.
 
 | Data | Where it goes | How long |
 | --- | --- | --- |
-| Display name (typed, max 24 chars) | Server memory; shown to others in the room | Until the session ends (last member leaves, server restart, or 1 h) |
+| Display name (typed, max 24 chars) | Server memory; shown to others in the room | Until the session ends (every member has left or been away 15 min, server restart, or 1 h idle) |
+| Random member ID (app-generated UUID, not tied to the device or any account) | AsyncStorage on the device; server memory while in a room | On the device until the app is deleted; on the server session only |
 | Location (lat/lng, `Accuracy.Balanced`), dine-out only | Server, then Google Places and Gemini (Maps grounding) | Used for the lookup, never stored |
 | Swipes | Server memory | Session only |
 | Push token, if allowed | Server memory, then Expo push → APNs / FCM | Session only (kept after disconnect until the session is swept) |
