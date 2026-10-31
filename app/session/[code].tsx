@@ -21,7 +21,7 @@ import { VersionLabel } from "@/components/VersionLabel";
 import { LinearGradient } from "expo-linear-gradient";
 import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import type { Dish } from "@/lib/food-data";
-import * as Crypto from "expo-crypto";
+import { getMemberId } from "@/lib/member-id";
 import { shareSessionCode } from "@/lib/share-session";
 import { getPushToken } from "@/lib/push";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
@@ -43,7 +43,7 @@ export default function SessionLobby() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [, setDishes] = useState<Dish[]>([]);
   const [isHost, setIsHost] = useState(false);
-  const [userId] = useState(() => Crypto.randomUUID());
+  const [userId, setUserId] = useState<string | null>(null);
   const [status, setStatus] = useState<
     "connecting" | "connected" | "reconnecting" | "offline" | "error"
   >("connecting");
@@ -55,6 +55,9 @@ export default function SessionLobby() {
   // Set when we close the socket on purpose (leaving, or the room is gone) so
   // onclose doesn't try to reconnect.
   const closingRef = useRef(false);
+  // Set when the lobby hands over to the swipe or match screen, which isn't
+  // leaving the room.
+  const handoffRef = useRef(false);
   // When the current socket last received anything. A ref so coming back to
   // the foreground can restart the silence window.
   const lastHeardRef = useRef(0);
@@ -63,6 +66,7 @@ export default function SessionLobby() {
   const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(async () => {
+    if (!userId) return;
     const name = await AsyncStorage.getItem("userName");
     if (closingRef.current) return;
     if (!name) {
@@ -100,8 +104,7 @@ export default function SessionLobby() {
         if (late) {
           // Timers were suspended in the background, so the silence is ours,
           // not the server's. Give the socket a fresh window and a ping to
-          // answer instead of closing a healthy one (for the last member of
-          // a lobby, closing it deletes the room).
+          // answer instead of closing a healthy one.
           lastHeardRef.current = now;
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
         } else if (now - lastHeardRef.current > SILENCE_LIMIT_MS) {
@@ -129,35 +132,41 @@ export default function SessionLobby() {
           setStatus("connected");
           // The host started while we were disconnected.
           if (msg.session.status === "swiping") {
+            handoffRef.current = true;
             router.replace({
               pathname: "/swipe/[code]",
-              params: { code: code!, userId, dishes: JSON.stringify(msg.dishes) },
+              params: { code: code!, userId: userId!, dishes: JSON.stringify(msg.dishes) },
             });
           }
         } else if (msg.type === "match") {
           // The room matched while we were disconnected.
+          handoffRef.current = true;
           router.replace({
             pathname: "/match",
             params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal, sample: msg.session.sample },
           });
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);
+          // Hosting moves to whoever is here when the host steps away.
+          setIsHost(msg.session.hostId === userId);
         } else if (msg.type === "game_started") {
           setSession(msg.session);
           setDishes(msg.dishes);
+          handoffRef.current = true;
           router.replace({
             pathname: "/swipe/[code]",
             params: {
               code: code!,
-              userId,
+              userId: userId!,
               dishes: JSON.stringify(msg.dishes),
             },
           });
         } else if (msg.type === "error") {
           closingRef.current = true;
           setStatus("error");
-          // Usually an old invite: rooms end when everyone leaves. After a
-          // dropped connection it means we were the last one in the room.
+          // Usually an old invite: rooms end when everyone has left or been
+          // away for 15 minutes. After a dropped connection it means we were
+          // the last one in the room and stayed away that long.
           const notFound = msg.message === "Session not found";
           Alert.alert(
             notFound ? "Room not found" : "Error",
@@ -206,12 +215,21 @@ export default function SessionLobby() {
   }, []);
 
   useEffect(() => {
+    getMemberId().then(setUserId);
+  }, []);
+
+  useEffect(() => {
     closingRef.current = false;
     connect();
     return () => {
       closingRef.current = true;
       if (pingRef.current) clearInterval(pingRef.current);
       if (retryRef.current) clearTimeout(retryRef.current);
+      // Android's back button and the iOS back gesture leave without
+      // handleBack, so say so here unless the swipe screen is taking over.
+      if (!handoffRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "leave" }));
+      }
       wsRef.current?.close();
     };
   }, [connect]);
@@ -251,6 +269,11 @@ export default function SessionLobby() {
 
   const handleBack = () => {
     closingRef.current = true;
+    // Otherwise the server keeps our place as "away" for a while, and the
+    // others can't start without us being counted.
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "leave" }));
+    }
     wsRef.current?.close();
     // An invite link opens the lobby with nothing behind it.
     if (router.canGoBack()) router.back();
@@ -360,6 +383,9 @@ export default function SessionLobby() {
                   </Text>
                   {m.id === session?.hostId && (
                     <Text style={styles.hostTag}>Host</Text>
+                  )}
+                  {m.away && m.id !== userId && (
+                    <Text style={styles.awayTag}>Away — still in the room</Text>
                   )}
                 </View>
                 {m.id === session?.hostId && (
@@ -605,6 +631,11 @@ const styles = StyleSheet.create({
     color: Colors.accentGold,
     textTransform: "uppercase",
     letterSpacing: 1,
+  },
+  awayTag: {
+    fontSize: 12,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textSecondary,
   },
   memberConnecting: {
     fontSize: 14,
