@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Dish, Meal, SampleReason, SessionMode } from "../lib/food-data";
-import { MEALS, shuffleDishes, shuffleRecipes } from "../lib/food-data";
+import type { Deck, Dish, Meal, SampleReason, SessionMode } from "../lib/food-data";
+import { DECKS, MEALS, shuffleDishes, shuffleRecipes } from "../lib/food-data";
 import {
   fetchPopularDishes,
   menuGroundingEnabled,
@@ -47,6 +47,9 @@ interface Session {
   status: "lobby" | "swiping" | "matched";
   mode: SessionMode;
   meal?: Meal;
+  // Dine-out only: one card per place (its dishes flipped through on it) or
+  // one per dish. Cook-in is always one card per recipe.
+  deck?: Deck;
   // Set when a dine-out room fell back to the made-up DISHES restaurants:
   // the host sent no location, or Places found nothing (or failed).
   sample?: SampleReason;
@@ -106,6 +109,7 @@ function getSessionState(session: Session) {
     status: session.status,
     mode: session.mode,
     meal: session.meal,
+    deck: session.deck,
     sample: session.sample,
     round: session.round,
     repeat: session.repeat,
@@ -216,12 +220,16 @@ function replayedSwipes(session: Session, raw: unknown): Record<string, "like" |
   return swipes;
 }
 
-// How many cards the deck has: one per restaurant in dine-out (the app shows
-// a place's dishes together), one per recipe in cook-in.
+// Which card a dish is on in a deck dealt by place: its restaurant's (sample
+// restaurants have no placeId), or its own for a cook-in recipe.
+const placeKey = (d: Dish) => (d.mode === "cook-in" ? d.id : (d.placeId ?? d.restaurant));
+
+// How many cards the deck has: one per dish in a dish deck, one per
+// restaurant in a place deck (the app shows a place's dishes together), one
+// per recipe in cook-in.
 function cardCount(session: Session): number {
-  return new Set(
-    session.dishes.map((d) => (d.mode === "cook-in" ? d.id : (d.placeId ?? d.restaurant)))
-  ).size;
+  if (session.deck === "dishes") return session.dishes.length;
+  return new Set(session.dishes.map(placeKey)).size;
 }
 
 // Everyone still in the room has swiped every card (each swipe is one card),
@@ -235,15 +243,58 @@ function roundFinished(session: Session): boolean {
   );
 }
 
-// The places' order shuffled, each one's dishes kept together.
-function shufflePlaces(dishes: Dish[]): Dish[] {
+// The places in a shuffled order, each with its dishes in their order.
+function shuffledPlaces(dishes: Dish[]): Dish[][] {
   const byPlace = new Map<string, Dish[]>();
   for (const dish of dishes) {
-    const key = dish.mode === "cook-in" ? dish.id : (dish.placeId ?? dish.restaurant);
+    const key = placeKey(dish);
     if (!byPlace.has(key)) byPlace.set(key, []);
     byPlace.get(key)!.push(dish);
   }
-  return pickRandom([...byPlace.values()], byPlace.size).flat();
+  return pickRandom([...byPlace.values()], byPlace.size);
+}
+
+// Whether dishes still to deal can go out with no place twice in a row when
+// the next one can't be `banned` (the place just dealt): no place may have
+// more dishes left than the others have to go between them.
+function canSpread(left: number[], banned: number): boolean {
+  const total = left.reduce((a, b) => a + b, 0);
+  return left.every((n, p) => n <= total - n + (p === banned ? 0 : 1));
+}
+
+// A deck in the order to deal it. By place: the places shuffled, each one's
+// dishes kept together for its card. By dish: one dish from each place in
+// turn, so the same place (and its photo, often the same storefront) never
+// comes up twice in a row unless it's the only one left. A place with more
+// dishes than the rest jumps its turn when waiting would leave it alone at
+// the end.
+function dealDeck(dishes: Dish[], deck: Deck | undefined): Dish[] {
+  const places = shuffledPlaces(dishes);
+  if (deck !== "dishes") return places.flat();
+  const left = places.map((p) => p.length);
+  const dealt: Dish[] = [];
+  let turn = 0;
+  let last = -1;
+  while (dealt.length < dishes.length) {
+    const order = places.map((_, i) => (turn + i) % places.length);
+    const open = order.filter((p) => left[p] > 0 && p !== last);
+    // With no way around a repeat (one place has most of the deck), the
+    // biggest goes first so it's split up as much as it can be.
+    const pick =
+      open.find((p) => {
+        left[p]--;
+        const ok = canSpread(left, p);
+        left[p]++;
+        return ok;
+      }) ??
+      open.reduce<number | undefined>((a, p) => (a === undefined || left[p] > left[a] ? p : a), undefined) ??
+      last;
+    dealt.push(places[pick][places[pick].length - left[pick]]);
+    left[pick]--;
+    last = pick;
+    turn = pick + 1;
+  }
+  return dealt;
 }
 
 function rememberPlaces(session: Session) {
@@ -272,9 +323,9 @@ async function dealNextRound(session: Session): Promise<{ dishes: Dish[]; repeat
     search.radius = radius;
     // A sample result means nothing new was found (or the lookup failed):
     // keep the real places from before rather than switch to made-up ones.
-    if (!sample && dishes.length > 0) return { dishes, repeat: false };
+    if (!sample && dishes.length > 0) return { dishes: dealDeck(dishes, session.deck), repeat: false };
   }
-  return { dishes: shufflePlaces(session.dishes), repeat: true };
+  return { dishes: dealDeck(session.dishes, session.deck), repeat: true };
 }
 
 function announceMatch(session: Session) {
@@ -795,9 +846,8 @@ async function fetchNearbyRestaurants(
       return { dishes: shuffleDishes(meal), sample: "no-restaurants" };
     }
 
-    // Shuffle the places but keep each one's dishes together: the app shows
-    // a place's dishes on one card.
-    return { dishes: shufflePlaces(dishes) };
+    // Each place's dishes together; the room deals them in its deck's order.
+    return { dishes };
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     return { dishes: shuffleDishes(meal), sample: "lookup-failed" };
@@ -836,10 +886,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       code = generateCode();
     }
 
-    const { lat, lng, radius, mode: reqMode, meal: reqMeal, day, minutes } = req.body || {};
+    const {
+      lat,
+      lng,
+      radius,
+      mode: reqMode,
+      meal: reqMeal,
+      deck: reqDeck,
+      day,
+      minutes,
+    } = req.body || {};
     const mode: SessionMode = reqMode === "cook-in" ? "cook-in" : "dine-out";
     // Older app builds send no meal: they get dinner, as before.
     const meal: Meal = MEALS.includes(reqMeal) ? reqMeal : "dinner";
+    // Older app builds send no deck: they deal by place, as before.
+    const deck: Deck = DECKS.includes(reqDeck) ? reqDeck : "places";
     // The client's local weekday and minute of the day, to check opening
     // hours against. Without them no place is left out for being closed.
     const when =
@@ -866,6 +927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       dishes = shuffleDishes(meal);
       sample = "no-location";
     }
+    if (mode === "dine-out") dishes = dealDeck(dishes, deck);
 
     const session: Session = {
       code,
@@ -875,6 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "lobby",
       mode,
       meal: mode === "dine-out" ? meal : undefined,
+      deck: mode === "dine-out" ? deck : undefined,
       sample,
       createdAt: Date.now(),
       lastActive: Date.now(),
@@ -1070,7 +1133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           void dealNextRound(session)
             .catch((err) => {
               console.error("New round error:", err);
-              return { dishes: shufflePlaces(session.dishes), repeat: true };
+              return { dishes: dealDeck(session.dishes, session.deck), repeat: true };
             })
             .then(({ dishes, repeat }) => {
               session.refreshing = false;

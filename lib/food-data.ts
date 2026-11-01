@@ -10,6 +10,12 @@ export type Meal = "breakfast" | "lunch" | "dinner";
 export type SampleReason = "no-location" | "no-restaurants" | "lookup-failed";
 export const MEALS: Meal[] = ["breakfast", "lunch", "dinner"];
 
+// How a dine-out room deals its cards: "places" is one card per restaurant
+// with its dishes flipped through on it, "dishes" is every dish its own card
+// (never the same place twice in a row while others are left).
+export type Deck = "places" | "dishes";
+export const DECKS: Deck[] = ["places", "dishes"];
+
 // The meal people most likely mean at this local time.
 export function mealForTime(date: Date): Meal {
   const minutes = date.getHours() * 60 + date.getMinutes();

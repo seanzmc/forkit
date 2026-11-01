@@ -1,5 +1,5 @@
 import { getApiUrl } from "./query-client";
-import type { Meal, SampleReason, SessionMode } from "./food-data";
+import type { Deck, Meal, SampleReason, SessionMode } from "./food-data";
 
 export function getWsUrl(): string {
   const apiUrl = getApiUrl();
@@ -15,6 +15,9 @@ export type SessionState = {
   mode: SessionMode;
   // Dine-out rooms only; absent from older servers.
   meal?: Meal;
+  // Dine-out rooms only: one card per place or per dish. Absent from older
+  // servers, which always dealt by place.
+  deck?: Deck;
   // Dine-out rooms using made-up restaurants; absent from older servers.
   sample?: SampleReason;
   // Which round of swiping this is, from 1; repeat when this round's deck is

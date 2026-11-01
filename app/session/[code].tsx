@@ -135,7 +135,12 @@ export default function SessionLobby() {
             handoffRef.current = true;
             router.replace({
               pathname: "/swipe/[code]",
-              params: { code: code!, userId: userId!, dishes: JSON.stringify(msg.dishes) },
+              params: {
+                code: code!,
+                userId: userId!,
+                dishes: JSON.stringify(msg.dishes),
+                deck: msg.session.deck,
+              },
             });
           }
         } else if (msg.type === "match") {
@@ -159,6 +164,7 @@ export default function SessionLobby() {
               code: code!,
               userId: userId!,
               dishes: JSON.stringify(msg.dishes),
+              deck: msg.session.deck,
             },
           });
         } else if (msg.type === "error") {
@@ -319,7 +325,7 @@ export default function SessionLobby() {
               <Text style={styles.modeBadgeText}>
                 {session.mode === "cook-in"
                   ? "Cook In"
-                  : `Dine Out${session.meal ? ` · ${session.meal[0].toUpperCase()}${session.meal.slice(1)}` : ""}`}
+                  : `Dine Out${session.meal ? ` · ${session.meal[0].toUpperCase()}${session.meal.slice(1)}` : ""}${session.deck ? ` · ${session.deck === "dishes" ? "By dish" : "By place"}` : ""}`}
               </Text>
             </View>
           )}
