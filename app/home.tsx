@@ -24,12 +24,30 @@ import { VersionLabel } from "@/components/VersionLabel";
 import { HowItWorks, useHowItWorks } from "@/components/HowItWorks";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest } from "@/lib/query-client";
-import { MEALS, mealForTime, type Meal, type SessionMode } from "@/lib/food-data";
+import { DECKS, MEALS, mealForTime, type Deck, type Meal, type SessionMode } from "@/lib/food-data";
 
 const MEAL_OPTIONS: Record<Meal, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
   breakfast: { label: "Breakfast", icon: "sunny-outline" },
   lunch: { label: "Lunch", icon: "partly-sunny-outline" },
   dinner: { label: "Dinner", icon: "moon-outline" },
+};
+
+// How each deck plays, shown under its option so the choice is clear before
+// the room starts.
+const DECK_OPTIONS: Record<
+  Deck,
+  { label: string; icon: keyof typeof Ionicons.glyphMap; desc: string }
+> = {
+  places: {
+    label: "By place",
+    icon: "storefront-outline",
+    desc: "One card per restaurant. Tap through its dishes. Fewer swipes.",
+  },
+  dishes: {
+    label: "By dish",
+    icon: "fast-food-outline",
+    desc: "Every dish is its own card. Pick what you're craving.",
+  },
 };
 
 const RADIUS_OPTIONS = [
@@ -109,6 +127,8 @@ export default function HomeScreen() {
   const [mode, setMode] = useState<SessionMode>("dine-out");
   // Starts on the meal it's time for; not remembered, since that changes.
   const [meal, setMeal] = useState<Meal>(() => mealForTime(new Date()));
+  // Remembered: it's a taste, not a time of day.
+  const [deck, setDeck] = useState<Deck>("places");
   const [selectedRadius, setSelectedRadius] = useState(2);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
@@ -134,6 +154,9 @@ export default function HomeScreen() {
     });
     AsyncStorage.getItem("selectedRadius").then((r) => {
       if (r) setSelectedRadius(parseInt(r, 10));
+    });
+    AsyncStorage.getItem("deckStyle").then((d) => {
+      if (DECKS.includes(d as Deck)) setDeck(d as Deck);
     });
   }, []);
 
@@ -192,6 +215,12 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleDeckChange = (newDeck: Deck) => {
+    setDeck(newDeck);
+    AsyncStorage.setItem("deckStyle", newDeck);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   const handleModeChange = (newMode: SessionMode) => {
     setMode(newMode);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -220,6 +249,7 @@ export default function HomeScreen() {
         }
         const now = new Date();
         body.meal = meal;
+        body.deck = deck;
         // Local time, so the server can keep only places open for the meal.
         body.day = now.getDay();
         body.minutes = now.getHours() * 60 + now.getMinutes();
@@ -408,6 +438,33 @@ export default function HomeScreen() {
                   </View>
                 </Animated.View>
               )}
+              <Animated.View entering={FadeInDown.delay(240)} style={styles.radiusSection}>
+                <Text style={styles.radiusSectionTitle}>Cards</Text>
+                <View style={styles.radiusOptions}>
+                  {DECKS.map((d) => (
+                    <Pressable
+                      key={d}
+                      onPress={() => handleDeckChange(d)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: deck === d }}
+                      accessibilityHint={DECK_OPTIONS[d].desc}
+                      style={[styles.deckOption, deck === d && styles.deckOptionActive]}
+                    >
+                      <View style={styles.deckOptionHead}>
+                        <Ionicons
+                          name={DECK_OPTIONS[d].icon}
+                          size={15}
+                          color={deck === d ? Colors.accent : Colors.textSecondary}
+                        />
+                        <Text style={[styles.deckLabel, deck === d && styles.deckLabelActive]}>
+                          {DECK_OPTIONS[d].label}
+                        </Text>
+                      </View>
+                      <Text style={styles.deckDesc}>{DECK_OPTIONS[d].desc}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Animated.View>
               {effectiveLocationStatus === "granted" && (
                 <Animated.View entering={FadeInDown.delay(250)} style={styles.radiusSection}>
                   <Text style={styles.radiusSectionTitle}>Search Radius</Text>
@@ -754,6 +811,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+  },
+  deckOption: {
+    flex: 1,
+    gap: 4,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  deckOptionActive: {
+    borderColor: Colors.accent,
+    backgroundColor: "rgba(255,107,53,0.08)",
+  },
+  deckOptionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  deckLabel: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: Colors.textSecondary,
+  },
+  deckLabelActive: {
+    color: Colors.text,
+  },
+  deckDesc: {
+    fontSize: 11,
+    fontFamily: "Poppins_400Regular",
+    color: Colors.textMuted,
+    lineHeight: 15,
   },
   radiusChipActive: {
     backgroundColor: Colors.accent,

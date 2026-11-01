@@ -32,7 +32,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
-import type { Dish, Meal } from "@/lib/food-data";
+import type { Deck, Dish, Meal } from "@/lib/food-data";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
@@ -50,9 +50,6 @@ const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 // A touch that moves less than this is a tap, not a drag.
 const TAP_SLOP = 8;
-// Set once someone has flipped through a card's dishes, so the hint on how
-// to do that stops showing.
-const DISH_HINT_KEY = "seenDishFlipHint";
 // Same reconnect policy as the lobby: backoff before each attempt, then a
 // Retry button. The server answers every 20 s ping, so 45 s of silence means
 // the socket is dead even if it still reports OPEN.
@@ -62,7 +59,10 @@ const PING_INTERVAL_MS = 20000;
 
 // One card per restaurant (per recipe in cook-in): its dishes are what the
 // deck is about, and it's easier to judge a place with all of them in hand.
-function groupCards(dishes: Dish[]): Dish[][] {
+// A room dealt by dish gets one card per dish, in the server's order, which
+// keeps the same place from coming up twice in a row.
+function groupCards(dishes: Dish[], byDish: boolean): Dish[][] {
+  if (byDish) return dishes.map((d) => [d]);
   const groups = new Map<string, Dish[]>();
   for (const dish of dishes) {
     const key = dish.mode === "cook-in" ? dish.id : (dish.placeId ?? dish.restaurant);
@@ -328,10 +328,16 @@ function DishCard({
 }
 
 export default function SwipeScreen() {
-  const { code, userId: paramUserId, dishes: dishesParam } = useLocalSearchParams<{
+  const {
+    code,
+    userId: paramUserId,
+    dishes: dishesParam,
+    deck: deckParam,
+  } = useLocalSearchParams<{
     code: string;
     userId: string;
     dishes: string;
+    deck?: Deck;
   }>();
   const insets = useSafeAreaInsets();
 
@@ -347,19 +353,17 @@ export default function SwipeScreen() {
   const [swipeHistory, setSwipeHistory] = useState<{ dishId: string; vote: "like" | "pass" }[]>([]);
   // Which of the top card's dishes is showing.
   const [dishIndex, setDishIndex] = useState(0);
-  // Until they've flipped a card once; storage errors just keep it showing.
-  const [showDishHint, setShowDishHint] = useState(false);
-  useEffect(() => {
-    AsyncStorage.getItem(DISH_HINT_KEY)
-      .then((seen) => setShowDishHint(!seen))
-      .catch(() => setShowDishHint(true));
-  }, []);
+  // In every room until the member's first flip there. Remembering it per
+  // device hid it for good after one flip, even months and many rooms later.
+  const [showDishHint, setShowDishHint] = useState(true);
   const handleDishFlip = useCallback((index: number) => {
     setDishIndex(index);
     setShowDishHint(false);
-    AsyncStorage.setItem(DISH_HINT_KEY, "1").catch(() => {});
   }, []);
-  const cards = useMemo(() => groupCards(dishes), [dishes]);
+  // The lobby passes the room's deck along so the first render already deals
+  // it right; the server's session has the final word.
+  const byDish = (session?.deck ?? deckParam) === "dishes";
+  const cards = useMemo(() => groupCards(dishes, byDish), [dishes, byDish]);
   // Kept in state: a fresh id on every render would reconnect on every render.
   const [userId] = useState(() => paramUserId ?? Crypto.randomUUID());
   const [status, setStatus] = useState<"connecting" | "connected" | "reconnecting" | "offline">(
@@ -736,7 +740,7 @@ export default function SwipeScreen() {
         </View>
         <Text style={styles.progressText}>
           {round > 1 && `Round ${round}${session?.repeat ? " · reshuffled" : ""} · `}
-          {currentIndex}/{cards.length} {isCookIn ? "recipes" : "places"}
+          {currentIndex}/{cards.length} {isCookIn ? "recipes" : byDish ? "dishes" : "places"}
         </Text>
 
         <View style={styles.cardStack}>

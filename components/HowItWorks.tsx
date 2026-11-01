@@ -59,12 +59,12 @@ type Step = {
 const STEPS: Step[] = [
   {
     title: "Start a room",
-    body: "Pick Dine Out for restaurants near you or Cook In for recipes, then tap Create Room. Share the 6-character code, and your friends tap Join Room to get in.",
+    body: "Pick Dine Out for restaurants near you or Cook In for recipes. Dining out, choose By place for one card per restaurant or By dish for a card per dish. Tap Create Room and share the 6-character code; your friends tap Join Room to get in.",
     art: <RoomArt />,
   },
   {
     title: "Swipe on dishes",
-    body: "Swipe right on what you'd eat, left on what you wouldn't. Tap either side of the photo to flip through more dishes from the same place. Nobody sees how you voted.",
+    body: "Swipe right on what you'd eat, left on what you wouldn't. On a By place card, tap either side of the photo to flip through more dishes from the same place. Nobody sees how you voted.",
     art: <SwipeArt />,
   },
   {
