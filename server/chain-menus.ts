@@ -1,5 +1,5 @@
 // Real menu items for chain restaurants, from spoonacular's menu item search
-// (115K+ items from 800+ US chains, each with a photo of that item). US menus
+// (115K+ items from 800+ US chains, some with a photo of that item). US menus
 // only, so callers skip places outside the US.
 //
 // Terms: results may be cached for at most 1 hour, so lookups (including
@@ -28,8 +28,9 @@ export interface ChainDish {
   name: string;
   // A breakfast item: shown only in breakfast rooms, and only those show.
   breakfast: boolean;
-  // spoonacular's photo, or null when it has none (most items): the caller
-  // shows the place's own photo instead. A real dish beats a suggested one.
+  // spoonacular's photo, or null when it has none big enough for the card
+  // (most items): the caller shows the place's own photo instead. A real
+  // dish beats a suggested one.
   image: string | null;
 }
 
@@ -151,15 +152,61 @@ async function searchPage(query: string, offset: number): Promise<MenuItem[]> {
   return ((await res.json()).menuItems || []) as MenuItem[];
 }
 
+// The smallest photo, by its shorter side, that still looks like a photo
+// on the swipe card (about 360x500 pt, over 1000 px wide on a 3x phone).
+// Many chains only gave spoonacular thumbnails: every Wawa item is 90x90.
+const MIN_PHOTO_PX = 600;
+// Enough of the file to hold its size: the PNG header, or the JPEG frame
+// header after any metadata.
+const HEADER_BYTES = 64 * 1024;
+
+// Width and height from a PNG or JPEG file's first bytes, or null.
+function imageSize(b: Uint8Array): { width: number; height: number } | null {
+  const u16 = (i: number) => (b[i] << 8) | b[i + 1];
+  const u32 = (i: number) => ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
+  if (b.length >= 24 && u32(0) === 0x89504e47 && u32(12) === 0x49484452) {
+    return { width: u32(16), height: u32(20) };
+  }
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < b.length) {
+    if (b[i] !== 0xff) return null;
+    const marker = b[i + 1];
+    // Fill bytes, and markers with no length.
+    if (marker === 0xff) {
+      i++;
+      continue;
+    }
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
+      i += 2;
+      continue;
+    }
+    // Start of frame (any SOFn; C4, C8 and CC are other segments).
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { width: u16(i + 7), height: u16(i + 5) };
+    }
+    i += 2 + u16(i + 2);
+  }
+  return null;
+}
+
 // Many items list an image that was never uploaded (about two in three in a
-// test near Tampa), so check that the photo actually loads. Prefer the
-// sharper 636x393 size; both sizes exist or neither does.
+// test near Tampa), or only a thumbnail, so check what the file really is.
+// Use the original: spoonacular's sized copies only ever fit it into a box,
+// so "636x393" is a 90x90 thumbnail stretched to 393x393, or a wide photo
+// shrunk to 636x265, both soft on a card 1500 px tall.
 async function workingImage(id: number, ext: string | null): Promise<string | null> {
   if (!ext) return null;
-  const url = `https://img.spoonacular.com/menu-items/${id}-636x393.${ext}`;
+  const url = `https://img.spoonacular.com/menu-items/${id}.${ext}`;
   try {
-    const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(4_000) });
-    return res.ok ? url : null;
+    const res = await fetch(url, {
+      headers: { Range: `bytes=0-${HEADER_BYTES - 1}` },
+      signal: AbortSignal.timeout(4_000),
+    });
+    // A missing file is a 404, an empty one a 416.
+    if (!res.ok) return null;
+    const size = imageSize(new Uint8Array(await res.arrayBuffer()));
+    return size && Math.min(size.width, size.height) >= MIN_PHOTO_PX ? url : null;
   } catch {
     return null;
   }
