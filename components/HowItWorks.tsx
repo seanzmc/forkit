@@ -59,17 +59,17 @@ type Step = {
 const STEPS: Step[] = [
   {
     title: "Start a room",
-    body: "Pick Dine Out for restaurants near you or Cook In for recipes. Dining out, choose By place for one card per restaurant or By dish for a card per dish. Tap Create Room and share the 6-character code; your friends tap Join Room to get in.",
+    body: "Pick Dine Out for restaurants near you or Cook In for recipes. Dining out, pick the meal, then By place for one card per restaurant or By dish for a card per dish. Tap Create Room and share the 6-character code or invite link; your friends tap Join Room to get in.",
     art: <RoomArt />,
   },
   {
     title: "Swipe on dishes",
-    body: "Swipe right on what you'd eat, left on what you wouldn't. On a By place card, tap either side of the photo to flip through more dishes from the same place. Nobody sees how you voted.",
+    body: "Swipe right on what you'd eat, left on what you wouldn't. On a By place card, tap either side of the photo to flip through more dishes from the same place. The middle button undoes a swipe, and the circles up top let you invite more people. Nobody sees how you voted.",
     art: <SwipeArt />,
   },
   {
     title: "It's a match",
-    body: "The moment most of the group likes the same restaurant, or the same recipe when cooking in, everyone gets the match, with directions and a call button or the full recipe.",
+    body: "The moment most of the group likes the same restaurant, or the same recipe when cooking in, everyone gets the match, with directions, delivery and a call button, or the full recipe and a shopping list.",
     art: <MatchArt />,
   },
   {
@@ -260,6 +260,9 @@ function SwipeArt() {
       <View style={styles.voteRow}>
         <View style={[styles.voteBtn, { borderColor: "rgba(244,67,54,0.4)" }]}>
           <Ionicons name="close" size={24} color={Colors.red} />
+        </View>
+        <View style={[styles.voteBtn, styles.undoBtn]}>
+          <Ionicons name="arrow-undo" size={16} color={Colors.accentGold} />
         </View>
         <View style={[styles.voteBtn, { borderColor: "rgba(76,175,80,0.4)" }]}>
           <Ionicons name="heart" size={24} color={Colors.green} />
@@ -528,6 +531,13 @@ const styles = StyleSheet.create({
   voteRow: {
     flexDirection: "row",
     gap: 28,
+    alignItems: "center",
+  },
+  undoBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderColor: "rgba(255,179,71,0.4)",
   },
   voteBtn: {
     width: 48,

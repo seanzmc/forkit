@@ -235,7 +235,7 @@ export default function HomeScreen() {
         // Without coordinates the server builds the room from made-up
         // restaurants with no address or phone, so a tap before the location
         // has loaded (or before it was ever asked for) waits for it here.
-        // Only a denied permission falls back to the curated picks.
+        // Only a denied permission falls back to the sample restaurants.
         let coords = location;
         if (!coords && effectiveLocationStatus !== "denied") {
           coords = locationPermission?.granted
@@ -373,7 +373,7 @@ export default function HomeScreen() {
                     <Ionicons name="location-outline" size={24} color={Colors.textMuted} />
                     <View style={styles.locationDeniedContent}>
                       <Text style={styles.locationDeniedText}>
-                        Location denied — using curated picks instead.
+                        Location denied — using sample restaurants instead.
                       </Text>
                       {Platform.OS !== "web" && locationPermission?.canAskAgain ? (
                         <Pressable onPress={handleRequestLocation} style={styles.retryBtn}>
@@ -535,7 +535,7 @@ export default function HomeScreen() {
                   : location
                     ? `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of your location for real restaurants.`
                     : effectiveLocationStatus === "denied"
-                      ? "Share a room code with your group. Using curated restaurant picks."
+                      ? "Share a room code with your group. Using sample restaurants."
                       : `Searching within ${RADIUS_OPTIONS[selectedRadius].label} of you for real restaurants once location is on.`}
               </Text>
               <Pressable
