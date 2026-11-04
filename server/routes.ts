@@ -918,7 +918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } else if (lat && lng && radius) {
       const radiusMeters = Math.min(Math.max(radius, 500), 50000);
       console.log(
-        `Fetching ${meal} restaurants near ${lat},${lng} within ${radiusMeters}m`
+        `Fetching ${meal} restaurants within ${radiusMeters}m`
       );
       ({ dishes, sample } = await fetchNearbyRestaurants(lat, lng, radiusMeters, meal, when));
       console.log(`Found ${dishes.length} dishes from nearby restaurants`);

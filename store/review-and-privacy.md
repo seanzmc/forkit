@@ -13,10 +13,11 @@ Facts the answers below rest on. Verify them again before submitting.
 | --- | --- | --- |
 | Display name (typed, max 24 chars) | Server memory; shown to others in the room | Until the session ends (every member has left or been away 15 min, server restart, or 1 h idle) |
 | Random member ID (app-generated UUID, not tied to the device or any account) | AsyncStorage on the device; server memory while in a room | On the device until the app is deleted; on the server session only |
-| Location (lat/lng, `Accuracy.Balanced`), dine-out only | Server, then Google Places and Gemini (Maps grounding) | Used for the lookup, never stored |
+| Location (lat/lng, `Accuracy.Balanced`), dine-out only, from whoever creates the room | Server, then Google Places and Gemini (Maps grounding), at creation and on each new round | Server memory while the room is open (`session.search`, for the next round's search); never logged or written to disk |
+| Local weekday and time of day, dine-out only | Server, to check opening hours | Same as location |
 | Swipes | Server memory | Session only |
 | Push token, if allowed | Server memory, then Expo push → APNs / FCM | Session only (kept after disconnect until the session is swept) |
-| Display name, search radius | AsyncStorage on the device | Until the app is deleted |
+| Display name, search radius, card style (By place / By dish), walkthrough seen | AsyncStorage on the device | Until the app is deleted |
 | Update check: app version, platform, random install ID (expo-updates) | Expo's update service (EAS Update), on each launch | Held by Expo; never reaches our server |
 
 No accounts, no analytics or crash SDKs, no ads, no advertising ID, no
@@ -31,7 +32,7 @@ background location, no database. All traffic is HTTPS / WSS.
 **Notes**
 
 ```
-ForkIt has no accounts. Type any name on the first screen and tap "Let's Eat".
+ForkIt has no accounts. Type any name on the first screen and tap "Let's Eat". A short "How ForkIt works" walkthrough opens the first time; tap "Skip" or go through it (the ? button on the home screen reopens it).
 
 ForkIt is a group app: everyone in a room swipes on dishes, and it's a match when most of the room likes the same restaurant (dine out) or recipe (cook in). You can test it with one device, because a one-person room matches on your first right swipe.
 
@@ -41,12 +42,14 @@ Quickest test, no location needed:
 3. Swipe right on any recipe. The match screen appears.
 
 Dine out:
-1. Choose "Dine Out" and allow location when asked. Location is used once, to find restaurants near you, and is not stored.
-2. Pick a meal and a radius, then tap "Create Room". Building the room takes up to about 10 seconds while we look up nearby restaurants and their dishes.
-3. Tap "Start Swiping". Tap the right or left side of a card's photo to flip through that restaurant's dishes; swipe to vote on the dish showing.
-4. Swipe right on a dish to get a match, with Call, Website and Directions buttons.
+1. Choose "Dine Out", tap "Enable Location" and allow it. Location is used to find restaurants near you, and is discarded when the room closes.
+2. Pick a meal, a card style ("By place" or "By dish") and a radius, then tap "Create Room". Building the room takes up to about 10 seconds while we look up nearby restaurants and their dishes.
+3. Tap "Start Swiping". In a "By place" room, tap the right or left side of a card's photo to flip through that restaurant's dishes; swipe to vote on the dish showing. The button between X and the heart undoes a swipe.
+4. Swipe right on a dish to get a match, with Directions, Order delivery and Google Maps buttons, plus Call and Website when the restaurant lists them.
 
-To try it as a group, use a second device: tap the session code in the waiting room to share it, enter the code under "Join a Session" on the other device, then start. Match notifications arrive only if you allow notifications and have left the app when the match happens.
+If nothing matches once everyone has swiped every card, any member can start another round.
+
+To try it as a group, use a second device: tap the share button at the top of the waiting room, tap "Join Room" on the other device and enter the code, then start. Match notifications arrive only if you allow notifications and have left the app when the match happens.
 ```
 
 ## Apple App Privacy (App Store Connect → App Privacy)
@@ -58,7 +61,7 @@ prompt is needed.
 
 | Apple data type | Collected | Linked to you | Tracking | Purpose |
 | --- | --- | --- | --- | --- |
-| Location → Precise Location | Yes | No | No | App Functionality |
+| Location → Precise Location | Yes | Yes | No | App Functionality |
 | Contact Info → Name | Yes | Yes | No | App Functionality |
 | User Content → Other User Content (swipes) | Yes | Yes | No | App Functionality |
 | Identifiers → Device ID (push token) | Yes | Yes | No | App Functionality |
@@ -69,17 +72,19 @@ Notes on the choices:
   Apple counts lat/lng with three or more decimals as precise. To claim
   Coarse Location instead, the app would have to round coordinates before
   sending them.
-- **Location is disclosed even though it isn't stored**: it is core to dine
-  out, so it doesn't meet Apple's optional-disclosure criteria, and it goes
-  on to Google.
+- **Location is disclosed even though it never reaches a disk**: it is core
+  to dine out, so it doesn't meet Apple's optional-disclosure criteria, and
+  it goes on to Google.
 - **Name** is a free-text display name, but users will often type their real
   first name, so it is disclosed as Name.
 - **Name, swipes and push token are "linked".** There is no account, but the
   server keys the push token, display name and swipes by the same member ID
   for the session, so they are tied to a device while it lasts. Apple counts
   that as linked unless the data is de-identified before collection.
-- **Location is "not linked"**: it arrives in the create-session request,
-  which carries no member ID or token, and is discarded after the lookup.
+- **Location is "linked" too, the cautious reading.** It arrives in the
+  create-session request, which carries no member ID or token, but the room
+  keeps it for the next round's search, next to its members' names and
+  tokens, until the room closes.
 - **Push token** as Device ID is the cautious reading; many apps leave it
   out. Disclosing it costs nothing.
 - **The expo-updates install ID** needs no new row: it is a random ID Expo
@@ -92,13 +97,14 @@ Notes on the choices:
 **Does your app collect or share any of the required user data types?** Yes.
 **Is all of the user data collected by your app encrypted in transit?** Yes.
 **Do you provide a way for users to request that their data is deleted?** No.
-There are no accounts and all server data is deleted automatically within
-an hour; say so if the form offers a free-text field.
+There are no accounts and all server data is deleted automatically, at the
+latest an hour after a room goes quiet; say so if the form offers a free-text
+field.
 
 | Play data type | Collected | Shared | Processed ephemerally | Required / optional | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| Location → Approximate location | Yes | No | Yes | Optional | App functionality |
-| Location → Precise location | Yes | No | Yes | Optional | App functionality |
+| Location → Approximate location | Yes | No | No | Optional | App functionality |
+| Location → Precise location | Yes | No | No | Optional | App functionality |
 | Personal info → Name | Yes | No | No | Required | App functionality |
 | App activity → Other actions (swipes) | Yes | No | No | Required | App functionality |
 | Device or other IDs (push token) | Yes | No | No | Optional | App functionality |
@@ -111,7 +117,10 @@ Notes:
   providers acting for us (Google Places, Gemini, Expo, FCM, Railway) as
   sharing, nor showing your name to people you chose to play with.
 - **Location optional**: cook in works without it, and dine out falls back
-  to a built-in dish list.
+  to built-in sample restaurants.
+- **Location is not "processed ephemerally".** Play means used only to serve
+  the request at hand; the room keeps it in memory for the next round's
+  search until it closes.
 - **Device or other IDs** also covers the random install ID expo-updates
   sends to Expo when checking for updates; no extra row.
 

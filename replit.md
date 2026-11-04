@@ -17,8 +17,8 @@ A Tinder-style food decision app where groups swipe on dishes and get matched wh
 
 ## Session Modes
 
-- **Dine Out** (`dine-out`): Google Places API fetches nearby restaurants, generates 2-3 cuisine-based dish cards per restaurant. Match = per-restaurant majority.
-- **Cook In** (`cook-in`): 20 curated home recipes with cookTime/servings/difficulty. Match = per-dish majority. No location needed.
+- **Dine Out** (`dine-out`): for one meal (breakfast/lunch/dinner), Google Places finds nearby restaurants open for it, with up to 4 dishes each: Gemini Maps grounding, chain menus, or cuisine-based suggestions. The deck is By place (one card per restaurant) or By dish. Match = per-restaurant majority.
+- **Cook In** (`cook-in`): 20 curated home recipes with cookTime/servings/difficulty, and full recipes with a servings stepper and shopping list on the match screen. Match = per-dish majority. No location needed.
 
 Mode is set on Home screen, sent in POST body when creating session, propagated via WebSocket `SessionState`.
 
@@ -30,7 +30,8 @@ Mode is set on Home screen, sent in POST body when creating session, propagated 
 - **Search radius selector** - 1mi / 3mi / 5mi / 10mi / 25mi options (dine-out only)
 - Real-time WebSocket sync between group members
 - Majority-rules matching (>50% of group must like same restaurant/dish)
-- Fallback to 15 curated dishes when location unavailable (dine-out)
+- Fallback to made-up sample restaurants, labeled as such, when location or lookup is unavailable (dine-out)
+- Undo, another round when nothing matches, in-game session panel, first-run walkthrough, match push notifications, invite links
 - Shareable 6-character session codes
 - Animated swipe cards with YUMMY/NOPE stamps, ratings, addresses
 - Confetti celebration on match
@@ -38,7 +39,9 @@ Mode is set on Home screen, sent in POST body when creating session, propagated 
 
 ## Environment Variables
 
-- `GOOGLE_PLACES_API_KEY` - Required for nearby restaurant search (secret)
+See CLAUDE.md for the full list. Main one:
+
+- `GOOGLE_PLACES_API_KEY` - Nearby restaurant search (secret); absent means sample restaurants
 
 ## Design
 

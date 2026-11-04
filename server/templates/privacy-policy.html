@@ -87,9 +87,12 @@
         </li>
         <li>
           <strong>Your location, only in "dine out" mode.</strong>
-          If you grant location permission, your coordinates and chosen search
-          radius are sent to our server once, used immediately to look up nearby
-          restaurants, and then discarded. They are never saved.
+          If you grant location permission and create a room, your coordinates,
+          chosen search radius and the day and time on your phone are sent to
+          our server to look up nearby restaurants that are open. They are held
+          in the server's memory while the room is open, so a new round can
+          search farther out, and then discarded. They are never written to a
+          database or to logs.
         </li>
         <li>
           <strong>A random member ID.</strong> Created by the app the first
@@ -114,21 +117,24 @@
         <li>No email address, phone number, or password — there are no accounts.</li>
         <li>No contacts, photos, calendar, or microphone data.</li>
         <li>No advertising identifiers, and no analytics or crash-reporting SDKs.</li>
-        <li>No background or continuous location. Location is read once, on request.</li>
+        <li>No background or continuous location. Location is read only while the app is open on its home screen, and sent only when you create a room.</li>
       </ul>
 
       <h2>How long it is kept</h2>
       <p>
-        Session data — display names, swipes, notification tokens, and the
-        generated dish list — is
+        Session data — display names, swipes, notification tokens, the search
+        location, and the generated dish list — is
         held in the server's memory only, for the length of the session. It is
-        deleted when the last person leaves, when the server restarts, or
-        automatically after one hour, whichever comes first. There is no
+        deleted when the last person is gone (someone who leaves the app stays
+        in the room for 15 minutes), when the server restarts, or after an hour
+        with no activity, whichever comes first. A room that found a match
+        stays until that hour is up, so people coming back still get the
+        result. There is no
         database and no backup, so once a session ends the data is gone.
       </p>
       <p>
-        Your display name and preferred search radius are also stored locally on
-        your device so you do not have to retype them. Deleting the app removes
+        Your display name, preferred search radius and card style are also stored
+        locally on your device so you do not have to retype them. Deleting the app removes
         them.
       </p>
 
@@ -136,13 +142,13 @@
       <ul>
         <li>
           <strong>Other people in your session</strong> see your display name
-          and, while swiping, that you voted — not what you voted for, until a
-          match is found.
+          and, while swiping, how far you have got — never what you voted for. A
+          match shows the group's pick, not who voted for it.
         </li>
         <li>
           <strong>Google Places API</strong> receives your coordinates and
-          search radius in "dine out" mode, in order to return nearby
-          restaurants. This is governed by
+          search radius in "dine out" mode, when a room is created and for each
+          new round, in order to return nearby restaurants. This is governed by
           <a href="https://policies.google.com/privacy" rel="noopener">Google's Privacy Policy</a>.
         </li>
         <li>
@@ -176,6 +182,12 @@
           <strong>Railway</strong> hosts the server and processes traffic on our
           behalf.
         </li>
+        <li>
+          <strong>Services you open from a match.</strong> Directions, Google
+          Maps, Call, Website and Order delivery open your maps or phone app, the
+          restaurant's site, or DoorDash or Uber Eats, with the restaurant's name
+          or address. Those services' own privacy policies apply there.
+        </li>
       </ul>
       <p>We do not sell or share your information with anyone else.</p>
 
@@ -191,7 +203,7 @@
         your device settings; the app works the same without it. Location
         permission can be declined or revoked at any time in your device
         settings; "cook in" mode works without it, and "dine out" falls
-        back to a built-in list of dishes. To remove the data stored on your
+        back to a built-in list of sample restaurants. To remove the data stored on your
         device, clear the app's storage or uninstall it. Because sessions are
         never persisted, there is no stored history for us to delete on request.
       </p>

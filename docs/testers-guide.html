@@ -275,15 +275,18 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <ol class="steps">
       <li class="step">
         <div class="step-head"><h3>Type your first name</h3></div>
-        <p>Then tap <span class="tap">Let's Eat</span>.</p>
+        <p>Then tap <span class="tap">Let's Eat</span>. A short <b>How ForkIt works</b> walkthrough opens the first time. Go through it or tap <span class="tap">Skip</span>; the <b>?</b> button on the next screen brings it back.</p>
       </li>
       <li class="step">
         <div class="step-head"><h3>Choose Dine Out</h3></div>
-        <p>When your iPhone asks about location, tap <span class="tap">Allow While Using App</span>. ForkIt only uses it to find restaurants near you. <b>Search Radius</b> sets how far it looks.</p>
+        <p>Tap <span class="tap">Enable Location</span>, then <span class="tap">Allow While Using App</span>. ForkIt only uses it to find restaurants near you. Then choose:</p>
+        <p><b>Deciding:</b> breakfast, lunch or dinner. Only places open for that meal show up.</p>
+        <p><b>Cards:</b> <b>By place</b> gives one card per restaurant, so fewer swipes. <b>By dish</b> gives every dish its own card.</p>
+        <p><b>Search Radius:</b> how far it looks.</p>
       </li>
       <li class="step">
         <div class="step-head"><h3>One person makes a room</h3></div>
-        <p><b>The host</b> taps <span class="tap">Create Room</span> and gets a 6-letter code. Tap the code to text it to the group.</p>
+        <p><b>The host</b> taps <span class="tap">Create Room</span> and gets a 6-character code. Tap the share button at the top to text the invite.</p>
         <p><b>Everyone else</b> taps the link they were sent, or taps <span class="tap">Join Room</span> and types the code.</p>
         <p>Everyone in the room needs ForkIt installed from this test. If someone doesn't have it yet, <a href="#share">send them this page</a> first.</p>
       </li>
@@ -293,17 +296,23 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
       </li>
       <li class="step">
         <div class="step-head"><h3>Swipe right on dinner</h3></div>
-        <p>Each card is one dish at a real restaurant nearby. Swipe <b>right</b> if you'd eat it, <b>left</b> if not.</p>
+        <p>Every card shows a dish at a real restaurant nearby. Swipe <b>right</b> if you'd eat it, <b>left</b> if not, or use the heart and X buttons. The button between them undoes your last swipe.</p>
+        <p>On a <b>By place</b> card, tap the right or left side of the photo to see that restaurant's other dishes, then swipe on the one showing.</p>
         <div class="swipe" aria-hidden="true">
           <span class="chip no">NOPE</span><span class="arrow">← left · right →</span><span class="chip yes">YUMMY</span>
         </div>
       </li>
       <li class="step">
         <div class="step-head"><h3>It's a match</h3></div>
-        <p>When most of the group swipes right on the same restaurant, everyone sees <b>IT'S A MATCH</b>. From there you can get directions, call, or open the restaurant's website.</p>
+        <p>When most of the group swipes right on the same restaurant, everyone sees <b>IT'S A MATCH</b>. From there you can get directions, order delivery through DoorDash or Uber Eats, or open Google Maps, plus call or visit the website when the restaurant lists them.</p>
+      </li>
+      <li class="step">
+        <div class="step-head"><h3>No match? Go again</h3></div>
+        <p>If everyone swipes every card and nothing matches, anyone can tap <span class="tap">Find New Places</span> to get restaurants farther out, or <span class="tap">Shuffle and Go Again</span> when there are no new ones.</p>
       </li>
     </ol>
-    <p class="note"><b>Cooking at home instead?</b> Pick <b>Cook In</b> in step 2 to swipe on recipes. No location needed.</p>
+    <p class="note"><b>In the middle of swiping?</b> Tap the circles with everyone's initials at the top. You'll see the room code to invite more people, how far everyone has got, and your own swipes. Nobody else sees how you voted.</p>
+    <p class="note"><b>Cooking at home instead?</b> Pick <b>Cook In</b> in step 2 to swipe on recipes. No location needed. The match comes with the full recipe: change the servings and the amounts follow, tick off ingredients, and share a shopping list.</p>
     <a class="top" href="#top">↑ Back to contents</a>
   </section>
 
@@ -318,7 +327,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
       <li><h4>Do the photos fit?</h4><p>Does the picture look like the dish? Did you see the same photo over and over?</p></li>
       <li><h4>Are the restaurants right?</h4><p>Close by and places you'd actually go? Any favorites missing, or places that have closed?</p></li>
       <li><h4>Was joining easy?</h4><p>Did the code or link work for everyone? Did anyone get stuck in the waiting room?</p></li>
-      <li><h4>Did the match work?</h4><p>Did everyone get the match and the notification? Did directions, call and website work?</p></li>
+      <li><h4>Did the match work?</h4><p>Did everyone get the match and the notification? Did directions, delivery, call and website work?</p></li>
       <li><h4>Anything confusing?</h4><p>A screen where you weren't sure what to tap, or text that was hard to read.</p></li>
       <li><h4>Anything broken?</h4><p>The app closing by itself, freezing, or loading forever. Say what you were doing when it happened.</p></li>
       <li><h4>Would you use it?</h4><p>Would your group use this to pick dinner? What would make you want to?</p></li>
@@ -375,9 +384,10 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <h2 id="help-h">If something goes wrong</h2>
     <div class="faq">
       <details><summary>The invite says the test is full</summary><p>Text Sean so the limit can be raised.</p></details>
-      <details><summary>No restaurants show up</summary><p>Location may be off for ForkIt. Open the iPhone <b>Settings</b> app, scroll down to <b>ForkIt</b>, tap <b>Location</b>, and choose <b>While Using the App</b>. Or try a bigger Search Radius.</p></details>
+      <details><summary>The cards say "Sample restaurant"</summary><p>Those are made-up places, shown when ForkIt can't use real ones. Location may be off for ForkIt. Open the iPhone <b>Settings</b> app, scroll down to <b>ForkIt</b>, tap <b>Location</b>, and choose <b>While Using the App</b>. Then make a new room. If location is already on, nothing may be open for that meal nearby, so try a new room with a bigger Search Radius.</p></details>
+      <details><summary>I left the app in the middle of a room</summary><p>You stay in the room for 15 minutes and your swipes still count, so just go back to ForkIt. If the app closed, tap the invite link again, or tap <span class="tap">Join Room</span> and type the code.</p></details>
       <details><summary>I can't find the app on my phone</summary><p>Swipe down on your home screen and search "ForkIt". You can also open it from the TestFlight app.</p></details>
-      <details><summary>The room code doesn't work</summary><p>Rooms close when everyone leaves, and sometimes when Sean updates the app. Ask the host to make a new room.</p></details>
+      <details><summary>The room code doesn't work</summary><p>Rooms close when everyone leaves, after an hour with no activity, and sometimes when Sean updates the app. Ask the host to make a new room.</p></details>
       <details><summary>How do I get updates?</summary><p>Most fixes arrive by themselves: ForkIt downloads them when you open it and uses them the next time you open it. Bigger updates come through TestFlight, which tells you when there's a new version. Open TestFlight and tap <b>Update</b> next to ForkIt.</p></details>
     </div>
     <a class="top" href="#top">↑ Back to contents</a>

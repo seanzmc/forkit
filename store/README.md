@@ -14,6 +14,8 @@ a PR alongside the app changes that make them necessary.
 
 ## Still to do
 
+- **Retake Play screenshots 02-home and 03-lobby.** Taken before the Cards
+  picker (By place / By dish), the ? button and the deck on the lobby badge.
 - **iPhone screenshots.** The Play screenshots, icon and feature graphic are
   done (see below). Still needed: iPhone 6.9" (1320 × 2868). Apple rejects
   screenshots that don't match the app, so retake them if the UI changes

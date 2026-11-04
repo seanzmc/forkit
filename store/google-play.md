@@ -19,7 +19,7 @@ ForkIt: Swipe to Decide
 Swipe on dishes with your group. When most of you agree, dinner is decided.
 ```
 
-**Full description** [1470 / 4000]
+**Full description** [1893 / 4000]
 
 Play's metadata policy frowns on all-caps text, so this is the App Store
 text with sentence-case headings.
@@ -33,19 +33,20 @@ How it works
 • Start a room and share the 6-character code or invite link
 • Everyone swipes on dishes at the same time, on their own phone
 • When a majority likes the same restaurant, it's a match
-• Call, open the website, or get directions right from the match screen
+• Get directions, call, open the website, or find it on DoorDash or Uber Eats right from the match screen
+• No match? Anyone can start another round, with new places from farther out when there are any
 
 Dine out
-Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows dishes at each one: popular dishes and real menu items where we can find them, and suggestions based on the cuisine where we can't. Tap a card to flip through a restaurant's dishes, then swipe on the one that's showing.
+Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows dishes at each one: popular dishes and real menu items where we can find them, and suggestions based on the cuisine where we can't. Choose how to swipe: by place, with one card per restaurant that you tap through for its dishes, or by dish, where every dish gets its own card.
 
 Cook in
-Staying home? Swipe on recipes instead, and the group lands on something to make together. No location needed.
+Staying home? Swipe on recipes instead, and the group lands on something to make together. The match comes with the full recipe: set the servings, tick off ingredients and share a shopping list. No location needed.
 
 Made for groups
-Friends, roommates, family, a date: anyone with the app can join with the code. Majority wins, so nobody has to be the one who decides. You'll get a notification when your group finds a match, even if you've left the app.
+Friends, roommates, family, a date: anyone with the app can join with the code or invite link, even after swiping has started. Majority wins, so nobody has to be the one who decides, and nobody sees how you voted. Swiped too fast? Undo it. Step away and you're still in the room, and you'll get a notification when your group finds a match.
 
 No account needed
-Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear when everyone leaves.
+Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear on their own once everyone's gone.
 ```
 
 **App category:** Food & Drink
