@@ -13,7 +13,7 @@ Facts the answers below rest on. Verify them again before submitting.
 | --- | --- | --- |
 | Display name (typed, max 24 chars) | Server memory; shown to others in the room | Until the session ends (every member has left or been away 15 min, server restart, or 1 h idle) |
 | Random member ID (app-generated UUID, not tied to the device or any account) | AsyncStorage on the device; server memory while in a room | On the device until the app is deleted; on the server session only |
-| Location (lat/lng, `Accuracy.Balanced`), dine-out only, from whoever creates the room | Server, then Google Places and Gemini (Maps grounding), at creation and on each new round | Server memory while the room is open (`session.search`, for the next round's search); never logged or written to disk |
+| Location (lat/lng, `Accuracy.Balanced`), dine-out only, from whoever creates the room | Server, then Google Places, at creation and on each new round. Never sent to Gemini, which gets only the restaurants' names, addresses and coordinates | Server memory while the room is open (`session.search`, for the next round's search); never logged or written to disk |
 | Local weekday and time of day, dine-out only | Server, to check opening hours | Same as location |
 | Swipes | Server memory | Session only |
 | Push token, if allowed | Server memory, then Expo push → APNs / FCM | Session only (kept after disconnect until the session is swept) |
@@ -42,7 +42,7 @@ Quickest test, no location needed:
 3. Swipe right on any recipe. The match screen appears.
 
 Dine out:
-1. Choose "Dine Out", tap "Enable Location" and allow it. Location is used to find restaurants near you, and is discarded when the room closes.
+1. Choose "Dine Out", tap "Enable Location" and allow it. Location is sent to Google Places to find restaurants near you, and our server discards it when the room closes.
 2. Pick a meal, a card style ("By place" or "By dish") and a radius, then tap "Create Room". Building the room takes up to about 10 seconds while we look up nearby restaurants and their dishes.
 3. Tap "Start Swiping". In a "By place" room, tap the right or left side of a card's photo to flip through that restaurant's dishes; swipe to vote on the dish showing. The button between X and the heart undoes a swipe.
 4. Swipe right on a dish to get a match, with Directions, Order delivery and Google Maps buttons, plus Call and Website when the restaurant lists them.

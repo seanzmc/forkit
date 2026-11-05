@@ -394,7 +394,7 @@ export default function HomeScreen() {
                     <View style={styles.locationTextCol}>
                       <Text style={styles.locationRequestTitle}>Enable Location</Text>
                       <Text style={styles.locationRequestSub}>
-                        Find restaurants near you
+                        Sent to Google to find restaurants near you
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
