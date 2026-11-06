@@ -622,7 +622,7 @@ async function fetchNearbyRestaurants(
         // Atmosphere SKU, so the phone, website, Maps URL and opening hours
         // cost nothing extra.
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
+          "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
       },
       body: JSON.stringify({
         includedPrimaryTypes: ["restaurant"],
@@ -718,8 +718,11 @@ async function fetchNearbyRestaurants(
             id: place.id,
             name: place.displayName?.text || "",
             address: place.formattedAddress || "",
-            lat,
-            lng,
+            // The restaurant's own coordinates, never the user's: App Review
+            // guideline 5.1.2(i) requires explicit permission to share
+            // personal data with third-party AI.
+            lat: place.location?.latitude,
+            lng: place.location?.longitude,
           },
           meal
         );

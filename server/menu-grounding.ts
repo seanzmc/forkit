@@ -82,8 +82,8 @@ export async function fetchPopularDishes(
     id: string;
     name: string;
     address: string;
-    lat: number;
-    lng: number;
+    lat?: number;
+    lng?: number;
   },
   meal: Meal
 ): Promise<GroundedMenu | null> {
@@ -109,11 +109,15 @@ export async function fetchPopularDishes(
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           tools: [{ googleMaps: {} }],
-          toolConfig: {
-            retrievalConfig: {
-              latLng: { latitude: place.lat, longitude: place.lng },
-            },
-          },
+          ...(place.lat != null && place.lng != null
+            ? {
+                toolConfig: {
+                  retrievalConfig: {
+                    latLng: { latitude: place.lat, longitude: place.lng },
+                  },
+                },
+              }
+            : {}),
         }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       }
