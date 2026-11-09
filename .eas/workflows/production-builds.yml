@@ -5,8 +5,9 @@
 #
 # Per platform: if no production build exists for the current native
 # fingerprint (new native dependency, Expo SDK bump, app.json/app.config.js
-# change, ...), build one and ship it: iOS to TestFlight and its external
-# "Friends" group, Android to the Play closed track ("alpha", where the
+# change, ...), build one and ship it: iOS to TestFlight (add it to the
+# external "Friends" group by hand in App Store Connect), Android to the Play
+# closed track ("alpha", where the
 # forkit-testers Google Group gets it), rolled out (releaseStatus in
 # eas.json). Each closed release goes through Google review first. Otherwise do nothing.
 #
@@ -72,16 +73,15 @@ jobs:
     params:
       build_id: ${{ needs.build_android.outputs.build_id }}
 
-  # A testflight job, not submit: eas submit can only add builds to internal
-  # groups, and Friends (the public TestFlight link) is external. Adding to an
-  # external group also submits for Beta App Review, which needs the TestFlight
-  # test information filled in once in App Store Connect.
-  testflight_ios:
-    name: Upload iOS to TestFlight and Friends
+  # A submit job, not testflight: a testflight job given an EAS build_id needs
+  # a paid EAS plan, and on the free plan it fails before uploading (build 9,
+  # 2026-11-06), which also skipped submit_android. submit only reaches
+  # internal TestFlight groups, so add each new build to Friends (the public
+  # TestFlight link, an external group) by hand in App Store Connect →
+  # TestFlight → Friends → Builds.
+  submit_ios:
+    name: Submit iOS to TestFlight
     needs: [build_ios]
-    type: testflight
+    type: submit
     params:
       build_id: ${{ needs.build_ios.outputs.build_id }}
-      external_groups: ['Friends']
-      changelog: |
-        New build from the latest main. Check the newest changes and tell us what breaks.
