@@ -451,6 +451,7 @@ export default function SwipeScreen() {
           userId,
           name,
           swipes,
+          supportsSwipeCounts: true,
           round: roundRef.current,
         })
       );
@@ -515,7 +516,9 @@ export default function SwipeScreen() {
         } else if (msg.type === "swipe_update") {
           setMemberSwipes((prev) => ({
             ...prev,
-            [msg.memberId]: Math.max(0, (prev[msg.memberId] ?? 0) + (msg.vote === "undo" ? -1 : 1)),
+            [msg.memberId]: "swiped" in msg
+              ? msg.swiped
+              : Math.max(0, (prev[msg.memberId] ?? 0) + (msg.vote === "undo" ? -1 : 1)),
           }));
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);

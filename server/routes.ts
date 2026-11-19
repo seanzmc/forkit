@@ -34,6 +34,7 @@ interface SessionMember {
   id: string;
   name: string;
   ws: WebSocket;
+  supportsSwipeCounts: boolean;
   swipes: Record<string, "like" | "pass">;
   // Set while the member's socket is closed; drops them when it fires.
   awayTimer?: ReturnType<typeof setTimeout>;
@@ -124,6 +125,26 @@ function getSessionState(session: Session) {
     matchedRestaurant: session.matchedRestaurant,
     matchedDish: session.matchedDish,
   };
+}
+
+function broadcastSwipeCount(session: Session, member: SessionMember, decreased = false) {
+  const progress = JSON.stringify({
+    type: "swipe_update",
+    memberId: member.id,
+    swiped: Object.keys(member.swipes).length,
+  });
+  let snapshot: string | undefined;
+  for (const peer of session.members.values()) {
+    if (peer === member || peer.ws.readyState !== WebSocket.OPEN) continue;
+    // Build 9 increments on swipe_update. For an undo it can already read
+    // absolute counts from the same public snapshot it uses on a rejoin.
+    if (decreased && !peer.supportsSwipeCounts) {
+      snapshot ??= JSON.stringify({ type: "member_joined", session: getSessionState(session) });
+      peer.ws.send(snapshot);
+    } else {
+      peer.ws.send(progress);
+    }
+  }
 }
 
 function checkForMatch(session: Session): boolean {
@@ -1031,6 +1052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: memberId,
             name: cleanName || "Guest",
             ws,
+            supportsSwipeCounts: msg.supportsSwipeCounts === true,
             swipes,
           });
 
@@ -1088,42 +1110,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if ((msg.round ?? 1) !== session.round) return;
 
           const member = session.members.get(memberId);
-          if (!member) return;
-
+          if (!member || member.ws !== ws) return;
+          if (msg.vote !== "like" && msg.vote !== "pass") return;
+          if (!session.dishes.some((dish) => dish.id === msg.dishId)) return;
+          const previous = member.swipes[msg.dishId];
+          if (previous === msg.vote) return;
           member.swipes[msg.dishId] = msg.vote;
-
-          broadcastToSession(
-            session,
-            {
-              type: "swipe_update",
-              memberId,
-              dishId: msg.dishId,
-              vote: msg.vote,
-            },
-            memberId
-          );
-
+          if (previous === undefined) broadcastSwipeCount(session, member);
           if (checkForMatch(session)) announceMatch(session);
         } else if (msg.type === "undo") {
           const session = sessions.get(sessionCode);
-          if (!session || session.status !== "swiping") return;
+          if (!session || session.status !== "swiping" || session.refreshing) return;
           if ((msg.round ?? 1) !== session.round) return;
 
           const member = session.members.get(memberId);
-          if (!member) return;
-
+          if (!member || member.ws !== ws || !Object.hasOwn(member.swipes, msg.dishId)) return;
           delete member.swipes[msg.dishId];
-
-          broadcastToSession(
-            session,
-            {
-              type: "swipe_update",
-              memberId,
-              dishId: msg.dishId,
-              vote: "undo",
-            },
-            memberId
-          );
+          broadcastSwipeCount(session, member, true);
         } else if (msg.type === "new_round") {
           // Anyone can ask once everyone has swiped through with no match;
           // a second ask while the first is dealing is ignored.
