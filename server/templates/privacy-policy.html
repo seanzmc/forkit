@@ -74,8 +74,10 @@
       </div>
 
       <div class="callout">
-        APP_NAME_PLACEHOLDER has no user accounts, no analytics, no advertising,
-        and no tracking. Nothing you do in the app is written to a database.
+        You can use APP_NAME_PLACEHOLDER without an account. Your room’s
+        votes are temporary. Expo counts app installations and records failed
+        launches to help deliver working updates. We do not show ads or track
+        you across other companies’ apps or websites.
       </div>
 
       <h2>What the app collects</h2>
@@ -116,7 +118,7 @@
       <ul>
         <li>No email address, phone number, or password — there are no accounts.</li>
         <li>No contacts, photos, calendar, or microphone data.</li>
-        <li>No advertising identifiers, and no analytics or crash-reporting SDKs.</li>
+        <li>No advertising identifiers.</li>
         <li>No background or continuous location. Location is read only while the app is open on its home screen, and sent only when you create a room.</li>
       </ul>
 
@@ -173,11 +175,16 @@
           and Apple's or Google's.
         </li>
         <li>
-          <strong>Expo</strong> also delivers app updates. When the app opens it
-          asks Expo's update service whether newer app code is available,
-          sending the app's version, platform and a random identifier created
-          when the app was installed, which Expo uses to count devices. It
-          does not include your name, location or swipes.
+          <strong>Expo also delivers app updates.</strong> When the app checks
+          for an update, Expo receives its version, platform, update identifiers,
+          IP address and a random installation ID. Expo uses the ID to deliver
+          updates in stages, count installations and measure update usage.
+          If an update fails to launch, Expo can receive the failed update IDs
+          and a short launch-error message. Expo stores the IP address,
+          installation ID and any failed update IDs with the request. It deletes
+          raw logs containing the error message after three days. ForkIt does
+          not send your display name, votes or location with update checks.
+          <a href="https://docs.expo.dev/eas-update/store-privacy-declarations/" rel="noopener">How Expo handles update data</a>.
         </li>
         <li>
           <strong>Railway</strong> hosts the server and processes traffic on our
