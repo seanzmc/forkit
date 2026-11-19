@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type * as NotificationsModule from "expo-notifications";
-import type { Dish, Meal, SampleReason } from "./food-data";
+import { DISHES, RECIPES, matchPlaceReference, type Dish, type Meal, type SampleReason } from "./food-data";
 
 // expo-notifications needs native code. Builds made before it was added (and
 // the web build) don't have it, so load it defensively and treat push as
@@ -72,6 +72,7 @@ export function getPushToken(): Promise<string | null> {
 
 export interface MatchNotification {
   id: string;
+  code?: string;
   dish: Dish;
   meal?: Meal;
   sample?: SampleReason;
@@ -80,12 +81,17 @@ export interface MatchNotification {
 function toMatch(response: NotificationsModule.NotificationResponse | null): MatchNotification | null {
   const content = response?.notification.request.content;
   const data = content?.data as
-    | { type?: string; dish?: Dish; meal?: Meal; sample?: SampleReason }
+    | { type?: string; code?: string; dish?: Dish; meal?: Meal; sample?: SampleReason }
     | undefined;
   if (data?.type !== "match" || !data.dish?.name) return null;
+  // Historical notifications may still have the former provider's photo.
+  const dish = data.dish.placeId
+    ? matchPlaceReference(data.dish.placeId)
+    : [...DISHES, ...RECIPES].find((item) => item.id === data.dish?.id) ?? data.dish;
   return {
     id: response!.notification.request.identifier,
-    dish: data.dish,
+    code: data.code,
+    dish,
     meal: data.meal,
     sample: data.sample,
   };

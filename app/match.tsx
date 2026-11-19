@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Platform,
   Pressable,
-  Image,
   ScrollView,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -22,7 +21,8 @@ import Animated, {
   FadeIn,
   FadeInDown,
 } from "react-native-reanimated";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Dish, Meal, SampleReason } from "@/lib/food-data";
@@ -35,7 +35,7 @@ import { RECIPE_DETAILS } from "@/lib/recipes";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 import { SwipeReview } from "@/components/SwipeReview";
 import { getSwipes } from "@/lib/swipe-review";
-import { resolveImageUrl } from "@/lib/query-client";
+import { getApiUrl, resolveImageUrl } from "@/lib/query-client";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
   const translateY = useSharedValue(-20);
@@ -67,17 +67,35 @@ const MEAL_DECIDED: Record<Meal, string> = {
 };
 
 export default function MatchScreen() {
-  const { dish: dishParam, meal, sample } = useLocalSearchParams<{
+  const { dish: dishParam, meal, sample, code } = useLocalSearchParams<{
     dish: string;
+    code?: string;
     meal?: Meal;
     sample?: SampleReason;
   }>();
   const insets = useSafeAreaInsets();
   const [swipes] = useState(getSwipes);
 
-  const dish: Dish | null = (() => {
+  const initialDish: Dish | null = (() => {
     try { return JSON.parse(dishParam ?? "null"); } catch { return null; }
   })();
+  const placeId = initialDish?.placeReference ? initialDish.placeId : undefined;
+  const [roomMatch, setRoomMatch] = useState<{ code: string; dish: Dish } | null>(null);
+  useEffect(() => {
+    if (!placeId || !code || !/^[A-Z0-9]{6}$/.test(code)) return;
+    const controller = new AbortController();
+    fetch(new URL(`api/sessions/${code}`, getApiUrl()).href, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((room) => {
+        if (!controller.signal.aborted && room?.matchedDish?.placeId === placeId) {
+          setRoomMatch({ code, dish: room.matchedDish });
+        }
+      })
+      .catch(() => {}); // The saved place ID still opens the right restaurant.
+    return () => controller.abort();
+  }, [code, placeId]);
+  const dish = roomMatch && roomMatch.code === code && roomMatch.dish.placeId === placeId
+    ? roomMatch.dish : initialDish;
   const hasRecipe = dish?.mode === "cook-in" && !!RECIPE_DETAILS[dish.id];
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const recipeY = useRef(0);
@@ -149,7 +167,7 @@ export default function MatchScreen() {
           </Text>
         </Animated.View>
 
-        {dish && (
+        {!!dish?.image && (
           <Animated.View style={[styles.dishHero, heroStyle]}>
             {/* Full width: the hero centers its child, so without this the
                 image's width: "100%" resolves against a zero-width wrapper. */}
@@ -158,7 +176,8 @@ export default function MatchScreen() {
                 <Image
                   source={{ uri: resolveImageUrl(dish.image) }}
                   style={styles.dishImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy={dish.photoAuthors || dish.placePhotoCredit ? "none" : "disk"}
                 />
                 <LinearGradient
                   colors={["transparent", "rgba(0,0,0,0.6)"]}
@@ -219,6 +238,8 @@ export default function MatchScreen() {
                   <Text style={styles.priceText}>~{dish.price}/serving</Text>
                 </View>
               </>
+            ) : dish.placeReference ? (
+              <Text style={styles.dishDesc}>{dish.description}</Text>
             ) : (
               <>
                 {/* Same order as the swipe card: restaurant, dish, what it
@@ -254,9 +275,9 @@ export default function MatchScreen() {
                     </>
                   )}
                 </View>
-                <PlacesAttribution dish={dish} />
               </>
             )}
+            <PlacesAttribution dish={dish} />
           </Animated.View>
         )}
 

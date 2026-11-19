@@ -5,7 +5,7 @@
 // EXPO_ACCESS_TOKEN is optional: set it only if "enhanced push security" is
 // turned on for the Expo project, which then requires it on every send.
 
-import type { Dish, Meal, SampleReason } from "../lib/food-data";
+import { matchPlaceReference, type Dish, type Meal, type SampleReason } from "../lib/food-data";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN || "";
@@ -30,21 +30,21 @@ function matchText(dish: Dish, meal: Meal): { title: string; body: string } {
   }
   return {
     title: MEAL_TITLE[meal],
-    body: `${dish.name} at ${dish.restaurant}`,
+    body: dish.placeId ? "Tap to see your group’s restaurant." : `${dish.name} at ${dish.restaurant}`,
   };
 }
 
-// The tapped notification opens the match screen from this copy of the dish,
-// since the session itself may already be gone by then. Trimming never drops
-// attribution: grounded dishes keep their Google Maps sources, and the photo
-// goes only together with its credit (Places author or Wikimedia author and license).
+// Restaurant details and photos stay in the live room. The place ID can
+// reopen Google Maps even after the room expires. Older app versions also
+// understand the small dish object carried in the notification.
 function dishForPayload(dish: Dish): Partial<Dish> {
+  if (dish.placeId) return matchPlaceReference(dish.placeId);
   const fits = (d: Partial<Dish>) => JSON.stringify(d).length <= MAX_DATA_BYTES;
   if (fits(dish)) return dish;
   const { phone: _phone, website: _website, ...rest } = dish;
   const trimmed: Partial<Dish> = { ...rest, description: dish.description.slice(0, 140) };
   if (fits(trimmed)) return trimmed;
-  const { image: _image, photoAuthors: _authors, photoCredit: _credit, ...noPhoto } = trimmed;
+  const { image: _image, photoAuthors: _authors, photoCredit: _credit, placePhotoCredit: _placeCredit, ...noPhoto } = trimmed;
   return { ...noPhoto, image: "" };
 }
 

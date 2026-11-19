@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, Share, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import type { Dish } from "@/lib/food-data";

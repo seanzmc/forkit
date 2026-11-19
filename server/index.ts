@@ -249,6 +249,10 @@ function configureExpoAndLanding(app: express.Application) {
     res.status(200).send(privacyHtml);
   });
 
+  app.get("/terms", (_req: Request, res: Response) => {
+    res.sendFile(path.resolve(process.cwd(), "server", "templates", "terms.html"));
+  });
+
   // Invite links: https://<host>/join/<code>. With the app installed, iOS
   // opens it straight into the session (universal link, via the
   // apple-app-site-association file below and the app's associatedDomains);

@@ -180,7 +180,7 @@ function toFile(page: any): CommonsFile | null {
     mime: info.mime,
     width: info.width,
     height: info.height,
-    author: cleanAuthor(stripHtml(meta.Artist?.value || "")),
+    author: stripHtml(meta.Attribution?.value || "") || cleanAuthor(stripHtml(meta.Artist?.value || "")),
     license: stripHtml(meta.LicenseShortName?.value || ""),
     licenseUrl: meta.LicenseUrl?.value,
   };
@@ -204,7 +204,7 @@ const IMAGEINFO = {
   prop: "imageinfo",
   iiprop: "url|mime|size|extmetadata",
   iiurlwidth: "900",
-  iiextmetadatafilter: "Artist|LicenseShortName|LicenseUrl",
+  iiextmetadatafilter: "Artist|Attribution|LicenseShortName|LicenseUrl",
   format: "json",
 };
 

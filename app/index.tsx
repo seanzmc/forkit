@@ -22,7 +22,7 @@ import Animated, {
   withTiming,
   FadeInDown,
 } from "react-native-reanimated";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { VersionLabel } from "@/components/VersionLabel";
@@ -62,6 +62,7 @@ export default function WelcomeScreen() {
             pathname: "/match",
             params: {
               dish: JSON.stringify(launchMatch.dish),
+              code: launchMatch.code,
               meal: launchMatch.meal,
               sample: launchMatch.sample,
             },
