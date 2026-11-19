@@ -71,6 +71,7 @@ jobs:
             -d '{"mode":"cook-in"}' \
             http://localhost:5055/api/sessions | grep -q '"code"'
           echo "Session creation OK"
+          node scripts/test-swipe-progress.mjs
 
   expo-config:
     runs-on: ubuntu-latest
