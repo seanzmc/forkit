@@ -31,10 +31,22 @@ export interface GroundedSource {
 
 export interface PhotoCredit {
   author: string;
+  cropped?: boolean;
   license: string;
   licenseUrl?: string;
   // The photo's page on Wikimedia Commons.
   pageUrl: string;
+}
+
+export interface PlacePhotoAuthor {
+  displayName: string;
+  uri?: string;
+  photoUri?: string;
+}
+
+export interface PlacePhotoCredit {
+  googleMapsUri?: string;
+  authors: PlacePhotoAuthor[];
 }
 
 export interface Dish {
@@ -48,9 +60,15 @@ export interface Dish {
   rating?: number;
   address?: string;
   placeId?: string;
+  placeAttributions?: { provider: string; providerUri?: string }[];
+  // A match notification can outlive its room. Only the place ID is stored.
+  placeReference?: boolean;
   // Set when `image` is the place's own Google photo, not one of the dish:
   // its authors, whom Places requires us to credit.
   photoAuthors?: string[];
+  // The individual photo and its contributors, as supplied by Google Places.
+  // photoAuthors above is kept for older app builds and notifications.
+  placePhotoCredit?: PlacePhotoCredit;
   // Set when `image` is an example photo of the dish (Wikimedia Commons)
   // rather than a photo of this restaurant. Its license requires this credit
   // wherever the photo is shown.
@@ -75,6 +93,14 @@ export interface Dish {
   mode?: SessionMode;
   // Made-up DISHES only: served in breakfast rooms, and only there.
   breakfast?: boolean;
+}
+
+export function matchPlaceReference(placeId: string): Dish {
+  return {
+    id: placeId, placeId, placeReference: true, mode: "dine-out",
+    name: "Your group’s pick", restaurant: "Restaurant", cuisine: "", price: "", image: "",
+    description: "Open Google Maps to see the restaurant your group picked.",
+  };
 }
 
 export const DISHES: Dish[] = [
@@ -195,7 +221,14 @@ export const DISHES: Dish[] = [
     restaurant: "La Playa",
     cuisine: "Mexican",
     description: "Fresh sea bass, citrus cure, mango, red onion, avocado cream, crispy tostada",
-    image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=800&q=80",
+    image: "/assets/dishes/ceviche-tostada.jpg?v=5675f4e4b2",
+    photoCredit: {
+      author: "John Comeau",
+      cropped: true,
+      license: "CC BY-SA 3.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+      pageUrl: "https://commons.wikimedia.org/wiki/File:Tostadas_de_ceviche.jpg",
+    },
     price: "$14",
     mode: "dine-out",
   },
@@ -355,7 +388,7 @@ export const RECIPES: Dish[] = [
     restaurant: "Home Kitchen",
     cuisine: "Italian",
     description: "Spaghetti, guanciale, pecorino romano, egg yolks, cracked black pepper",
-    image: "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1764586119076-61711e8ed25a?w=800&q=80",
     price: "$7",
     cookTime: "20 min",
     servings: "4",

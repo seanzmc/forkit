@@ -18,12 +18,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Colors from "@/constants/colors";
 import { VersionLabel } from "@/components/VersionLabel";
 import { HowItWorks, useHowItWorks } from "@/components/HowItWorks";
 import { LinearGradient } from "expo-linear-gradient";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { DECKS, MEALS, mealForTime, type Deck, type Meal, type SessionMode } from "@/lib/food-data";
 
 const MEAL_OPTIONS: Record<Meal, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
@@ -611,6 +612,16 @@ export default function HomeScreen() {
             </Animated.View>
           )}
           <View style={styles.versionFooter}>
+            <Text
+              accessibilityRole="link"
+              style={styles.termsLink}
+              onPress={() => Linking.openURL(new URL("/terms", getApiUrl()).href)}
+            >
+              Terms and privacy
+            </Text>
+            <Text accessibilityRole="link" style={styles.termsLink} onPress={() => router.push("/notices")}>
+              Typeface and icon licenses
+            </Text>
             <VersionLabel />
           </View>
         </ScrollView>
@@ -621,6 +632,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  termsLink: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", padding: 6, textDecorationLine: "underline" },
   container: { flex: 1 },
   // Pinned to the bottom of the screen when the content is short.
   versionFooter: {

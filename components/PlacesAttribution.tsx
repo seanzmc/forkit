@@ -1,7 +1,31 @@
 import React from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import Colors from "@/constants/colors";
-import type { Dish } from "@/lib/food-data";
+import type { Dish, PlacePhotoAuthor } from "@/lib/food-data";
+
+function open(url: string) {
+  return () => { Linking.openURL(url).catch(() => {}); };
+}
+
+export function PlaceDetailsAttribution({ dish }: { dish: Dish }) {
+  if (!dish.placeId || dish.placeReference) return null;
+  return (
+    <View style={styles.row}>
+      <Text style={styles.provider}>Google Maps</Text>
+      {dish.placeAttributions?.map(({ provider, providerUri }) => (
+        <Text
+          key={providerUri ?? provider}
+          style={[styles.text, providerUri ? styles.link : null]}
+          accessibilityRole={providerUri ? "link" : undefined}
+          onPress={providerUri ? open(providerUri) : undefined}
+        >
+          {provider}
+        </Text>
+      ))}
+    </View>
+  );
+}
 
 // Google Places policy: content from Places must be shown with "Google Maps"
 // attribution, and photos with their author credit. Only Places-backed dine-out
@@ -16,16 +40,13 @@ import type { Dish } from "@/lib/food-data";
 // text before the card's pan handler, while a drag still moves the card.
 export function PlacesAttribution({ dish }: { dish: Dish }) {
   if (!dish.placeId && !dish.photoCredit && !dish.menuSource) return null;
-  const open = (url: string) => () => {
-    Linking.openURL(url).catch(() => {});
-  };
   const example = dish.photoCredit;
-  const placesCredit = dish.photoAuthors?.length
-    ? `Photo: ${dish.photoAuthors.join(", ")}`
-    : "";
+  const googlePhoto = dish.placePhotoCredit;
+  const authors: PlacePhotoAuthor[] = googlePhoto?.authors ??
+    (dish.photoAuthors ?? []).map((displayName) => ({ displayName }));
   return (
     <View style={styles.row}>
-      {!!dish.placeId && <Text style={styles.text}>Google Maps</Text>}
+      <PlaceDetailsAttribution dish={dish} />
       {dish.menuSource === "spoonacular" ? (
         // The photo is spoonacular's unless the item had none, in which case
         // it is the place's own Google photo with its author credit.
@@ -35,12 +56,10 @@ export function PlacesAttribution({ dish }: { dish: Dish }) {
           <Text style={styles.link} onPress={open("https://spoonacular.com/food-api")}>
             spoonacular
           </Text>
-          {placesCredit ? ` · ${placesCredit}` : ""}
         </Text>
       ) : example ? (
-        // Two lines so a long author name can't push the license out of view.
-        <Text style={[styles.text, styles.credit]} numberOfLines={2}>
-          {dish.placeId ? "· " : ""}Photo (resized): {example.author} ·{" "}
+        <Text style={[styles.text, styles.credit]}>
+          {dish.placeId ? "· " : ""}Photo ({example.cropped ? "cropped and resized" : "resized"}): {example.author} ·{" "}
           <Text
             style={example.licenseUrl ? styles.link : undefined}
             onPress={example.licenseUrl ? open(example.licenseUrl) : undefined}
@@ -52,13 +71,24 @@ export function PlacesAttribution({ dish }: { dish: Dish }) {
             Wikimedia Commons
           </Text>
         </Text>
-      ) : (
-        !!placesCredit && (
-          <Text style={[styles.text, styles.credit]} numberOfLines={1}>
-            · {placesCredit}
-          </Text>
-        )
+      ) : null}
+      {!!googlePhoto?.googleMapsUri && (
+        <Text accessibilityRole="link" style={[styles.text, styles.link]} onPress={open(googlePhoto.googleMapsUri)}>
+          View original photo
+        </Text>
       )}
+      {authors.map((author, index) => (
+        <View key={author.uri ?? `${author.displayName}-${index}`} style={styles.author}>
+          {!!author.photoUri && <Image source={author.photoUri} cachePolicy="none" style={styles.avatar} />}
+          <Text
+            style={[styles.text, author.uri ? styles.link : null]}
+            accessibilityRole={author.uri ? "link" : undefined}
+            onPress={author.uri ? open(author.uri) : undefined}
+          >
+            Photo by {author.displayName}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -66,17 +96,34 @@ export function PlacesAttribution({ dish }: { dish: Dish }) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    // Top-aligned so a two-line example-photo credit lines up with "Google Maps".
-    alignItems: "flex-start",
+    flexWrap: "wrap",
+    alignItems: "center",
     gap: 4,
   },
   credit: {
     flexShrink: 1,
   },
+  provider: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    color: "white",
+  },
+  author: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexShrink: 1,
+  },
+  avatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
   text: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Poppins_400Regular",
-    color: Colors.textSecondary,
+    color: Colors.text,
+    flexShrink: 1,
   },
   link: {
     textDecorationLine: "underline",

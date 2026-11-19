@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import type { Deck, Dish, Meal, SampleReason, SessionMode } from "../lib/food-data";
+import type { Deck, Dish, Meal, PlacePhotoAuthor, SampleReason, SessionMode } from "../lib/food-data";
 import { DECKS, MEALS, shuffleDishes, shuffleRecipes } from "../lib/food-data";
 import {
   fetchPopularDishes,
@@ -643,7 +643,7 @@ async function fetchNearbyRestaurants(
         // Atmosphere SKU, so the phone, website, Maps URL and opening hours
         // cost nothing extra.
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
+          "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.priceLevel,places.attributions,places.photos,places.editorialSummary,places.primaryTypeDisplayName,places.googleMapsUri,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
       },
       body: JSON.stringify({
         includedPrimaryTypes: ["restaurant"],
@@ -684,34 +684,31 @@ async function fetchNearbyRestaurants(
     }
 
     const dishes: Dish[] = [];
-    const photoPromises: Promise<string>[] = [];
-    const photoMeta: { placeIndex: number; photoIndex: number }[] = [];
-
-    for (let pi = 0; pi < places.length; pi++) {
-      const photos = places[pi].photos || [];
-      // One is enough: suggested dishes show example photos, so a place's own
-      // photo is only used for chain and grounded dishes or as a fallback.
-      // Each resolved photo is a billed Places Photo request.
-      if (photos.length === 0) continue;
-      const j = pickPhotoIndex(photos);
-      photoPromises.push(resolvePhotoUrl(photos[j].name));
-      photoMeta.push({ placeIndex: pi, photoIndex: j });
-    }
-
-    const resolvedUrls = await Promise.all(photoPromises);
-
-    const placePhotos = new Map<number, { url: string; authors: string[] }[]>();
-    resolvedUrls.forEach((url, idx) => {
+    // Use only photos that users can open at their individual Google Maps
+    // source. A restaurant can still supply cards when none has such a link.
+    const placePhotos = new Map<number, Pick<Dish, "image" | "photoAuthors" | "placePhotoCredit">>();
+    await Promise.all(places.map(async (place: { photos?: {
+      name: string; widthPx?: number; heightPx?: number; googleMapsUri?: string;
+      authorAttributions?: PlacePhotoAuthor[];
+    }[] }, pi: number) => {
+      if (!place.photos?.length) return;
+      const eligible = place.photos.filter((p) => p.googleMapsUri);
+      if (!eligible.length) {
+        placePhotos.set(pi, { image: "" });
+        return;
+      }
+      const photo = eligible[pickPhotoIndex(eligible)];
+      const url = await resolvePhotoUrl(photo.name);
       if (!url) return;
-      const { placeIndex, photoIndex } = photoMeta[idx];
-      const authors: string[] = (
-        places[placeIndex].photos?.[photoIndex]?.authorAttributions || []
-      )
-        .map((a: { displayName?: string }) => a.displayName)
-        .filter((n: unknown): n is string => typeof n === "string" && !!n);
-      if (!placePhotos.has(placeIndex)) placePhotos.set(placeIndex, []);
-      placePhotos.get(placeIndex)!.push({ url, authors });
-    });
+      const authors = (photo.authorAttributions ?? [])
+        .filter((author) => !!author.displayName)
+        .map(({ displayName, uri, photoUri }) => ({ displayName, uri, photoUri }));
+      placePhotos.set(pi, {
+        image: url,
+        photoAuthors: authors.map((author) => author.displayName),
+        placePhotoCredit: { googleMapsUri: photo.googleMapsUri, authors },
+      });
+    }));
 
     // Two locations of one chain (two Chick-fil-As nearby) would put the
     // same dishes in the deck twice, and matching is by restaurant name
@@ -795,8 +792,8 @@ async function fetchNearbyRestaurants(
 
     for (let pi = 0; pi < places.length; pi++) {
       const place = places[pi];
-      const photos = placePhotos.get(pi);
-      if (!photos || photos.length === 0) continue;
+      const ownPhoto = placePhotos.get(pi);
+      if (!ownPhoto) continue;
 
       const types = place.types || [];
       const cuisine = place.primaryTypeDisplayName?.text || extractCuisine(types);
@@ -813,6 +810,7 @@ async function fetchNearbyRestaurants(
         ratingCount: place.userRatingCount || 0,
         address,
         placeId: place.id,
+        placeAttributions: place.attributions?.length ? place.attributions : undefined,
         mapsUrl: place.googleMapsUri || undefined,
         phone: place.nationalPhoneNumber || undefined,
         website: place.websiteUri || undefined,
@@ -827,13 +825,12 @@ async function fetchNearbyRestaurants(
         // labeled as such. Never a generic example photo: everyone knows
         // what a Big Mac looks like, and a stock cheeseburger isn't it.
         chainItems.forEach((item, di) => {
-          const own = photos[di % photos.length];
           dishes.push({
             ...shared,
             id: `${place.id}_${di}`,
             name: item.name,
             description: "",
-            ...(item.image ? { image: item.image } : { image: own.url, photoAuthors: own.authors }),
+            ...(item.image ? { image: item.image } : ownPhoto),
             menuSource: item.source,
           });
         });
@@ -853,13 +850,12 @@ async function fetchNearbyRestaurants(
         // A suggested dish shows an example photo of that dish; anything
         // else (or a dish with no example photo) shows the place's own.
         const example = menu ? undefined : examplePhotoFor(dish.name);
-        const own = photos[di % photos.length];
         dishes.push({
           ...shared,
           id: `${place.id}_${di}`,
           name: dish.name,
           description: dish.desc || `Popular at ${restaurantName}`,
-          ...(example ? exampleImage(example) : { image: own.url, photoAuthors: own.authors }),
+          ...(example ? exampleImage(example) : ownPhoto),
           suggested: !menu,
           groundedSources: menu?.sources,
         });

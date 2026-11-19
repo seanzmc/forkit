@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import type { Dish } from "@/lib/food-data";
@@ -31,8 +31,6 @@ export function MatchActions({ dish }: { dish: Dish }) {
     encodeURIComponent(destination) +
     "&destination_place_id=" +
     encodeURIComponent(dish.placeId);
-  const appleDirections =
-    "https://maps.apple.com/?daddr=" + encodeURIComponent(destination);
   const mapsPage =
     dish.mapsUrl ||
     "https://www.google.com/maps/search/?api=1&query=" +
@@ -46,17 +44,6 @@ export function MatchActions({ dish }: { dish: Dish }) {
   const open = (url: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL(url).catch(() => {});
-  };
-
-  const directions = () => {
-    if (Platform.OS !== "ios") return open(googleDirections);
-    ActionSheetIOS.showActionSheetWithOptions(
-      { options: ["Apple Maps", "Google Maps", "Cancel"], cancelButtonIndex: 2 },
-      (i) => {
-        if (i === 0) open(appleDirections);
-        else if (i === 1) open(googleDirections);
-      }
-    );
   };
 
   const delivery = () => {
@@ -84,8 +71,8 @@ export function MatchActions({ dish }: { dish: Dish }) {
     <View style={styles.wrap}>
       <Text style={styles.heading}>{"Let's go"}</Text>
       <View style={styles.grid}>
-        <Action icon="navigate" label="Directions" onPress={directions} primary />
-        <Action icon="bicycle-outline" label="Order delivery" onPress={delivery} />
+        <Action icon="navigate" label="Directions" onPress={() => open(googleDirections)} primary />
+        {!dish.placeReference && <Action icon="bicycle-outline" label="Order delivery" onPress={delivery} />}
         <Action icon="map-outline" label="Google Maps" onPress={() => open(mapsPage)} />
         {!!dish.phone && (
           <Action
@@ -98,11 +85,12 @@ export function MatchActions({ dish }: { dish: Dish }) {
           <Action icon="globe-outline" label="Website" onPress={() => open(dish.website!)} />
         )}
       </View>
-      <Text style={styles.hint}>
-        Order delivery searches DoorDash or Uber Eats for this restaurant.
-        Menu and reservations are on the Google Maps page when the restaurant
-        offers them.
-      </Text>
+      {!dish.placeReference && (
+        <Text style={styles.hint}>
+          Order delivery searches DoorDash or Uber Eats for this restaurant.
+          Menu and reservations are on the Google Maps page when the restaurant offers them.
+        </Text>
+      )}
     </View>
   );
 }

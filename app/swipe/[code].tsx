@@ -7,13 +7,13 @@ import {
   Pressable,
   PanResponder,
   Dimensions,
-  Image,
   ScrollView,
   Alert,
   ActivityIndicator,
   AppState,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -29,7 +29,7 @@ import Animated, {
   Extrapolate,
   FadeIn,
 } from "react-native-reanimated";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Colors from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Deck, Dish, Meal } from "@/lib/food-data";
@@ -121,7 +121,9 @@ function DishCard({
   useEffect(() => {
     if (!isTop) return;
     dishes.slice(1).forEach((d) => {
-      Image.prefetch(resolveImageUrl(d.image)).catch(() => {});
+      if (d.image && !d.photoAuthors && !d.placePhotoCredit && d.menuSource !== "spoonacular") {
+        Image.prefetch(resolveImageUrl(d.image), "disk").catch(() => {});
+      }
     });
   }, [isTop, dishes]);
 
@@ -193,11 +195,18 @@ function DishCard({
       style={[styles.card, cardStyle]}
       {...(isTop ? panResponder.panHandlers : {})}
     >
-      <Image
-        source={{ uri: resolveImageUrl(dish.image) }}
-        style={styles.cardImage}
-        resizeMode="cover"
-      />
+      {dish.image ? (
+        <Image
+          source={{ uri: resolveImageUrl(dish.image) }}
+          style={styles.cardImage}
+          contentFit="cover"
+          cachePolicy={dish.photoAuthors || dish.placePhotoCredit ? "none" : "disk"}
+        />
+      ) : (
+        <View style={[styles.cardImage, styles.noPhoto]}>
+          <Ionicons name="restaurant-outline" size={58} color={Colors.textMuted} />
+        </View>
+      )}
       {count > 1 && (
         <View style={styles.dishPager} pointerEvents="none">
           <View style={styles.dishSegments}>
@@ -1054,6 +1063,7 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "absolute",
   },
+  noPhoto: { alignItems: "center", paddingTop: 80 },
   dishPager: {
     position: "absolute",
     top: 10,

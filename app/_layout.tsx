@@ -5,7 +5,11 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
-import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from "@expo-google-fonts/poppins";
+import { useFonts } from "@expo-google-fonts/poppins/useFonts";
+import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
+import { Poppins_500Medium } from "@expo-google-fonts/poppins/500Medium";
+import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
+import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 import { StatusBar } from "expo-status-bar";
 import { onMatchTapped } from "@/lib/push";
 
@@ -16,8 +20,8 @@ function RootLayoutNav() {
   // one that cold-starts the app is picked up by the start screen instead.
   useEffect(
     () =>
-      onMatchTapped(({ dish, meal, sample }) =>
-        router.push({ pathname: "/match", params: { dish: JSON.stringify(dish), meal, sample } })
+      onMatchTapped(({ dish, meal, sample, code }) =>
+        router.push({ pathname: "/match", params: { dish: JSON.stringify(dish), meal, sample, code } })
       ),
     []
   );

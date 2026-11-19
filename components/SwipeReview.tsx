@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { PlaceDetailsAttribution } from "./PlacesAttribution";
 import Colors from "@/constants/colors";
 import type { ReviewedSwipe } from "@/lib/swipe-review";
 
@@ -58,6 +59,7 @@ function Section({
                   {atRestaurant ? dish.restaurant : dish.cuisine}
                 </Text>
               </View>
+              <PlaceDetailsAttribution dish={dish} />
             </View>
           );
         })
