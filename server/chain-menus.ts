@@ -2,17 +2,14 @@
 // (115K+ items from 800+ US chains, some with a photo of that item). US menus
 // only, so callers skip places outside the US.
 //
-// Terms: results may be cached for at most 1 hour, so lookups (including
-// "not a chain we know") live in memory for an hour and are never written
-// anywhere. Free plans must show a backlink to spoonacular's food API page;
-// the app credits "spoonacular" with that link on every card from here.
-//
-// Disabled unless SPOONACULAR_API_KEY is set. Any failure returns null and
-// the caller falls back to suggested dishes.
+// Off by default for launch. Spoonacular requires prior written permission
+// to cache menu results. A configured API key alone must never start lookups.
 
 import type { Meal } from "../lib/food-data";
 
-const API_KEY = (process.env.SPOONACULAR_API_KEY || "").trim();
+const API_KEY = process.env.ENABLE_SPOONACULAR_MENUS === "true"
+  ? (process.env.SPOONACULAR_API_KEY || "").trim()
+  : "";
 const SEARCH_URL = "https://api.spoonacular.com/food/menuItems/search";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const TIMEOUT_MS = 8_000;
