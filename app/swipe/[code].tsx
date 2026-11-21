@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   PanResponder,
-  Dimensions,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -15,7 +14,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -44,10 +43,6 @@ import { getWsUrl, type SessionState, type WsMessage } from "@/lib/websocket";
 import { resolveImageUrl } from "@/lib/query-client";
 import * as Crypto from "expo-crypto";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const CARD_WIDTH = SCREEN_WIDTH - 32;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 // A touch that moves less than this is a tap, not a drag.
 const TAP_SLOP = 8;
 // Same reconnect policy as the lobby: backoff before each attempt, then a
@@ -105,6 +100,11 @@ function DishCard({
 }) {
   const dish = dishes[index] ?? dishes[0];
   const count = dishes.length;
+  const frame = useSafeAreaFrame();
+  const insets = useSafeAreaInsets();
+  const swipeWidth = Math.max(1, frame.width - insets.left - insets.right);
+  const swipeThreshold = swipeWidth * 0.3;
+  const cardCenterX = frame.x + insets.left + swipeWidth / 2;
 
   // A slow pulse so the hint reads as something to act on.
   const hintPulse = useSharedValue(1);
@@ -139,17 +139,17 @@ function DishCard({
     onPanResponderMove: (_, gs) => {
       translateX.value = gs.dx;
       translateY.value = gs.dy * 0.4;
-      rotation.value = (gs.dx / SCREEN_WIDTH) * 25;
-      likeOpacity.value = Math.max(0, gs.dx / SWIPE_THRESHOLD);
-      passOpacity.value = Math.max(0, -gs.dx / SWIPE_THRESHOLD);
+      rotation.value = (gs.dx / swipeWidth) * 25;
+      likeOpacity.value = Math.max(0, gs.dx / swipeThreshold);
+      passOpacity.value = Math.max(0, -gs.dx / swipeThreshold);
     },
     onPanResponderRelease: (_, gs) => {
-      if (gs.dx > SWIPE_THRESHOLD) {
-        translateX.value = withTiming(SCREEN_WIDTH * 1.5, { duration: 300 });
+      if (gs.dx > swipeThreshold) {
+        translateX.value = withTiming(swipeWidth * 1.5, { duration: 300 });
         translateY.value = withTiming(gs.dy, { duration: 300 });
         runOnJS(onSwipe)("like", dish);
-      } else if (gs.dx < -SWIPE_THRESHOLD) {
-        translateX.value = withTiming(-SCREEN_WIDTH * 1.5, { duration: 300 });
+      } else if (gs.dx < -swipeThreshold) {
+        translateX.value = withTiming(-swipeWidth * 1.5, { duration: 300 });
         translateY.value = withTiming(gs.dy, { duration: 300 });
         runOnJS(onSwipe)("pass", dish);
       } else if (
@@ -159,7 +159,7 @@ function DishCard({
         Math.abs(gs.dy) < TAP_SLOP
       ) {
         // Wraps around, so tapping on always comes back to the first dish.
-        const step = gs.x0 < SCREEN_WIDTH / 2 ? -1 : 1;
+        const step = gs.x0 < cardCenterX ? -1 : 1;
         onIndexChange((index + step + count) % count);
         Haptics.selectionAsync();
       } else {
@@ -349,6 +349,7 @@ export default function SwipeScreen() {
     deck?: Deck;
   }>();
   const insets = useSafeAreaInsets();
+  const { height } = useSafeAreaFrame();
 
   const [dishes, setDishes] = useState<Dish[]>(() => {
     try { return JSON.parse(dishesParam ?? "[]"); } catch { return []; }
@@ -714,13 +715,15 @@ export default function SwipeScreen() {
         style={[
           styles.inner,
           {
+            marginLeft: insets.left,
+            marginRight: insets.right,
             paddingTop: insets.top + (Platform.OS === "web" ? 67 : 12),
             paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
           },
         ]}
       >
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.headerTitle}>{MEAL_QUESTION[mealWord]}</Text>
             <Text style={styles.headerSub}>Swipe right on dinner, left to pass</Text>
           </View>
@@ -755,7 +758,7 @@ export default function SwipeScreen() {
           {currentIndex}/{cards.length} {isCookIn ? "recipes" : byDish ? "dishes" : "places"}
         </Text>
 
-        <View style={styles.cardStack}>
+        <View style={[styles.cardStack, { maxHeight: height * 0.58 }]}>
           {done ? (
             <Animated.View entering={FadeIn} style={styles.doneCard}>
               <ScrollView contentContainerStyle={styles.doneScroll} showsVerticalScrollIndicator={false}>
@@ -859,9 +862,8 @@ export default function SwipeScreen() {
               )}
             </>
           )}
-          {/* Over the cards rather than above them: the cards have a fixed
-              height, so pushing them down would run them into the buttons.
-              Swiping keeps working; the rejoin sends those swipes along. */}
+          {/* Keep the deck in place while reconnecting. The rejoin sends
+              any swipes made while offline. */}
           {(status === "reconnecting" || status === "offline") && (
             <View style={styles.connectionBanner}>
               {status === "reconnecting" ? (
@@ -951,6 +953,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 4,
   },
+  headerText: { flexShrink: 1 },
   headerTitle: {
     fontSize: 22,
     fontFamily: "Poppins_700Bold",
@@ -1047,8 +1050,8 @@ const styles = StyleSheet.create({
   },
   card: {
     position: "absolute",
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: "100%",
+    height: "100%",
     borderRadius: 24,
     overflow: "hidden",
     backgroundColor: Colors.surface,
@@ -1262,6 +1265,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   actionRow: {
+    marginTop: "auto",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1307,8 +1311,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.04)",
   },
   doneCard: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: "100%",
+    height: "100%",
     borderRadius: 24,
     backgroundColor: Colors.surface,
     borderWidth: 1,
