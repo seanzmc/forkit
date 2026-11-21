@@ -199,8 +199,23 @@ function readyEmailText_() {
   ].join('\n');
 }
 
+/**
+ * Sends the ready email to row r unless another run already has. The 15-minute
+ * check, the menu check and the manual send can overlap (e.g. a confirm dialog
+ * left open), so the status is re-read under the script lock and the send and
+ * the status update happen while holding it.
+ */
 function sendReady_(sheet, r, email) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    console.warn('Skipped ' + email + ': another run holds the lock; the next check retries.');
+    return;
+  }
   try {
+    var current = sheet.getRange(r, 1, 1, HEADERS.length).getValues()[0];
+    if (String(current[COL.email - 1]).toLowerCase() !== String(email).toLowerCase()) return;
+    if (current[COL.status - 1] !== STATUS.pending) return;
+
     MailApp.sendEmail({
       to: email,
       subject: CONFIG.subject,
@@ -213,6 +228,10 @@ function sendReady_(sheet, r, email) {
     sheet.getRange(r, COL.note).setValue('');
   } catch (err) {
     sheet.getRange(r, COL.note).setValue('Send failed: ' + err);
+  } finally {
+    // Write the status before letting the next run read it.
+    SpreadsheetApp.flush();
+    lock.releaseLock();
   }
 }
 
