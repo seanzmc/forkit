@@ -7,10 +7,9 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
   FadeIn,
@@ -82,7 +81,7 @@ const STEPS: Step[] = [
 
 export function HowItWorks({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { height } = useSafeAreaFrame();
   // Shrinks on short phones (an SE gets ~240) so the text still fits above
   // the buttons; anything left over scrolls.
   const artHeight = Math.min(300, Math.max(236, Math.round(height * 0.36)));
@@ -111,6 +110,8 @@ export function HowItWorks({ visible, onClose }: { visible: boolean; onClose: ()
           style={[
             styles.inner,
             {
+              marginLeft: insets.left,
+              marginRight: insets.right,
               paddingTop: insets.top + (Platform.OS === "web" ? 24 : 12),
               paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
             },

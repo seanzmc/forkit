@@ -10,7 +10,7 @@ import {
   useColorScheme,
   Platform,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { appVersionLabel } from "@/lib/app-version";
 
@@ -59,7 +59,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
@@ -69,6 +69,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             styles.topButton,
             {
               top: insets.top + 16,
+              right: insets.right + 16,
               backgroundColor: theme.backgroundSecondary,
               opacity: pressed ? 0.8 : 1,
             },
@@ -119,7 +120,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           transparent={true}
           onRequestClose={() => setIsModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
+          <View style={[styles.modalOverlay, { paddingLeft: insets.left, paddingRight: insets.right }]}>
             <View
               style={[
                 styles.modalContainer,
@@ -184,7 +185,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           </View>
         </Modal>
       ) : null}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -217,7 +218,6 @@ const styles = StyleSheet.create({
   },
   topButton: {
     position: "absolute",
-    right: 16,
     width: 44,
     height: 44,
     borderRadius: 8,

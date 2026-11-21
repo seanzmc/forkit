@@ -108,6 +108,7 @@ export default function WelcomeScreen() {
             the logo block keeps its height instead of overlapping the form. */}
         <ScrollView
           ref={scrollRef}
+          style={{ marginTop: insets.top, marginLeft: insets.left, marginRight: insets.right }}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           bounces={false}
@@ -116,7 +117,7 @@ export default function WelcomeScreen() {
             style={[
               styles.content,
               {
-                paddingTop: insets.top + (Platform.OS === "web" ? 67 : 60),
+                paddingTop: Platform.OS === "web" ? 67 : 60,
                 paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 40),
               },
             ]}

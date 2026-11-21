@@ -1,14 +1,15 @@
 import React from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
 import { Stack } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import notices from "../assets/artwork-notices.json";
 
 export default function ArtworkNotices() {
   return (
-    <>
+    <SafeAreaView style={styles.page} edges={["left", "right", "bottom"]}>
       <Stack.Screen options={{ headerShown: true, title: "Typeface and icon licenses", headerBackTitle: "Back" }} />
-      <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         {Object.entries(notices).map(([name, license]) => (
           <Text key={name} selectable style={styles.text}>
             <Text style={styles.heading}>{name}{"\n"}</Text>
@@ -16,7 +17,7 @@ export default function ArtworkNotices() {
           </Text>
         ))}
       </ScrollView>
-    </>
+    </SafeAreaView>
   );
 }
 

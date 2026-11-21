@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -38,6 +38,9 @@ const PING_INTERVAL_MS = 20000;
 export default function SessionLobby() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const insets = useSafeAreaInsets();
+  const { height } = useSafeAreaFrame();
+  const compact = height - insets.top - insets.bottom < 700;
+  const gap = compact ? 12 : 20;
   // Invite links skip home, so first-timers who arrive that way see it here.
   const howItWorks = useHowItWorks();
   const [session, setSession] = useState<SessionState | null>(null);
@@ -297,8 +300,11 @@ export default function SessionLobby() {
         style={[
           styles.inner,
           {
+            marginLeft: insets.left,
+            marginRight: insets.right,
             paddingTop: insets.top + (Platform.OS === "web" ? 67 : 12),
             paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
+            gap,
           },
         ]}
       >
@@ -312,95 +318,103 @@ export default function SessionLobby() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(150)} style={styles.codeCard}>
-          <Text style={styles.codeLabel}>Session Code</Text>
-          <Text style={styles.codeText}>{code?.toUpperCase()}</Text>
-          {session?.mode && (
-            <View style={styles.modeBadge}>
-              <Ionicons
-                name={session.mode === "cook-in" ? "flame-outline" : "restaurant-outline"}
-                size={13}
-                color={Colors.accent}
-              />
-              <Text style={styles.modeBadgeText}>
-                {session.mode === "cook-in"
-                  ? "Cook In"
-                  : `Dine Out${session.meal ? ` · ${session.meal[0].toUpperCase()}${session.meal.slice(1)}` : ""}${session.deck ? ` · ${session.deck === "dishes" ? "By dish" : "By place"}` : ""}`}
-              </Text>
-            </View>
-          )}
-          <Pressable onPress={handleShare} style={styles.copyRow}>
-            <Ionicons name="copy-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.copyText}>Tap to share with your group</Text>
-          </Pressable>
-        </Animated.View>
-
-        {session?.sample && (
-          <Animated.View entering={FadeInDown.delay(175)}>
-            <SampleRoomNotice reason={session.sample} isHost={isHost} />
-          </Animated.View>
-        )}
-
-        {(status === "reconnecting" || status === "offline") && (
-          <View style={styles.connectionBanner}>
-            {status === "reconnecting" ? (
-              <ActivityIndicator size="small" color={Colors.accent} />
-            ) : (
-              <Ionicons name="cloud-offline-outline" size={18} color={Colors.accent} />
-            )}
-            <Text style={styles.connectionText}>
-              {status === "reconnecting" ? "Connection lost. Reconnecting..." : "Can't reach the room."}
+        {/* A long notice or roster can scroll without moving the room controls. */}
+        <ScrollView style={styles.body} contentContainerStyle={[styles.bodyContent, { gap }]}>
+          <Animated.View
+            entering={FadeInDown.delay(150)}
+            style={[styles.codeCard, compact && styles.compactCodeCard]}
+          >
+            <Text style={styles.codeLabel}>Session Code</Text>
+            <Text style={styles.codeText} numberOfLines={1} adjustsFontSizeToFit>
+              {code?.toUpperCase()}
             </Text>
-            {status === "offline" && (
-              <Pressable onPress={reconnectNow} hitSlop={8}>
-                <Text style={styles.retryText}>Retry</Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Members</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{members.length}</Text>
-            </View>
-          </View>
-
-          <ScrollView style={styles.memberList} showsVerticalScrollIndicator={false}>
-            {status === "connecting" && members.length === 0 && (
-              <View style={styles.memberRow}>
-                <View style={styles.avatarLoading} />
-                <Text style={styles.memberConnecting}>Connecting...</Text>
+            {session?.mode && (
+              <View style={styles.modeBadge}>
+                <Ionicons
+                  name={session.mode === "cook-in" ? "flame-outline" : "restaurant-outline"}
+                  size={13}
+                  color={Colors.accent}
+                />
+                <Text style={styles.modeBadgeText}>
+                  {session.mode === "cook-in"
+                    ? "Cook In"
+                    : `Dine Out${session.meal ? ` · ${session.meal[0].toUpperCase()}${session.meal.slice(1)}` : ""}${session.deck ? ` · ${session.deck === "dishes" ? "By dish" : "By place"}` : ""}`}
+                </Text>
               </View>
             )}
-            {members.map((m, i) => (
-              <Animated.View
-                entering={ZoomIn.delay(i * 80)}
-                key={m.id}
-                style={styles.memberRow}
-              >
-                <View style={[styles.avatar, m.id === session?.hostId && styles.avatarHost]}>
-                  <Text style={styles.avatarLetter}>{m.name[0]?.toUpperCase()}</Text>
+            <Pressable onPress={handleShare} style={styles.copyRow}>
+              <Ionicons name="copy-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.copyText}>Tap to share with your group</Text>
+            </Pressable>
+          </Animated.View>
+
+          {session?.sample && (
+            <Animated.View entering={FadeInDown.delay(175)}>
+              <SampleRoomNotice reason={session.sample} isHost={isHost} />
+            </Animated.View>
+          )}
+
+          {(status === "reconnecting" || status === "offline") && (
+            <View style={styles.connectionBanner}>
+              {status === "reconnecting" ? (
+                <ActivityIndicator size="small" color={Colors.accent} />
+              ) : (
+                <Ionicons name="cloud-offline-outline" size={18} color={Colors.accent} />
+              )}
+              <Text style={styles.connectionText}>
+                {status === "reconnecting" ? "Connection lost. Reconnecting..." : "Can't reach the room."}
+              </Text>
+              {status === "offline" && (
+                <Pressable onPress={reconnectNow} hitSlop={8}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Members</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{members.length}</Text>
+              </View>
+            </View>
+
+            <View style={styles.memberList}>
+              {status === "connecting" && members.length === 0 && (
+                <View style={styles.memberRow}>
+                  <View style={styles.avatarLoading} />
+                  <Text style={styles.memberConnecting}>Connecting...</Text>
                 </View>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>
-                    {m.name} {m.id === userId ? "(You)" : ""}
-                  </Text>
+              )}
+              {members.map((m, i) => (
+                <Animated.View
+                  entering={ZoomIn.delay(i * 80)}
+                  key={m.id}
+                  style={styles.memberRow}
+                >
+                  <View style={[styles.avatar, m.id === session?.hostId && styles.avatarHost]}>
+                    <Text style={styles.avatarLetter}>{m.name[0]?.toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>
+                      {m.name} {m.id === userId ? "(You)" : ""}
+                    </Text>
+                    {m.id === session?.hostId && (
+                      <Text style={styles.hostTag}>Host</Text>
+                    )}
+                    {m.away && m.id !== userId && (
+                      <Text style={styles.awayTag}>Away — still in the room</Text>
+                    )}
+                  </View>
                   {m.id === session?.hostId && (
-                    <Text style={styles.hostTag}>Host</Text>
+                    <Ionicons name="star" size={14} color={Colors.accentGold} />
                   )}
-                  {m.away && m.id !== userId && (
-                    <Text style={styles.awayTag}>Away — still in the room</Text>
-                  )}
-                </View>
-                {m.id === session?.hostId && (
-                  <Ionicons name="star" size={14} color={Colors.accentGold} />
-                )}
-              </Animated.View>
-            ))}
-          </ScrollView>
-        </Animated.View>
+                </Animated.View>
+              ))}
+            </View>
+          </Animated.View>
+        </ScrollView>
 
         <Animated.View entering={FadeInDown.delay(300)} style={styles.bottom}>
           {isHost ? (
@@ -433,7 +447,7 @@ export default function SessionLobby() {
               </Pressable>
             </>
           ) : (
-            <View style={styles.waitingGuest}>
+            <View style={[styles.waitingGuest, compact && styles.compactWaitingGuest]}>
               <View style={styles.pulseContainer}>
                 <Ionicons name="time-outline" size={24} color={Colors.textSecondary} />
               </View>
@@ -455,8 +469,9 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     paddingHorizontal: 24,
-    gap: 20,
   },
+  body: { flex: 1 },
+  bodyContent: { flexGrow: 1 },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -483,6 +498,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   topBarTitle: {
+    flexShrink: 1,
+    textAlign: "center",
     fontSize: 18,
     fontFamily: "Poppins_600SemiBold",
     color: Colors.text,
@@ -496,6 +513,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,107,53,0.2)",
     gap: 8,
   },
+  compactCodeCard: {
+    padding: 16,
+    gap: 4,
+  },
   codeLabel: {
     fontSize: 12,
     fontFamily: "Poppins_500Medium",
@@ -504,6 +525,8 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   codeText: {
+    alignSelf: "stretch",
+    textAlign: "center",
     fontSize: 44,
     fontFamily: "Poppins_700Bold",
     color: Colors.accent,
@@ -519,6 +542,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   modeBadgeText: {
+    flexShrink: 1,
     fontSize: 12,
     fontFamily: "Poppins_600SemiBold",
     color: Colors.accent,
@@ -529,6 +553,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   copyText: {
+    flexShrink: 1,
     fontSize: 13,
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,
@@ -556,7 +581,7 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
   section: {
-    flex: 1,
+    flexGrow: 1,
     gap: 12,
   },
   sectionHeader: {
@@ -583,7 +608,8 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   memberList: {
-    flex: 1,
+    flexGrow: 1,
+    overflow: "hidden",
     backgroundColor: Colors.surface,
     borderRadius: 16,
     borderWidth: 1,
@@ -678,6 +704,11 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 16,
   },
+  compactWaitingGuest: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
   pulseContainer: {
     width: 56,
     height: 56,
@@ -689,6 +720,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   waitingText: {
+    flexShrink: 1,
     fontSize: 14,
     fontFamily: "Poppins_400Regular",
     color: Colors.textSecondary,

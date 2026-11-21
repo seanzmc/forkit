@@ -8,7 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -74,6 +74,8 @@ export default function MatchScreen() {
     sample?: SampleReason;
   }>();
   const insets = useSafeAreaInsets();
+  const { height } = useSafeAreaFrame();
+  const heroMaxHeight = Math.min(280, (height - insets.top - insets.bottom) * 0.4);
   const [swipes] = useState(getSwipes);
 
   const initialDish: Dish | null = (() => {
@@ -143,10 +145,11 @@ export default function MatchScreen() {
 
       <ScrollView
         ref={scrollRef}
+        style={{ marginTop: insets.top, marginLeft: insets.left, marginRight: insets.right }}
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 24),
+            paddingTop: Platform.OS === "web" ? 67 : 24,
             paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 32),
           },
         ]}
@@ -172,7 +175,7 @@ export default function MatchScreen() {
             {/* Full width: the hero centers its child, so without this the
                 image's width: "100%" resolves against a zero-width wrapper. */}
             <Animated.View style={[styles.pulseWrap, pulseStyle]}>
-              <View style={styles.imageContainer}>
+              <View style={[styles.imageContainer, { maxHeight: heroMaxHeight }]}>
                 <Image
                   source={{ uri: resolveImageUrl(dish.image) }}
                   style={styles.dishImage}
@@ -192,7 +195,7 @@ export default function MatchScreen() {
                   <Pressable
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      scrollRef.current?.scrollTo({ y: recipeY.current - insets.top - 16, animated: true });
+                      scrollRef.current?.scrollTo({ y: recipeY.current - 16, animated: true });
                     }}
                     accessibilityRole="button"
                     style={({ pressed }) => [styles.recipeBtn, { opacity: pressed ? 0.85 : 1 }]}
@@ -413,7 +416,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: "100%",
-    height: 280,
+    aspectRatio: 4 / 3,
     borderRadius: 24,
     overflow: "hidden",
     position: "relative",
