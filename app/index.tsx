@@ -87,6 +87,7 @@ export default function WelcomeScreen() {
   const handleContinue = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
+    Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await AsyncStorage.setItem("userName", trimmed);
     goNext();

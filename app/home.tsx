@@ -135,16 +135,20 @@ export default function HomeScreen() {
   const [locationStatus, setLocationStatus] = useState<"pending" | "granted" | "denied">("pending");
   const [locationPermission, requestPermission] = Location.useForegroundPermissions();
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const codeInputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const howItWorks = useHowItWorks();
 
   // The room code field is the last thing on the screen, so on Android
   // (edge-to-edge, where the window no longer resizes for the keyboard) it
   // sat under the keyboard. Keep it and Join Room in view, like the name
-  // field on the welcome screen.
+  // field on the welcome screen. Rotating a Duo can also fire keyboardDidShow
+  // while the field is unfocused.
   useEffect(() => {
-    const sub = Keyboard.addListener("keyboardDidShow", () =>
-      scrollRef.current?.scrollToEnd({ animated: true })
-    );
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      if (codeInputRef.current?.isFocused()) {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    });
     return () => sub.remove();
   }, []);
 
@@ -289,22 +293,25 @@ export default function HomeScreen() {
   return (
     <LinearGradient colors={["#0F0F0F", "#1A0A00", "#0F0F0F"]} style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        enabled={Platform.OS !== "ios"}
+        behavior="height"
         style={styles.container}
       >
         <ScrollView
           ref={scrollRef}
+          style={{ marginTop: insets.top, marginLeft: insets.left, marginRight: insets.right }}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios" && tab === "join"}
           contentContainerStyle={[
             styles.content,
             {
-              paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20),
+              paddingTop: Platform.OS === "web" ? 67 : 20,
               paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
             },
           ]}
           keyboardShouldPersistTaps="handled"
         >
           <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-            <View>
+            <View style={styles.headerText}>
               <Text style={styles.greeting}>Hey {userName}</Text>
               <Text style={styles.subGreeting}>Ready to swipe right on dinner?</Text>
             </View>
@@ -574,6 +581,7 @@ export default function HomeScreen() {
                 Enter the 6-character code shared by your host.
               </Text>
               <TextInput
+                ref={codeInputRef}
                 style={styles.codeInput}
                 placeholder="Enter code (e.g. ABC123)"
                 placeholderTextColor={Colors.textMuted}
@@ -646,8 +654,11 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 12,
     alignItems: "center",
+  },
+  headerText: {
+    flex: 1,
   },
   headerBtns: {
     flexDirection: "row",
