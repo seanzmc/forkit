@@ -1,201 +1,169 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>APP_NAME_PLACEHOLDER: Swipe right on dinner</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="APP_NAME_PLACEHOLDER is a group food-decision app. Swipe on dishes with friends, family or a date, and when most of you swipe right on the same restaurant, dinner is decided."
-    />
-    <meta name="theme-color" content="#0f0f0f" />
-    <meta property="og:title" content="APP_NAME_PLACEHOLDER: Swipe right on dinner" />
-    <meta
-      property="og:description"
-      content="Swipe on dishes with your group. When most of you swipe right on the same place, dinner is decided."
-    />
-    <meta property="og:image" content="BASE_URL_PLACEHOLDER/assets/images/icon.png" />
+    <title>APP_NAME_PLACEHOLDER | Swipe right on dinner</title>
+    <meta name="description" content="Pick a restaurant or recipe together. Start a ForkIt room, invite your group, and swipe privately until dinner is decided. Free on iPhone." />
+    <meta name="theme-color" content="#151815" />
+    <meta property="og:title" content="APP_NAME_PLACEHOLDER | Swipe right on dinner" />
+    <meta property="og:description" content="A room for your friends, a deck of dishes, and a dinner decision you can make together." />
+    <meta property="og:image" content="BASE_URL_PLACEHOLDER/home-media/dinner-table.webp" />
+    <meta name="apple-itunes-app" content="app-id=6819387031" />
     <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
     <style>
-      * {
-        box-sizing: border-box;
+      :root {
+        color-scheme: dark;
+        --ink: #151815;
+        --paper: #faf7ef;
+        --muted: #c3c6b9;
+        --orange: #ff8957;
+        --line: #3b4038;
+        --gutter: clamp(1.2rem, 5vw, 4.5rem);
       }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin: 0;
-        background: #0f0f0f;
-        color: #fff;
-        line-height: 1.5;
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 1rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--ink); color: var(--paper); }
+      img { display: block; max-width: 100%; }
+      a { color: inherit; text-underline-offset: .22em; }
+      a:focus-visible { outline: 3px solid var(--orange); outline-offset: 5px; }
+      a:hover { text-decoration: underline; }
+      h1, h2, h3, p, figure { margin: 0; }
+      h1, h2, h3 { line-height: 1.08; text-wrap: balance; }
+      .wrap { max-width: 84rem; margin-inline: auto; padding-inline: var(--gutter); }
+      .topbar { border-bottom: 1px solid var(--line); }
+      .nav { min-height: 4.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      .brand { display: inline-flex; align-items: center; gap: .55rem; font-weight: 750; font-size: 1.4rem; letter-spacing: -.055em; text-decoration: none; }
+      .brand img { width: 2rem; height: 2rem; border-radius: .5rem; }
+      nav { display: flex; flex-wrap: wrap; gap: clamp(1rem, 3vw, 2.5rem); }
+      nav a { font-size: .94rem; font-weight: 600; text-decoration: none; }
+      .hero { position: relative; isolation: isolate; overflow: hidden; background: #121713; }
+      .hero picture { position: absolute; inset: 0 0 0 38%; z-index: -2; }
+      .hero picture img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+      .hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #121713 36%, rgb(18 23 19 / 90%) 42%, transparent 67%); }
+      .intro { padding-block: clamp(4rem, 7vw, 6.6rem); }
+      h1 { font-size: clamp(3.7rem, 7.1vw, 7rem); line-height: .95; font-weight: 750; letter-spacing: -.065em; }
+      h1 em { color: var(--orange); font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+      .intro p { max-width: min(32rem, 45%); margin-block: 1.5rem 1.7rem; font-size: clamp(1.05rem, 1.5vw, 1.26rem); color: #e2e3d8; }
+      .stores { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.15rem; }
+      .store-badge { display: inline-block; border-radius: .5rem; }
+      .store-badge img { height: 3rem; width: auto; }
+      .store-status, .play-link { font-size: .91rem; color: var(--muted); }
+      .play-link { font-weight: 650; }
+      .gallery { background: var(--paper); color: #19221d; padding-block: clamp(3rem, 6vw, 5.6rem); }
+      h2 { font-size: clamp(2.25rem, 4.4vw, 4.1rem); letter-spacing: -.055em; }
+      .gallery h2 { margin-bottom: 2rem; }
+      .screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1rem, 2.5vw, 2rem); }
+      .screen { display: grid; grid-template-rows: auto 1fr; align-content: start; }
+      .stage { display: grid; place-items: center; padding: clamp(1.15rem, 2.15vw, 2.1rem) .8rem; border-radius: 1.45rem; }
+      .stage, .recipe-stage { cursor: zoom-in; }
+      .stage.room { background: #e6ebd9; }
+      .stage.swipe { background: #ffdfc9; }
+      .stage.match { background: #dee8e7; }
+      .phone { width: min(68%, 13.4rem); height: auto; aspect-ratio: 510 / 1109; border: 3px solid #222420; border-radius: 1.35rem; box-shadow: 0 .6rem 1.2rem rgb(24 30 21 / 17%); }
+      figcaption { padding-top: 1.15rem; }
+      h3 { font-size: clamp(1.35rem, 2vw, 1.75rem); letter-spacing: -.04em; }
+      .gallery p { margin-top: .55rem; color: #425047; }
+      .details { display: grid; grid-template-columns: 1.12fr .88fr; align-items: center; gap: clamp(2rem, 7vw, 6.5rem); padding-block: clamp(3rem, 7vw, 6.3rem); }
+      .details h2 { margin-bottom: .7rem; }
+      .mode { padding-block: 1.35rem; border-bottom: 1px solid var(--line); }
+      .mode:last-child { border-bottom: 0; }
+      .mode h3 { color: var(--orange); margin-bottom: .55rem; }
+      .mode p { max-width: 37rem; color: #d1d5c9; }
+      .recipe-stage { background: #27352d; border-radius: 1.65rem; display: grid; place-items: center; padding: 1.75rem; }
+      .recipe-stage .phone { width: min(75%, 13.5rem); }
+      .footer { border-top: 1px solid var(--line); padding-block: 1.5rem; }
+      .footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 1rem 2rem; flex-wrap: wrap; }
+      .footer p, .footer a { font-size: .92rem; color: var(--muted); }
+      .footer-links { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+      @media (max-width: 48rem) {
+        .hero picture { inset-inline-start: 28%; }
+        .hero::after { background: linear-gradient(90deg, #121713 20%, rgb(18 23 19 / 88%) 42%, transparent 84%); }
+        .intro p { max-width: min(26rem, 54%); }
+        .screens { gap: 1rem; }
+        .stage { padding: 1.1rem .5rem; }
+        .phone { width: 82%; }
       }
-      .wrapper {
-        max-width: 760px;
-        margin: 0 auto;
-        padding: 0 20px;
+      @media (max-width: 38rem) {
+        .nav { min-height: 3.85rem; }
+        nav { gap: 1rem; }
+        nav a { font-size: .875rem; }
+        .hero { display: flex; flex-direction: column; }
+        .intro { width: 100%; padding-block: 2.6rem 1.6rem; }
+        .intro p { max-width: 30rem; margin-block: 1.15rem; }
+        .hero picture { position: relative; inset: auto; order: 1; aspect-ratio: 2.05; z-index: 0; }
+        .hero::after { display: none; }
+        .screens { grid-template-columns: 1fr; gap: 1.25rem; }
+        .screen { grid-template: auto / minmax(7.25rem, .88fr) minmax(0, 1fr); align-items: center; gap: 1.15rem; }
+        .stage { padding: .8rem .5rem; border-radius: 1rem; }
+        .phone { width: 82%; border-width: 2px; border-radius: .85rem; }
+        figcaption { padding: 0; }
+        .gallery h2 { margin-bottom: 1.5rem; }
+        .details { grid-template-columns: 1fr; gap: 1.25rem; }
+        .recipe-stage { padding: 1.25rem; }
+        .recipe-stage .phone { width: min(62%, 12rem); }
       }
-      .hero {
-        text-align: center;
-        padding: 72px 0 48px;
-      }
-      .logo {
-        width: 112px;
-        height: 112px;
-        border-radius: 26px;
-        display: block;
-        margin: 0 auto 20px;
-      }
-      h1 {
-        font-size: 44px;
-        line-height: 1.1;
-        margin: 0 0 12px;
-      }
-      .motto {
-        color: #ff6b35;
-        font-weight: 600;
-        font-size: 22px;
-        margin: 0 0 16px;
-      }
-      .lede {
-        color: #9a9a9a;
-        font-size: 18px;
-        max-width: 520px;
-        margin: 0 auto 32px;
-      }
-      .stores {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        justify-content: center;
-      }
-      .store {
-        display: inline-block;
-        padding: 14px 24px;
-        border-radius: 14px;
-        background: #ff6b35;
-        color: #fff;
-        font-weight: 600;
-        font-size: 16px;
-        text-decoration: none;
-      }
-      .store.soon {
-        background: #1a1a1a;
-        border: 1px solid #2c2c2c;
-        color: #9a9a9a;
-      }
-      h2 {
-        font-size: 26px;
-        text-align: center;
-        margin: 0 0 24px;
-      }
-      .steps {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-        gap: 16px;
-        padding: 0;
-        margin: 0 0 56px;
-        list-style: none;
-      }
-      .steps li {
-        background: #1a1a1a;
-        border: 1px solid #2c2c2c;
-        border-radius: 16px;
-        padding: 20px;
-      }
-      .num {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: #ff6b35;
-        font-weight: 700;
-        margin-bottom: 12px;
-      }
-      .steps h3 {
-        font-size: 18px;
-        margin: 0 0 6px;
-      }
-      .steps p {
-        color: #9a9a9a;
-        margin: 0;
-        font-size: 15px;
-      }
-      .modes {
-        color: #9a9a9a;
-        text-align: center;
-        max-width: 560px;
-        margin: 0 auto 56px;
-      }
-      .modes strong {
-        color: #fff;
-      }
-      footer {
-        border-top: 1px solid #2c2c2c;
-        padding: 28px 0 48px;
-        text-align: center;
-        color: #9a9a9a;
-        font-size: 14px;
-      }
-      footer a {
-        color: #ff6b35;
-        text-decoration: none;
-      }
-      footer a:hover {
-        text-decoration: underline;
-      }
-      @media (max-width: 480px) {
-        h1 {
-          font-size: 36px;
-        }
+      @media (max-width: 22rem) {
+        .nav { flex-wrap: wrap; padding-block: .55rem; gap: .25rem .8rem; }
+        nav { gap: .75rem; }
+        .screen { grid-template-columns: minmax(6.4rem, .78fr) 1fr; gap: .8rem; }
       }
     </style>
   </head>
   <body>
-    <div class="wrapper">
-      <header class="hero">
-        <img class="logo" src="/assets/images/icon.svg" alt="APP_NAME_PLACEHOLDER logo" />
-        <h1>APP_NAME_PLACEHOLDER</h1>
-        <p class="motto">Swipe right on dinner</p>
-        <p class="lede">
-          Stop the "I don't know, what do you want?" loop. Swipe on dishes with
-          your group, and when most of you like the same place, dinner is decided.
-        </p>
-        <div class="stores">STORE_BUTTONS_PLACEHOLDER</div>
-      </header>
-
-      <main>
-        <h2>How it works</h2>
-        <ol class="steps">
-          <li>
-            <span class="num">1</span>
-            <h3>Start a room</h3>
-            <p>Create a room and share the 6-character code or invite link with your group.</p>
-          </li>
-          <li>
-            <span class="num">2</span>
-            <h3>Swipe on dishes</h3>
-            <p>Everyone swipes right on the dishes they'd eat and left on the ones they wouldn't.</p>
-          </li>
-          <li>
-            <span class="num">3</span>
-            <h3>Get a match</h3>
-            <p>When a majority likes the same place, the app calls it and shows you the way. No match? Anyone can start another round.</p>
-          </li>
-        </ol>
-
-        <p class="modes">
-          <strong>Dine out</strong> finds restaurants near you and dishes to try
-          at each one. <strong>Cook in</strong> picks a recipe to make at
-          home. No account needed, just a name.
-        </p>
-      </main>
-
-      <footer>
-        <a href="/terms">Terms of use</a> &middot;
-        <a href="/privacy">Privacy policy</a> &middot;
-        <a href="mailto:CONTACT_EMAIL_PLACEHOLDER">Contact</a>
+    <header class="topbar">
+      <div class="wrap nav">
+        <a href="/" class="brand"><img src="/assets/images/icon.svg" width="32" height="32" alt="" />APP_NAME_PLACEHOLDER</a>
+        <nav aria-label="Main navigation">
+          <a href="#how-it-works">How it works</a>
+          <a href="#dinner-options">Dinner options</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <picture>
+          <source media="(max-width: 38rem)" srcset="/home-media/dinner-table-small.webp" />
+          <img src="/home-media/dinner-table.webp" width="1440" height="960" alt="Two forks sharing a plate of spaghetti with tomato and basil." fetchpriority="high" />
+        </picture>
+        <div class="wrap intro">
+          <h1 id="hero-title">What’s for<br /><em>dinner?</em></h1>
+          <p>Put it to a vote. With APP_NAME_PLACEHOLDER, your group can swipe on dishes to pick a nearby restaurant or find a recipe to cook together. Free on iPhone.</p>
+          <div class="stores">STORE_BUTTONS_PLACEHOLDER</div>
+        </div>
+      </section>
+      <section class="gallery" id="how-it-works" aria-labelledby="how-title">
+        <div class="wrap">
+          <h2 id="how-title">How APP_NAME_PLACEHOLDER works</h2>
+          <div class="screens">
+            <figure class="screen">
+              <a class="stage room" href="/home-media/room.webp" aria-label="Enlarge the waiting room screenshot"><img class="phone" src="/home-media/room.webp" width="510" height="1109" alt="ForkIt waiting room with an invite code and three people ready to swipe." loading="lazy" /></a>
+              <figcaption><h3>Invite your table</h3><p>Start a room and share its link or six-character code. Everyone joins on their own phone with just a display name.</p></figcaption>
+            </figure>
+            <figure class="screen">
+              <a class="stage swipe" href="/home-media/swipe.webp" aria-label="Enlarge the dish voting screenshot"><img class="phone" src="/home-media/swipe.webp" width="510" height="1109" alt="A spicy pad thai card with buttons to pass, undo, or like." loading="lazy" /></a>
+              <figcaption><h3>Swipe on dishes</h3><p>Right for something you’d eat, left to pass. Votes stay private, and you can undo your last swipe.</p></figcaption>
+            </figure>
+            <figure class="screen">
+              <a class="stage match" href="/home-media/match.webp" aria-label="Enlarge the recipe match screenshot"><img class="phone" src="/home-media/match.webp" width="510" height="1109" alt="A group recipe match for chicken Parmesan with a link to the recipe." loading="lazy" /></a>
+              <figcaption><h3>Meet your match</h3><p>When more than half the room likes the same restaurant or recipe, everyone sees the match. If you finish without one, start another round.</p></figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+      <section class="wrap details" id="dinner-options" aria-labelledby="options-title">
+        <div>
+          <h2 id="options-title">Going out or<br />cooking in?</h2>
+          <div class="mode"><h3>Dine Out</h3><p>Choose breakfast, lunch, or dinner and how far you want to look. Browse by place or by dish. You can like the pad thai while a friend picks the curry and still match on the same restaurant. Open directions from a real restaurant match.</p></div>
+          <div class="mode"><h3>Cook In</h3><p>Swipe on recipes from home. Once you match, adjust the servings, check off the ingredients you already have, and share the shopping list. The cooking steps are right there when you’re ready.</p></div>
+        </div>
+        <a class="recipe-stage" href="/home-media/recipe.webp" aria-label="Enlarge the shopping list screenshot"><img class="phone" src="/home-media/recipe.webp" width="510" height="1109" alt="The recipe screen with adjustable servings, an ingredient checklist, a shareable shopping list, and cooking steps." loading="lazy" /></a>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="wrap">
         <p>&copy; YEAR_PLACEHOLDER APP_NAME_PLACEHOLDER</p>
-      </footer>
-    </div>
+        <div class="footer-links"><a href="mailto:CONTACT_EMAIL_PLACEHOLDER">Contact support</a><a href="/privacy">Privacy policy</a><a href="/terms">Terms of use</a></div>
+      </div>
+    </footer>
   </body>
 </html>

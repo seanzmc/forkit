@@ -11,9 +11,8 @@ const log = console.log;
 const PRIVACY_LAST_UPDATED = "18 November 2026";
 const PRIVACY_CONTACT_EMAIL =
   process.env.PRIVACY_CONTACT_EMAIL || "seanzmc9613@gmail.com";
-// Store listing URLs for the public home page. Unset ⇒ a "Coming soon" chip
-// instead of a link that would 404 before the listing is live.
-const APP_STORE_URL = process.env.APP_STORE_URL;
+const APP_STORE_URL = process.env.APP_STORE_URL ||
+  "https://apps.apple.com/us/app/forkit-swipe-to-decide/id6819387031";
 const PLAY_STORE_URL = process.env.PLAY_STORE_URL;
 
 declare module "http" {
@@ -190,11 +189,11 @@ function escapeHtml(value: string): string {
 }
 
 function storeButtons(): string {
-  const button = (label: string, url?: string) =>
-    url
-      ? `<a class="store" href="${escapeHtml(url)}">${label}</a>`
-      : `<span class="store soon">${label}: coming soon</span>`;
-  return button("App Store", APP_STORE_URL) + button("Google Play", PLAY_STORE_URL);
+  const apple = `<a class="store-badge" href="${escapeHtml(APP_STORE_URL)}"><img src="/home-media/app-store-badge.svg" width="144" height="48" alt="Download on the App Store"></a>`;
+  const android = PLAY_STORE_URL
+    ? `<a class="play-link" href="${escapeHtml(PLAY_STORE_URL)}">Get it on Google Play</a>`
+    : '<span class="store-status">Google Play coming soon</span>';
+  return apple + android;
 }
 
 function configureExpoAndLanding(app: express.Application) {
@@ -339,6 +338,7 @@ function configureExpoAndLanding(app: express.Application) {
   // with a ?v=<content hash>, so a replaced photo gets a new URL and a week
   // of caching never pairs an old image with a new credit.
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets"), { maxAge: "7d" }));
+  app.use("/home-media", express.static(path.resolve(process.cwd(), "server", "public", "home"), { maxAge: "1d" }));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
   log("Expo routing: Checking expo-platform header on / and /manifest");
