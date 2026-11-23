@@ -151,7 +151,7 @@ section > .sub { color: var(--muted); }
 .share-card h3 { font-size: 18px; font-weight: 600; }
 .share-card p { color: var(--muted); }
 .copybox { display: flex; flex-direction: column; gap: 8px; }
-.copytext { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 15px; color: var(--fg); white-space: pre-wrap; user-select: all; -webkit-user-select: all; }
+.copytext { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 15px; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
 button.btn { border: 0; width: 100%; cursor: pointer; font: inherit; }
 .copied { font-size: 14px; color: var(--good); min-height: 1.4em; text-align: center; }
 
@@ -370,7 +370,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <div class="share-card">
       <h3>Copy the Android signup link</h3>
       <div class="copybox">
-        <div class="copytext" id="guideLink">https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform</div>
+        <div class="copytext" id="guideLink">https://forms.gle/HQDqUTusrjjmu6kP6</div>
         <button class="btn invite" type="button" data-copy="guideLink">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
           <span class="lbl"><strong>Copy link</strong><span>Then paste it into a text</span></span>
@@ -381,7 +381,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <div class="share-card">
       <h3>Or copy a ready-made message</h3>
       <div class="copybox">
-        <div class="copytext" id="guideMsg">Help test ForkIt, an Android app that settles where to eat. Sign up with your Play Store account and we’ll email your install link. Please stay in the test for 14 days. https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform</div>
+        <div class="copytext" id="guideMsg">Help test ForkIt, an Android app that settles where to eat. Sign up with your Play Store account and we’ll email your install link. Please stay in the test for 14 days. https://forms.gle/HQDqUTusrjjmu6kP6</div>
         <button class="btn invite" type="button" data-copy="guideMsg">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
           <span class="lbl"><strong>Copy message</strong><span>Paste it into Messages or a group chat</span></span>
