@@ -54,11 +54,11 @@ Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear on the
 (pick the closest ones Play offers; the list changes)
 
 **Contact details**
-- Email: the same address as the contact on `/privacy` (shown publicly)
-- Website: `https://forkit-server-production.up.railway.app/`
+- Email: `support.forkit@seanzmc.com`
+- Website: `https://forkit.seanzmc.com/`
 - Phone: leave blank
 
-**Privacy policy:** `https://forkit-server-production.up.railway.app/privacy`
+**Privacy policy:** `https://forkit.seanzmc.com/privacy`
 
 ## App content declarations
 

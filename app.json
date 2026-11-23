@@ -11,6 +11,7 @@
     "scheme": "forkit",
     "userInterfaceStyle": "dark",
     "ios": {
+      "version": "1.0.1",
       "supportsTablet": false,
       "bundleIdentifier": "com.seandm.forkit",
       "infoPlist": {
