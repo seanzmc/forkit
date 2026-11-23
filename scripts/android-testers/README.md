@@ -25,4 +25,6 @@ Open the form’s response spreadsheet as the group owner. Keep the form’s **C
 3. Reload the spreadsheet. Check **Testers!H1**, both entries in the Apps Script **Triggers** view, and **ForkIt testers → Preview the install email**.
 4. For a first-install check, use a consenting Android tester who has never joined. Verify their form response and owner notification, add them directly, and check their recorded send time. Opening the menu check early must leave the row waiting. After the install email arrives, have them opt in with their signup account and verify **Install** appears on their phone. Confirm aggregate enrollment in Play Console.
 
+The [install email preview](install-email-preview.jpg) shows the two Play steps as rendered by the live sheet.
+
 Run the local regression checks with `node --test scripts/android-testers/tests/workflow.cjs`.
