@@ -166,6 +166,19 @@ test("known nonmembership resets the wait, including owner confirmation", () => 
   assert.equal(mail.length, 2);
 });
 
+test("a manual Already testing row stays out of the queue when the same address submits the form", () => {
+  const { app, control, data, mail, submit, poll, advance } = workflow();
+  data.push(["  " + tester.toUpperCase() + " ", "", app.STATUS.alreadyTesting, "", "", "", ""]);
+  control.member = true;
+  submit();
+  poll();
+  advance(8 * hour);
+  poll();
+  assert.equal(data.length, 2);
+  assert.equal(data[1][2], "Already testing");
+  assert.equal(mail.length, 0);
+});
+
 test("quota depletion retries, an ambiguous delivery needs owner review", () => {
   const { app, control, data, mail, submit, poll, advance } = workflow();
   submit();

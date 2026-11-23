@@ -18,12 +18,20 @@ var HEADERS = ['Email', 'Requested', 'Status', 'Membership confirmed', 'Ready em
 var COL = { email: 1, requested: 2, status: 3, inGroup: 4, sent: 5, note: 6, due: 7 };
 var STATUS = {
   pending: 'Pending',
+  alreadyTesting: 'Already testing',
   waiting: 'Waiting for Play',
   manual: 'Waiting for Play (owner confirmed)',
   sending: 'Check email delivery',
   ready: 'Ready email sent',
 };
 var DIRECT_ADD = 'Open Members → Add members. Turn ON “Directly add members” and check that the final button says “Add members”. If Google can only invite this account, wait for the person to accept and appear under Members.';
+var DUPLICATE_EMAIL_FORMULA = '=IF(TRIM($A2)="",FALSE,SUMPRODUCT(--(LOWER(TRIM($A$2:$A))=LOWER(TRIM($A2))))>1)';
+var TESTER_MENU = [
+  { label: 'Show emails to add to the group', handler: 'showPending', help: 'Opens a copyable list of Pending addresses and the Google Group members page.' },
+  { label: 'Check membership and send due emails', handler: 'checkGroupAndNotify', help: 'Runs the scheduled check now. Only confirmed testers whose waiting period has passed can receive an email.' },
+  { label: 'Confirm selected members by hand', handler: 'confirmSelectedMembers', help: 'If the group check fails, verify membership in Google Groups first. Select the matching Testers rows, then use this command to confirm them.' },
+  { label: 'Preview the install email', handler: 'previewReadyEmail', help: 'Displays the email your testers will receive. Previewing sends nothing.' },
+];
 
 function setup() {
   var ss = SpreadsheetApp.getActive();
@@ -41,6 +49,7 @@ function setup() {
     sheet.setColumnWidth(index + 1, width);
   });
   sheet.getRange('H1').setWrap(true);
+  refreshTesterTools();
 
   // Keep one trigger per handler when setup is run again by the same owner.
   var triggers = ScriptApp.getProjectTriggers();
@@ -58,6 +67,60 @@ function setup() {
   importExistingResponses();
   checkGroupAndNotify();
   console.log('Setup complete. See Testers!H1 for the group check.');
+}
+
+// Also runnable on an installed workbook without importing signups or polling the queue.
+function refreshTesterTools() {
+  var sheet = testersSheet_();
+  var emails = sheet.getRange('A2:A');
+  var duplicate = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(DUPLICATE_EMAIL_FORMULA).setBackground('#fce8e6').setFontColor('#9c241a')
+    .setBold(true).setRanges([emails]).build();
+  var otherRules = sheet.getConditionalFormatRules().filter(function (rule) {
+    var condition = rule.getBooleanCondition();
+    var ranges = rule.getRanges();
+    return !(condition && condition.getCriteriaType() === SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA &&
+      condition.getCriteriaValues()[0] === DUPLICATE_EMAIL_FORMULA && ranges.length === 1 &&
+      ranges[0].getColumn() === COL.email && ranges[0].getRow() === 2 && ranges[0].getNumColumns() === 1 &&
+      ranges[0].getLastRow() === emails.getLastRow());
+  });
+  sheet.setConditionalFormatRules([duplicate].concat(otherRules));
+  sheet.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(Object.values(STATUS), true).setAllowInvalid(false)
+    .setHelpText('Choose Pending for a new tester or Already testing for a known install. Clear the cell to pause a row.')
+    .build());
+  writeTesterInstructions_(sheet.getParent());
+}
+
+function writeTesterInstructions_(ss) {
+  var guide = ss.getSheetByName('Instructions');
+  if (!guide) {
+    var previous = ss.getActiveSheet();
+    guide = ss.insertSheet('Instructions', ss.getNumSheets());
+    ss.setActiveSheet(previous);
+  }
+  var rows = [
+    ['Android tester onboarding', 'Use the Testers tab to manage signups and Google Play install emails.'],
+    ['=HYPERLINK("' + CONFIG.signupUrl + '","Share the signup form")', 'The form collects the tester’s Play account and 14-day agreement. Each new address gets a Pending row and you get an email.'],
+    ['Add a tester by hand', 'Confirm they can keep ForkIt installed and stay in the test for 14 days. Search column A, then enter their Play email once and choose Pending in C.'],
+    ['Someone already has ForkIt', 'Choose Already testing to record a known install. A blank status also keeps a row out of the email queue.'],
+    ['Red email addresses', 'The address appears more than once. Keep the original row and clear the status on any extra active copy. Two active rows can send two emails.'],
+    ['=HYPERLINK("' + CONFIG.groupMembersUrl + '","Add to Google Groups")', 'Choose Add members, turn on Directly add members, then click Add members. If Google sends an invitation, the tester must accept it first.'],
+    ['When the link goes out', 'The script checks every 15 minutes. Once it confirms membership (D), it waits at least ' + CONFIG.delayHours + ' hours (G), then emails the opt-in and install links and records the send time (E).'],
+    ['If a tester is waiting', 'Check H1 for group access and F for details. For Check email delivery, confirm receipt with the tester before scheduling another send.'],
+    ['ForkIt testers menu', 'What each command does'],
+  ];
+  var menuHeading = rows.length;
+  TESTER_MENU.forEach(function (item) { rows.push([item.label, item.help]); });
+  guide.setColumnWidth(1, 275);
+  guide.setColumnWidth(2, 590);
+  guide.getRange(1, 1, rows.length, 2).setValues(rows).setWrap(true).setVerticalAlignment('middle');
+  guide.getRange(1, 1, rows.length, 1).setFontWeight('bold');
+  guide.getRangeList(['A1:B1', 'A' + menuHeading + ':B' + menuHeading])
+    .setBackground('#e8eaed').setFontWeight('bold');
+  guide.getRange('A1').setFontSize(14);
+  guide.setRowHeights(1, rows.length, 42);
+  guide.setHiddenGridlines(true);
 }
 
 function importExistingResponses() {
@@ -206,13 +269,12 @@ function updateGroupHealth_(sheet, error) {
 }
 
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('ForkIt testers')
-    .addItem('Show emails to add to the group', 'showPending')
-    .addItem('Check membership and send due emails', 'checkGroupAndNotify')
-    .addItem('Confirm selected members by hand', 'confirmSelectedMembers')
-    .addSeparator()
-    .addItem('Preview the install email', 'previewReadyEmail')
-    .addToUi();
+  var menu = SpreadsheetApp.getUi().createMenu('ForkIt testers');
+  TESTER_MENU.forEach(function (item) {
+    if (item.handler === 'previewReadyEmail') menu.addSeparator();
+    menu.addItem(item.label, item.handler);
+  });
+  menu.addToUi();
 }
 
 function showPending() {
@@ -303,7 +365,7 @@ function addTester_(raw, when) {
     var sheet = testersSheet_();
     var exists = false;
     eachTester_(sheet, function (r, row) {
-      if (String(row[0]).toLowerCase() === email) exists = true;
+      if (String(row[0]).trim().toLowerCase() === email) exists = true;
     });
     if (exists) return null;
     sheet.appendRow([email, when, STATUS.pending, '', '', '', '']);
