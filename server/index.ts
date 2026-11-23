@@ -192,7 +192,7 @@ function storeButtons(): string {
   const apple = `<a class="store-badge" href="${escapeHtml(APP_STORE_URL)}"><img src="/home-media/app-store-badge.svg" width="144" height="48" alt="Download on the App Store"></a>`;
   const android = PLAY_STORE_URL
     ? `<a class="play-link" href="${escapeHtml(PLAY_STORE_URL)}">Get it on Google Play</a>`
-    : '<span class="store-status">Google Play coming soon</span>';
+    : '<a class="play-link" href="https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform">Join the Android test</a>';
   return apple + android;
 }
 

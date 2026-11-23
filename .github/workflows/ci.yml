@@ -36,6 +36,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check Android tester onboarding
+        run: node --test scripts/android-testers/tests/workflow.cjs
+
       - name: Lint
         run: npx expo lint
 

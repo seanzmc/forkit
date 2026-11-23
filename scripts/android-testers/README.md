@@ -1,32 +1,28 @@
-# Android tester sign-ups
+# Android closed-test signups
 
-The **Get Forkit on Android** Google Form collects a tester's Google account email. Its responses go to the **Forkit Android Testers** sheet, which runs the Apps Script in this folder:
+Share the [Android signup form](https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform). It collects the verified Google account used in the Play Store and requires the tester to acknowledge the 14-day commitment. The published Alpha track uses `forkit-testers@googlegroups.com`.
 
-1. **New sign-up** → `onFormSubmit` adds the email to the sheet's **Testers** tab as `Pending` (duplicates are skipped) and emails you a link to the group's Members page.
-2. **You add them** to `forkit-testers@googlegroups.com` (Groups → Members → Add members). This step can't be automated: consumer Google Groups have no API for adding members, and Apps Script's `GroupsApp` is read-only.
-3. **Every 15 minutes** `checkGroupAndNotify` asks Google Groups whether each `Pending` email is a member yet. Once it is (you added them, they accepted your invite, or they joined on their own), it sends the [ready email](ReadyEmail.html) (opt-in link, Play Store link, Android guide link) and marks the row `Ready email sent`.
+## Add a tester
 
-The Play closed test (`alpha`) uses that group as its tester list, so being in the group is what lets them install.
+1. A submission adds a **Pending** row in the linked spreadsheet’s **Testers** tab. You receive an email with the address and the group’s [Members page](https://groups.google.com/g/forkit-testers/members). For a batch, open **ForkIt testers → Show emails to add to the group**.
+2. In Google Groups choose **Add members**, enter the addresses, and turn **Directly add members** **on**. Verify the final button says **Add members**. If Google requires an invitation for a particular account, the person must accept it and appear under **Members** before their wait begins.
+3. Every 15 minutes the sheet checks membership. The first positive check records **Membership confirmed** and **Send after**. The install email goes out on a check at least **six hours after confirmation**. The menu’s **Check membership and send due emails** uses the same rule. A confirmed removal resets the wait. `CONFIG.delayHours` controls the interval.
+4. The email asks the tester to tap **Become a tester**, then open Google Play with the same account and tap **Install**. They should keep ForkIt installed and stay opted in for at least 14 days. Send new friends the signup form. Google Play can still take time to apply changes. Track opted-in testers on the Play Console dashboard.
 
-## Setup (once)
+## If someone is waiting
 
-1. Form → **Settings → Responses → Collect email addresses: Verified**. Testers then have to be signed in to Google, so the address is a real Google account Play can match.
-2. Open the **Forkit Android Testers** sheet → **Extensions → Apps Script**.
-3. Replace the contents of `Code.gs` with [Code.gs](Code.gs).
-4. **+ → HTML**, name it `ReadyEmail` (the editor adds `.html`), and paste [ReadyEmail.html](ReadyEmail.html).
-5. Choose `setup` in the function dropdown and **Run**. Approve the permissions (Sheets, sending mail as you, Google Groups, triggers). Google shows "Google hasn't verified this app" for your own scripts: **Advanced → Go to … (unsafe)**. `setup` creates the Testers tab, the form-submit trigger and the 15-minute trigger, and imports any responses already in the sheet. Running it again replaces the triggers rather than adding more.
-6. Reload the sheet. A **ForkIt testers** menu appears.
-7. Test it: **ForkIt testers → Preview the ready email**, then submit the form yourself with an account already in the group and run **Check group now and send ready emails**. That account gets the email within a few seconds.
+- **Pending** means membership has yet to be confirmed. Check the address under **Members**, including whether Google sent an invitation.
+- **Waiting for Play** shows when the install email becomes eligible. **Ready email sent** records when MailApp accepted the message.
+- **Testers!H1** shows the group check result. A failed lookup also writes a note on affected rows and emails the owner once per outage. If automated reads fail, verify the person is on the Members page, select their row, and choose **Confirm selected members by hand**. The clock then sends after the same full wait, even if the lookup remains unavailable. An explicit negative membership result still resets the row.
+- A mail quota shortage retries automatically. **Check email delivery** means the send was interrupted or Google could not confirm it. Check with the tester. If they received the email, set the status to **Ready email sent**. If delivery failed, set it to **Pending** to reconfirm membership and schedule a fresh email.
 
-## Day to day
+## Install or update the bound Apps Script
 
-- Each sign-up emails you "New ForkIt Android tester: …". Add the address in Groups (paste several at once from **ForkIt testers → Show pending emails**). Nothing else to do: the ready email follows within 15 minutes.
-- If Groups only lets you **invite**, the person gets Google's invite and the ready email goes out once they accept.
-- If the **Note** column says `Membership check failed`, the script can't read the group's members (it must run as a group owner). Once you've added someone, select their row on the Testers tab and use **Send ready email to selected rows**.
-- To resend to someone, set their **Status** back to `Pending`.
+Open the form’s response spreadsheet as the group owner. Keep the form’s **Collect email addresses** setting on **Verified** and its 14-day acknowledgement required.
 
-## Changing the email
+1. Under **Extensions → Apps Script**, sync [Code.gs](Code.gs) and [ReadyEmail.html](ReadyEmail.html) to the bound project. The HTML file is named **ReadyEmail** in the editor. A GitHub merge does not sync the script.
+2. Run **setup** in the editor and authorize Google’s Sheets, Groups, mail and trigger permissions. Setup verifies the response header and email template, creates the queue, imports any existing signups, checks group access and installs one spreadsheet submit trigger and one 15-minute clock trigger. Use the same owner account if you rerun it.
+3. Reload the spreadsheet. Check **Testers!H1**, both entries in the Apps Script **Triggers** view, and **ForkIt testers → Preview the install email**.
+4. For a first-install check, use a consenting Android tester who has never joined. Verify their form response and owner notification, add them directly, and check their recorded send time. Opening the menu check early must leave the row waiting. After the install email arrives, have them opt in with their signup account and verify **Install** appears on their phone. Confirm aggregate enrollment in Play Console.
 
-The HTML is `ReadyEmail.html`; the plain-text copy (for mail apps that don't show HTML) is `readyEmailText_()` in `Code.gs`. Keep the two in step, and keep both copies of each file in step: here in the repo and in the sheet's Apps Script project (the script isn't deployed from the repo). Links and the subject line are in `CONFIG` at the top of `Code.gs`.
-
-Gmail lets a personal account send about 100 script emails a day, far more than sign-ups need.
+Run the local regression checks with `node --test scripts/android-testers/tests/workflow.cjs`.

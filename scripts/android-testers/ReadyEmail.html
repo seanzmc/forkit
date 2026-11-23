@@ -1,7 +1,7 @@
 <!--
-  "ForkIt is ready" email sent by Code.gs once a tester is in
+  Install email sent by Code.gs after the membership waiting period for
   forkit-testers@googlegroups.com. Apps Script template: the printing scriptlets
-  (optInUrl, playStoreUrl, guideUrl) come from CONFIG in Code.gs. Inline styles only (Gmail strips <style>). The
+  (optInUrl, playStoreUrl, signupUrl) come from CONFIG in Code.gs. Inline styles only (Gmail strips <style>). The
   plain-text copy is readyEmailText_() in Code.gs; keep the two in step.
 -->
 <div style="margin:0;padding:24px 12px;background:#f4f1ee;font-family:Helvetica,Arial,sans-serif;color:#1a1a1a">
@@ -12,9 +12,9 @@
     </div>
 
     <div style="padding:26px 28px 8px">
-      <h1 style="font-size:22px;line-height:1.3;margin:0 0 10px">You're in! ForkIt is ready for you on Android.</h1>
+      <h1 style="font-size:22px;line-height:1.3;margin:0 0 10px">Your ForkIt Android test link</h1>
       <p style="font-size:15px;line-height:1.55;margin:0 0 18px;color:#444">
-        On your Android phone, signed in to Google Play with this email address:
+        We’ve added your account. On your Android phone, use the Google account you submitted on the signup form.
       </p>
 
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
@@ -24,7 +24,7 @@
           </td>
           <td style="vertical-align:top;padding:0 0 18px">
             <div style="font-size:16px;font-weight:700;margin:2px 0 4px">Become a tester</div>
-            <div style="font-size:14px;line-height:1.5;color:#444;margin-bottom:10px">Open the link, then tap <b>Become a tester</b>.</div>
+            <div style="font-size:14px;line-height:1.5;color:#444;margin-bottom:10px">Open the link and tap <b>Become a tester</b> on Google Play.</div>
             <a href="<?= optInUrl ?>" style="display:inline-block;background:#FF6B35;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:11px 20px;border-radius:10px">Become a tester</a>
           </td>
         </tr>
@@ -34,7 +34,7 @@
           </td>
           <td style="vertical-align:top;padding:0 0 18px">
             <div style="font-size:16px;font-weight:700;margin:2px 0 4px">Install ForkIt from Google Play</div>
-            <a href="<?= playStoreUrl ?>" style="display:inline-block;background:#0F0F0F;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:11px 20px;border-radius:10px;margin-top:6px">Get it on Google Play</a>
+            <div style="font-size:14px;line-height:1.5;color:#444">When Google confirms you’re a tester, follow its Google Play link and tap <b>Install</b>. You can also <a href="<?= playStoreUrl ?>" style="color:#a63a12">open ForkIt in the Play Store</a>.</div>
           </td>
         </tr>
         <tr>
@@ -49,13 +49,12 @@
       </table>
 
       <p style="font-size:13px;line-height:1.5;color:#666;margin:14px 0 0;padding:12px 14px;background:#f7f5f3;border-radius:10px">
-        If Play says the app isn't available, wait a few minutes and open the step 1 link again.
-        Want screenshots? <a href="<?= guideUrl ?>" style="color:#E0551F">Follow the step-by-step guide</a>.
+        If Install is missing, check the account in both your browser and the Play Store. Reopen the opt-in link or reply here for help.
       </p>
 
       <p style="font-size:14px;line-height:1.55;color:#444;margin:18px 0 0">
-        Please keep ForkIt installed for at least two weeks: Google needs that before ForkIt can go public on the Play Store.
-        Found a bug or have an idea? Just reply to this email.
+        Please <b>keep ForkIt installed and stay opted in to the Google Play test for at least 14 days</b> after you join.
+        Have an Android friend who wants to test? <a href="<?= signupUrl ?>" style="color:#a63a12">Share the signup form</a>.
       </p>
       <p style="font-size:14px;line-height:1.55;color:#444;margin:14px 0 24px">Swipe right on dinner,<br>ForkIt</p>
     </div>
