@@ -76,19 +76,19 @@ Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear on the
 **Support URL**
 
 ```
-https://forkit-server-production.up.railway.app/
+https://forkit.seanzmc.com/
 ```
 
 **Marketing URL** (optional)
 
 ```
-https://forkit-server-production.up.railway.app/
+https://forkit.seanzmc.com/
 ```
 
 **Privacy Policy URL** (App Information)
 
 ```
-https://forkit-server-production.up.railway.app/privacy
+https://forkit.seanzmc.com/privacy
 ```
 
 **Copyright**
