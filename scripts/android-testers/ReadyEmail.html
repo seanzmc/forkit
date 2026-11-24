@@ -1,5 +1,5 @@
 <!--
-  Install email sent by Code.gs after the membership waiting period for
+  Install email sent by Code.gs once a tester is in
   forkit-testers@googlegroups.com. Apps Script template: the printing scriptlets
   (optInUrl, playStoreUrl, signupUrl) come from CONFIG in Code.gs. Inline styles only (Gmail strips <style>). The
   plain-text copy is readyEmailText_() in Code.gs; keep the two in step.
@@ -33,8 +33,9 @@
             <div style="width:26px;height:26px;border-radius:13px;background:#FF6B35;color:#fff;font-weight:700;font-size:14px;line-height:26px;text-align:center">2</div>
           </td>
           <td style="vertical-align:top;padding:0 0 18px">
-            <div style="font-size:16px;font-weight:700;margin:2px 0 4px">Install ForkIt from Google Play</div>
-            <div style="font-size:14px;line-height:1.5;color:#444">When Google confirms you’re a tester, follow its Google Play link and tap <b>Install</b>. You can also <a href="<?= playStoreUrl ?>" style="color:#a63a12">open ForkIt in the Play Store</a>.</div>
+            <div style="font-size:16px;font-weight:700;margin:2px 0 4px">Wait about 5 minutes, then install</div>
+            <div style="font-size:14px;line-height:1.5;color:#444;margin-bottom:10px">Once it says you’re a tester, Google needs a moment to let you in. Then open ForkIt in the Play Store and tap <b>Install</b>.</div>
+            <a href="<?= playStoreUrl ?>" style="display:inline-block;background:#1f7a3d;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:11px 20px;border-radius:10px">Open ForkIt in the Play Store</a>
           </td>
         </tr>
         <tr>
@@ -49,7 +50,8 @@
       </table>
 
       <p style="font-size:13px;line-height:1.5;color:#666;margin:14px 0 0;padding:12px 14px;background:#f7f5f3;border-radius:10px">
-        If Install is missing, check the account in both your browser and the Play Store. Reopen the opt-in link or reply here for help.
+        <b>Says “Item not found”?</b> The Play Store can keep showing that from before you were let in. Open <b>Settings</b>, tap <b>Apps</b>, then <b>Google Play Store</b>, then <b>Force stop</b>, and tap the green button again. Still not found? Check that the Play Store uses the account you signed up with, wait half an hour and try again.<br><br>
+        <b>Opt-in page says the app isn’t available?</b> Wait a few minutes and reopen it. Stuck? Reply here for help.
       </p>
 
       <p style="font-size:14px;line-height:1.55;color:#444;margin:18px 0 0">

@@ -9,27 +9,26 @@ var CONFIG = {
   optInUrl: 'https://play.google.com/apps/testing/com.seandm.forkit',
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.seandm.forkit',
   signupUrl: 'https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform',
-  delayHours: 6,
   senderName: 'ForkIt',
   subject: 'Your ForkIt Android test link',
   testersSheet: 'Testers',
 };
-var HEADERS = ['Email', 'Requested', 'Status', 'Membership confirmed', 'Ready email sent', 'Note', 'Send after'];
-var COL = { email: 1, requested: 2, status: 3, inGroup: 4, sent: 5, note: 6, due: 7 };
+var HEADERS = ['Email', 'Requested', 'Status', 'Membership confirmed', 'Ready email sent', 'Note'];
+var COL = { email: 1, requested: 2, status: 3, inGroup: 4, sent: 5, note: 6 };
 var STATUS = {
   pending: 'Pending',
   alreadyTesting: 'Already testing',
-  waiting: 'Waiting for Play',
-  manual: 'Waiting for Play (owner confirmed)',
   sending: 'Check email delivery',
   ready: 'Ready email sent',
 };
+// Statuses written by the earlier version that waited before emailing. Treated as Pending.
+var LEGACY_WAITING = ['Waiting for Play', 'Waiting for Play (owner confirmed)'];
 var DIRECT_ADD = 'Open Members → Add members. Turn ON “Directly add members” and check that the final button says “Add members”. If Google can only invite this account, wait for the person to accept and appear under Members.';
 var DUPLICATE_EMAIL_FORMULA = '=IF(TRIM($A2)="",FALSE,SUMPRODUCT(--(LOWER(TRIM($A$2:$A))=LOWER(TRIM($A2))))>1)';
 var TESTER_MENU = [
   { label: 'Show emails to add to the group', handler: 'showPending', help: 'Opens a copyable list of Pending addresses and the Google Group members page.' },
-  { label: 'Check membership and send due emails', handler: 'checkGroupAndNotify', help: 'Runs the scheduled check now. Only confirmed testers whose waiting period has passed can receive an email.' },
-  { label: 'Confirm selected members by hand', handler: 'confirmSelectedMembers', help: 'If the group check fails, verify membership in Google Groups first. Select the matching Testers rows, then use this command to confirm them.' },
+  { label: 'Check membership and send emails', handler: 'checkGroupAndNotify', help: 'Runs the scheduled check now. Pending testers who are in the group get the install email.' },
+  { label: 'Confirm selected members by hand', handler: 'confirmSelectedMembers', help: 'If the group check fails, verify membership in Google Groups first. Select the matching Testers rows, then use this command to send them the install email.' },
   { label: 'Preview the install email', handler: 'previewReadyEmail', help: 'Displays the email your testers will receive. Previewing sends nothing.' },
 ];
 
@@ -44,7 +43,6 @@ function setup() {
   sheet.setFrozenRows(1);
   sheet.getRange('B:B').setNumberFormat('mmm d, h:mm AM/PM');
   sheet.getRange('D:E').setNumberFormat('mmm d, h:mm AM/PM');
-  sheet.getRange('G:G').setNumberFormat('mmm d, h:mm AM/PM');
   [230, 145, 245, 165, 160, 360, 150, 300].forEach(function (width, index) {
     sheet.setColumnWidth(index + 1, width);
   });
@@ -72,6 +70,8 @@ function setup() {
 // Also runnable on an installed workbook without importing signups or polling the queue.
 function refreshTesterTools() {
   var sheet = testersSheet_();
+  // The earlier version kept its send time in column G.
+  if (sheet.getRange('G1').getValue() === 'Send after') sheet.getRange('G:G').clearContent();
   var emails = sheet.getRange('A2:A');
   var duplicate = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied(DUPLICATE_EMAIL_FORMULA).setBackground('#fce8e6').setFontColor('#9c241a')
@@ -106,7 +106,7 @@ function writeTesterInstructions_(ss) {
     ['Someone already has ForkIt', 'Choose Already testing to record a known install. A blank status also keeps a row out of the email queue.'],
     ['Red email addresses', 'The address appears more than once. Keep the original row and clear the status on any extra active copy. Two active rows can send two emails.'],
     ['=HYPERLINK("' + CONFIG.groupMembersUrl + '","Add to Google Groups")', 'Choose Add members, turn on Directly add members, then click Add members. If Google sends an invitation, the tester must accept it first.'],
-    ['When the link goes out', 'The script checks every 15 minutes. Once it confirms membership (D), it waits at least ' + CONFIG.delayHours + ' hours (G), then emails the opt-in and install links and records the send time (E).'],
+    ['When the link goes out', 'The script checks every 15 minutes. Once it confirms membership (D), it emails the opt-in and install links and records the send time (E).'],
     ['If a tester is waiting', 'Check H1 for group access and F for details. For Check email delivery, confirm receipt with the tester before scheduling another send.'],
     ['ForkIt testers menu', 'What each command does'],
   ];
@@ -174,41 +174,27 @@ function checkGroupAndNotify() {
   updateGroupHealth_(sheet, firstError);
 }
 
-function processMembership_(sheet, r, row, member, error) {
-  var status = row[COL.status - 1];
+function processMembership_(sheet, r, row, member, error, ownerConfirmed) {
   if (member === false) {
-    // A known removal invalidates both automatic and owner-confirmed waiting periods.
-    if (status !== STATUS.pending || row[COL.note - 1] || row[COL.inGroup - 1]) {
-      writeState_(sheet, r, STATUS.pending, '', '', '', '');
+    if (row[COL.status - 1] !== STATUS.pending || row[COL.note - 1] || row[COL.inGroup - 1]) {
+      writeState_(sheet, r, STATUS.pending, '', '', '');
     }
     return;
   }
-  if (member === null && status !== STATUS.manual) {
+  if (member === null && !ownerConfirmed) {
     sheet.getRange(r, COL.note).setValue('Membership check failed. ' + error);
     return;
   }
-  var now = new Date();
-  var confirmed = row[COL.inGroup - 1];
-  if (status === STATUS.pending || !(confirmed instanceof Date)) {
-    startWait_(sheet, r, now, status === STATUS.manual);
-    return;
-  }
-  var due = row[COL.due - 1];
-  if (!(due instanceof Date)) {
-    due = dueAt_(confirmed);
-    sheet.getRange(r, COL.due).setValue(due);
-  }
-  if (now.getTime() < Math.max(due.getTime(), dueAt_(confirmed).getTime())) {
-    if (!error && row[COL.note - 1]) sheet.getRange(r, COL.note).setValue('');
-    return;
-  }
   if (MailApp.getRemainingDailyQuota() < 1) {
-    sheet.getRange(r, COL.note).setValue('Daily mail quota reached. The next check will retry.');
+    sheet.getRange(r, COL.note).setValue(member === null
+      ? 'Daily mail quota reached. Confirm this row again tomorrow.'
+      : 'Daily mail quota reached. The next check will retry.');
     return;
   }
+  var now = new Date();
   var html = readyEmailHtml_();
   // Persist intent first. An interruption after Google accepts mail requires reconciliation.
-  writeState_(sheet, r, STATUS.sending, confirmed, '', 'Check with the tester before retrying an interrupted send.', due);
+  writeState_(sheet, r, STATUS.sending, now, '', 'Check with the tester before retrying an interrupted send.');
   SpreadsheetApp.flush();
   try {
     MailApp.sendEmail({ to: row[0], subject: CONFIG.subject, name: CONFIG.senderName, body: readyEmailText_(), htmlBody: html });
@@ -216,23 +202,15 @@ function processMembership_(sheet, r, row, member, error) {
     sheet.getRange(r, COL.note).setValue('Could not confirm delivery. Check with the tester before retrying. ' + err);
     return;
   }
-  writeState_(sheet, r, STATUS.ready, confirmed, new Date(), '', due);
+  writeState_(sheet, r, STATUS.ready, now, new Date(), '');
 }
 
-function dueAt_(confirmed) {
-  return new Date(confirmed.getTime() + CONFIG.delayHours * 60 * 60 * 1000);
-}
-
-function startWait_(sheet, r, confirmed, manual) {
-  writeState_(sheet, r, manual ? STATUS.manual : STATUS.waiting, confirmed, '', '', dueAt_(confirmed));
-}
-
-function writeState_(sheet, r, status, confirmed, sent, note, due) {
-  sheet.getRange(r, COL.status, 1, 5).setValues([[status, confirmed, sent, note, due]]);
+function writeState_(sheet, r, status, confirmed, sent, note) {
+  sheet.getRange(r, COL.status, 1, 4).setValues([[status, confirmed, sent, note]]);
 }
 
 function isQueued_(status) {
-  return status === STATUS.pending || status === STATUS.waiting || status === STATUS.manual;
+  return status === STATUS.pending || LEGACY_WAITING.indexOf(status) >= 0;
 }
 
 function locked_(fn) {
@@ -285,7 +263,7 @@ function showPending() {
   var html = pending.length
     ? '<p>' + DIRECT_ADD + '</p><p><a href="' + CONFIG.groupMembersUrl + '" target="_blank">Open the ForkIt group members</a></p>' +
       '<textarea style="width:100%;height:100px" readonly onclick="this.select()">' + escape_(pending.join(', ')) + '</textarea>'
-    : '<p>No signups are waiting to be added. See the Testers tab for scheduled and sent emails.</p>';
+    : '<p>No signups are waiting to be added. See the Testers tab for sent emails.</p>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(480).setHeight(260), 'Emails to add');
 }
 
@@ -303,16 +281,17 @@ function confirmSelectedMembers() {
       if (row[0] && isQueued_(row[COL.status - 1])) targets.push({ r: start + i, email: row[0] });
     });
   });
-  if (!targets.length) return ui.alert('Select a pending or waiting tester.');
+  if (!targets.length) return ui.alert('Select a pending tester.');
   var ok = ui.alert('Confirm these people appear under Members?',
     targets.map(function (t) { return t.email; }).join('\n') +
-    '\n\nCheck actual membership, including accepted invitations. The install email waits at least ' +
-    CONFIG.delayHours + ' hours from confirmation.', ui.ButtonSet.OK_CANCEL);
+    '\n\nCheck actual membership, including accepted invitations. The install email goes out now.', ui.ButtonSet.OK_CANCEL);
   if (ok !== ui.Button.OK) return;
   targets.forEach(function (t) {
     withQueuedRow_(sheet, t.r, t.email, function (row) {
-      var first = row[COL.status - 1] === STATUS.pending ? null : row[COL.inGroup - 1];
-      startWait_(sheet, t.r, first instanceof Date ? first : new Date(), true);
+      // A readable group that says "not a member" still overrides the owner.
+      var member = null;
+      try { member = GroupsApp.getGroupByEmail(CONFIG.groupEmail).hasUser(row[0]); } catch (err) { /* outage */ }
+      processMembership_(sheet, t.r, row, member, '', true);
     });
   });
 }
@@ -336,11 +315,13 @@ function readyEmailText_() {
     'On your Android phone, use the Google account you submitted on the signup form.',
     '',
     '1. Open ' + CONFIG.optInUrl + ' and tap “Become a tester”.',
-    '2. When Google confirms you are a tester, follow its Google Play link and tap Install. You can also open ' + CONFIG.playStoreUrl,
-    '3. Open ForkIt, enter your name, and start a room with friends.',
+    '2. Once it says you are a tester, wait about 5 minutes. Google needs a moment to let you in.',
+    '3. Open ' + CONFIG.playStoreUrl + ' and tap Install.',
+    '4. Open ForkIt, enter your name, and start a room with friends.',
     '',
     'Please keep ForkIt installed and stay opted in to the Google Play test for at least 14 days after you join.',
-    'If Install is missing, check the account in both your browser and the Play Store. Reopen the opt-in link or reply here for help.',
+    'Says "Item not found"? The Play Store can keep showing that from before you were let in. Open Settings > Apps > Google Play Store > Force stop, then open the install link again. Still not found? Check that the Play Store uses the account you signed up with, wait half an hour and try again.',
+    'If the opt-in page says the app is not available, wait a few minutes and reopen it. Stuck? Reply here for help.',
     'Have an Android friend who wants to test? Share the signup form: ' + CONFIG.signupUrl,
     '',
     'Swipe right on dinner,', 'ForkIt',
@@ -353,8 +334,8 @@ function notifyOwner_(emails) {
     subject: 'New ForkIt Android tester' + (emails.length === 1 ? ': ' + emails[0] : 's (' + emails.length + ')'),
     name: CONFIG.senderName,
     body: emails.join(', ') + '\n\n' + DIRECT_ADD + '\n' + CONFIG.groupMembersUrl + '\n\n' +
-      'The sheet checks every 15 minutes. The install email waits at least ' + CONFIG.delayHours +
-      ' hours after confirmed membership. See Send after in ' + SpreadsheetApp.getActive().getUrl(),
+      'The sheet checks every 15 minutes and emails the install link once they are in the group: ' +
+      SpreadsheetApp.getActive().getUrl(),
   });
 }
 
@@ -368,7 +349,7 @@ function addTester_(raw, when) {
       if (String(row[0]).trim().toLowerCase() === email) exists = true;
     });
     if (exists) return null;
-    sheet.appendRow([email, when, STATUS.pending, '', '', '', '']);
+    sheet.appendRow([email, when, STATUS.pending, '', '', '']);
     return email;
   });
 }
