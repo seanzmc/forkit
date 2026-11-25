@@ -123,6 +123,9 @@ Notes:
   search until it closes.
 - **Device or other IDs** also covers the random install ID expo-updates
   sends to Expo when checking for updates; no extra row.
+- **Store reviews add no row.** The rating card after a second match is
+  Google's own (Play In-App Review): the rating goes from the person to Google
+  Play, and neither the app nor our server sees it.
 
 ## Age rating
 
