@@ -151,7 +151,7 @@ export default function SessionLobby() {
           handoffRef.current = true;
           router.replace({
             pathname: "/match",
-            params: { dish: JSON.stringify(msg.dish), meal: msg.session.meal, sample: msg.session.sample },
+            params: { dish: JSON.stringify(msg.dish), code, meal: msg.session.meal, sample: msg.session.sample },
           });
         } else if (msg.type === "member_joined" || msg.type === "member_left") {
           setSession(msg.session);
