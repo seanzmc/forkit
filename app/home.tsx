@@ -22,7 +22,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Colors from "@/constants/colors";
 import { VersionLabel } from "@/components/VersionLabel";
-import { HowItWorks, useHowItWorks } from "@/components/HowItWorks";
+import { HowItWorks } from "@/components/HowItWorks";
 import { LinearGradient } from "expo-linear-gradient";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { DECKS, MEALS, mealForTime, type Deck, type Meal, type SessionMode } from "@/lib/food-data";
@@ -136,7 +136,7 @@ export default function HomeScreen() {
   const [locationPermission, requestPermission] = Location.useForegroundPermissions();
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const codeInputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
-  const howItWorks = useHowItWorks();
+  const [showGuide, setShowGuide] = useState(false);
 
   // The room code field is the last thing on the screen, so on Android
   // (edge-to-edge, where the window no longer resizes for the keyboard) it
@@ -155,7 +155,7 @@ export default function HomeScreen() {
   useEffect(() => {
     AsyncStorage.getItem("userName").then((n) => {
       if (n) setUserName(n);
-      else router.replace("/");
+      else router.replace("/name");
     });
     AsyncStorage.getItem("selectedRadius").then((r) => {
       if (r) setSelectedRadius(parseInt(r, 10));
@@ -287,7 +287,7 @@ export default function HomeScreen() {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("userName");
-    router.replace("/");
+    router.replace("/name");
   };
 
   return (
@@ -316,8 +316,12 @@ export default function HomeScreen() {
               <Text style={styles.subGreeting}>Ready to swipe right on dinner?</Text>
             </View>
             <View style={styles.headerBtns}>
+              <Pressable onPress={() => router.dismissTo("/")} style={styles.avatarBtn}
+                accessibilityRole="button" accessibilityLabel="Back to recipe swiping">
+                <Ionicons name="albums-outline" size={22} color={Colors.textSecondary} />
+              </Pressable>
               <Pressable
-                onPress={howItWorks.open}
+                onPress={() => setShowGuide(true)}
                 style={styles.avatarBtn}
                 accessibilityLabel="How ForkIt works"
               >
@@ -634,7 +638,7 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <HowItWorks visible={howItWorks.visible} onClose={howItWorks.close} />
+      <HowItWorks visible={showGuide} onClose={() => setShowGuide(false)} />
     </LinearGradient>
   );
 }

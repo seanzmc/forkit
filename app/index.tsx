@@ -1,269 +1,112 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  Keyboard,
-} from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  withTiming,
-  FadeInDown,
-} from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import Colors from "@/constants/colors";
-import { VersionLabel } from "@/components/VersionLabel";
-import { LinearGradient } from "expo-linear-gradient";
+import { DishCard } from "@/components/DishCard";
+import { RecipeDetails } from "@/components/RecipeDetails";
+import { shuffleRecipes, type Dish } from "@/lib/food-data";
 import { takeLaunchMatch } from "@/lib/push";
 
-export default function WelcomeScreen() {
-  const insets = useSafeAreaInsets();
-  // Set when an invite link opened the app before a name was saved; after
-  // the name is entered we go straight to that session.
+export default function QuickSwipeScreen() {
   const { join } = useLocalSearchParams<{ join?: string }>();
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(true);
-  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const [deck, setDeck] = useState(shuffleRecipes);
+  const [index, setIndex] = useState(0);
+  const [recipe, setRecipe] = useState<Dish | null>(null);
+  const current = deck[index];
 
-  function goNext() {
-    if (join) router.replace({ pathname: "/session/[code]", params: { code: join } });
-    else router.replace("/home");
+  useEffect(() => {
+    if (join) return;
+    takeLaunchMatch().then((match) => {
+      if (match) router.replace({
+        pathname: "/match",
+        params: { dish: JSON.stringify(match.dish), code: match.code, meal: match.meal, sample: match.sample },
+      });
+    });
+  }, [join]);
+
+  if (join) return <Redirect href={{ pathname: "/session/[code]", params: { code: join } }} />;
+
+  function swipe(vote: "like" | "pass", dish: Dish) {
+    if (dish !== current || recipe) return;
+    Haptics.selectionAsync();
+    setIndex(index + 1);
+    if (vote === "like") setRecipe(dish);
   }
 
-  const logoScale = useSharedValue(0.8);
-  const logoOpacity = useSharedValue(0);
-
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-    opacity: logoOpacity.value,
-  }));
-
-  useEffect(() => {
-    logoScale.set(withDelay(100, withSpring(1, { damping: 12 })));
-    logoOpacity.set(withDelay(100, withTiming(1, { duration: 600 })));
-
-    Promise.all([AsyncStorage.getItem("userName"), takeLaunchMatch()]).then(
-      ([storedName, launchMatch]) => {
-        if (launchMatch) {
-          router.replace({
-            pathname: "/match",
-            params: {
-              dish: JSON.stringify(launchMatch.dish),
-              code: launchMatch.code,
-              meal: launchMatch.meal,
-              sample: launchMatch.sample,
-            },
-          });
-        } else if (storedName) {
-          goNext();
-        } else {
-          setLoading(false);
-        }
-      }
-    );
-  }, []);
-
-  // Keep the input and "Let's Eat" in view above the keyboard.
-  useEffect(() => {
-    const sub = Keyboard.addListener("keyboardDidShow", () =>
-      scrollRef.current?.scrollToEnd({ animated: true })
-    );
-    return () => sub.remove();
-  }, []);
-
-  const handleContinue = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    Keyboard.dismiss();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await AsyncStorage.setItem("userName", trimmed);
-    goNext();
-  };
-
-  if (loading) return null;
-
   return (
-    <LinearGradient
-      colors={["#0F0F0F", "#1A0A00", "#0F0F0F"]}
-      style={styles.container}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.flex}
-      >
-        {/* Scroll rather than squash: when the keyboard shrinks the space,
-            the logo block keeps its height instead of overlapping the form. */}
-        <ScrollView
-          ref={scrollRef}
-          style={{ marginTop: insets.top, marginLeft: insets.left, marginRight: insets.right }}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-        >
-          <View
-            style={[
-              styles.content,
-              {
-                paddingTop: Platform.OS === "web" ? 67 : 60,
-                paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 40),
-              },
-            ]}
-          >
-            <Animated.View style={[styles.logoContainer, logoStyle]}>
-              <Image
-                source={require("@/assets/images/logo.png")}
-                style={styles.logo}
-                accessibilityLabel="ForkIt logo"
-              />
-              <Text style={styles.appName}>ForkIt</Text>
-              <Text style={styles.tagline}>Swipe right on dinner</Text>
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.formContainer}>
-              <Text style={styles.label}>What should we call you?</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Your name..."
-                placeholderTextColor={Colors.textMuted}
-                value={name}
-                onChangeText={setName}
-                returnKeyType="done"
-                onSubmitEditing={handleContinue}
-                autoCapitalize="words"
-                maxLength={24}
-              />
-
-              <Pressable
-                onPress={handleContinue}
-                style={({ pressed }) => [
-                  styles.button,
-                  { opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
-                  !name.trim() && styles.buttonDisabled,
-                ]}
-                disabled={!name.trim()}
-              >
-                <LinearGradient
-                  colors={[Colors.accent, Colors.accentDeep]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
-                  <Text style={styles.buttonText}>{"Let's Eat"}</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </LinearGradient>
-              </Pressable>
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.delay(600)} style={styles.footer}>
-              <Text style={styles.footerText}>
-                Match with friends on the perfect meal
-              </Text>
-              <VersionLabel />
-            </Animated.View>
+    <SafeAreaView style={styles.screen}>
+      <View>
+        <Text style={styles.title}>What sounds good?</Text>
+        <Text style={styles.hint}>Swipe right for the recipe, left to pass.</Text>
+      </View>
+      <View style={styles.stack}>
+        {current ? (
+          <DishCard key={current.id} dishes={[current]} onSwipe={swipe} isTop scale={1} offset={0} />
+        ) : (
+          <View style={styles.empty}>
+            <Text style={styles.title}>You’ve seen every recipe.</Text>
+            <Pressable accessibilityRole="button" style={styles.control} onPress={() => {
+              setDeck(shuffleRecipes());
+              setIndex(0);
+            }}>
+              <Text style={styles.link}>Shuffle again</Text>
+            </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+        )}
+      </View>
+      {current && (
+        <View style={styles.row}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Pass" style={styles.control} onPress={() => swipe("pass", current)}>
+            <Ionicons name="close" size={24} color={Colors.red} />
+            <Text style={styles.buttonText}>Pass</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="See recipe" style={styles.control} onPress={() => swipe("like", current)}>
+            <Ionicons name="heart" size={22} color={Colors.green} />
+            <Text style={styles.buttonText}>See recipe</Text>
+          </Pressable>
+        </View>
+      )}
+      <Pressable accessibilityRole="button" style={styles.nav} onPress={() => router.push("/name")}>
+        <Text style={styles.link}>Dine out or swipe with friends</Text>
+        <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
+      </Pressable>
+      <Modal visible={!!recipe} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setRecipe(null)}>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.sheet}>
+            <Pressable accessibilityRole="button" style={styles.nav} onPress={() => setRecipe(null)}>
+              <Ionicons name="arrow-back" size={18} color={Colors.accent} />
+              <Text style={styles.link}>Keep swiping</Text>
+            </Pressable>
+            {recipe && (
+              <ScrollView contentContainerStyle={styles.details}>
+                <Text style={styles.title}>{recipe.name}</Text>
+                <RecipeDetails key={recipe.id} dish={recipe} />
+              </ScrollView>
+            )}
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  flex: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: 28,
-    justifyContent: "space-between",
+  screen: { flex: 1, backgroundColor: Colors.background, padding: 16, gap: 12 },
+  sheet: { flex: 1, backgroundColor: Colors.background },
+  stack: { flex: 1, position: "relative" },
+  details: { padding: 18, gap: 16 },
+  title: { color: Colors.text, fontSize: 24, fontFamily: "Poppins_700Bold" },
+  hint: { color: Colors.textSecondary, fontSize: 14, fontFamily: "Poppins_400Regular" },
+  row: { flexDirection: "row", justifyContent: "center", gap: 14 },
+  control: {
+    minHeight: 48, paddingHorizontal: 20, borderRadius: 24, backgroundColor: Colors.surface,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
-  logoContainer: {
-    alignItems: "center",
-    gap: 12,
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingVertical: 24,
-  },
-  logo: {
-    width: 112,
-    height: 112,
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: "rgba(255, 107, 53, 0.25)",
-  },
-  appName: {
-    fontSize: 52,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.text,
-    letterSpacing: -1,
-  },
-  tagline: {
-    fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.accent,
-    textAlign: "center",
-  },
-  formContainer: {
-    gap: 14,
-    paddingBottom: 20,
-  },
-  label: {
-    fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.text,
-  },
-  input: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    fontSize: 16,
-    fontFamily: "Poppins_400Regular",
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  button: {
-    borderRadius: 16,
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.4,
-  },
-  buttonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 18,
-    paddingHorizontal: 28,
-  },
-  buttonText: {
-    fontSize: 17,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#fff",
-  },
-  footer: {
-    alignItems: "center",
-    gap: 6,
-  },
-  footerText: {
-    fontSize: 13,
-    fontFamily: "Poppins_400Regular",
-    color: Colors.textMuted,
-    textAlign: "center",
-  },
+  nav: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  link: { color: Colors.accent, fontSize: 15, fontFamily: "Poppins_600SemiBold" },
+  buttonText: { color: Colors.text, fontSize: 15, fontFamily: "Poppins_600SemiBold" },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
 });

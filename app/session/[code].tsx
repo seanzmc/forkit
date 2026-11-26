@@ -25,7 +25,6 @@ import { getMemberId } from "@/lib/member-id";
 import { shareSessionCode } from "@/lib/share-session";
 import { getPushToken } from "@/lib/push";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
-import { HowItWorks, useHowItWorks } from "@/components/HowItWorks";
 
 // Backoff before each reconnect attempt; after the last one the lobby shows a
 // Retry button instead of trying forever.
@@ -42,7 +41,6 @@ export default function SessionLobby() {
   const compact = height - insets.top - insets.bottom < 700;
   const gap = compact ? 12 : 20;
   // Invite links skip home, so first-timers who arrive that way see it here.
-  const howItWorks = useHowItWorks();
   const [session, setSession] = useState<SessionState | null>(null);
   const [, setDishes] = useState<Dish[]>([]);
   const [isHost, setIsHost] = useState(false);
@@ -73,7 +71,7 @@ export default function SessionLobby() {
     const name = await AsyncStorage.getItem("userName");
     if (closingRef.current) return;
     if (!name) {
-      router.replace({ pathname: "/", params: { join: code?.toUpperCase() } });
+      router.replace({ pathname: "/name", params: { join: code?.toUpperCase() } });
       return;
     }
 
@@ -459,7 +457,6 @@ export default function SessionLobby() {
           <VersionLabel />
         </Animated.View>
       </View>
-      <HowItWorks visible={howItWorks.visible} onClose={howItWorks.close} />
     </LinearGradient>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   Platform,
@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -25,30 +24,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-
-const SEEN_KEY = "seenHowItWorks";
-
-// Shows the walkthrough the first time a device reaches a screen that calls
-// this (home, or the lobby when an invite link skipped home), and lets the
-// screen open it again. Storage errors leave it closed rather than nagging.
-export function useHowItWorks() {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    AsyncStorage.getItem(SEEN_KEY)
-      .then((seen) => {
-        if (!seen) setVisible(true);
-      })
-      .catch(() => {});
-  }, []);
-  const open = useCallback(() => setVisible(true), []);
-  // Marked seen only once closed, so a lobby that moves on to the game
-  // mid-walkthrough shows it again next time.
-  const close = useCallback(() => {
-    setVisible(false);
-    AsyncStorage.setItem(SEEN_KEY, "1").catch(() => {});
-  }, []);
-  return { visible, open, close };
-}
 
 type Step = {
   title: string;
