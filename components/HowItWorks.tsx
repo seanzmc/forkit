@@ -33,18 +33,18 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    title: "Start a room",
-    body: "Pick Dine Out for restaurants near you or Cook In for recipes. Dining out, pick the meal, then By place for one card per restaurant or By dish for a card per dish. Tap Create Room and share the 6-character code or invite link; your friends tap Join Room to get in.",
+    title: "Pick what to swipe on",
+    body: "Start on a Cook In recipe, or tap Dine Out for nearby places. Tap the meal and distance to change the restaurant cards. Open Friends to invite someone to your deck or join with a code.",
     art: <RoomArt />,
   },
   {
     title: "Swipe on dishes",
-    body: "Swipe right on what you'd eat, left on what you wouldn't. On a By place card, tap either side of the photo to flip through more dishes from the same place. The middle button undoes a swipe, and the circles up top let you invite more people. Nobody sees how you voted.",
+    body: "Swipe right on what you'd eat, left on what you wouldn't. On a By place card, tap either side of the photo to flip through more dishes from the same place. The middle button undoes a swipe, and Friends lets you invite more people. Nobody sees how you voted.",
     art: <SwipeArt />,
   },
   {
     title: "It's a match",
-    body: "The moment most of the group likes the same restaurant, or the same recipe when cooking in, everyone gets the match, with directions, delivery and a call button, or the full recipe and a shopping list.",
+    body: "When at least two people and more than half the group like the same restaurant, or the same recipe when cooking in, everyone gets the match, with directions, delivery and a call button, or the full recipe and a shopping list.",
     art: <MatchArt />,
   },
   {
@@ -169,7 +169,7 @@ function RoomArt() {
         <Text style={styles.code}>K7Q2XM</Text>
         <View style={styles.shareRow}>
           <Ionicons name="share-outline" size={14} color={Colors.accent} />
-          <Text style={styles.shareText}>Share with your group</Text>
+          <Text style={styles.shareText}>Share invite</Text>
         </View>
       </View>
       <View style={styles.avatars}>

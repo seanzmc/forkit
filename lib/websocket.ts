@@ -18,6 +18,7 @@ export type SessionState = {
   // Dine-out rooms only: one card per place or per dish. Absent from older
   // servers, which always dealt by place.
   deck?: Deck;
+  radius?: number;
   // Dine-out rooms using made-up restaurants; absent from older servers.
   sample?: SampleReason;
   // Which round of swiping this is, from 1; repeat when this round's deck is
@@ -35,7 +36,7 @@ export type SessionState = {
 // On join the client sends its code, userId, name and optional pushToken.
 // The swipe screen asks for absolute counts with supportsSwipeCounts. On
 // reconnect it can also send its own private swipes and their round.
-// Other client messages: push_token, start, swipe and undo (each with its round, so a vote on an
+// Other client messages: set_name (the current member only), push_token, start, swipe and undo (each with its round, so a vote on an
 // earlier round's deck is dropped), new_round (once everyone has swiped through
 // with no match), leave (left the room on purpose, so the server drops the
 // member at once instead of keeping them as away), ping. Received by the client:

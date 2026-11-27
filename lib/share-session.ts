@@ -1,17 +1,28 @@
-import { Share } from "react-native";
+import { Platform, Share } from "react-native";
 import { getApiUrl } from "./query-client";
 
-// The tappable invite for a session. Opens the app straight into the lobby
-// when installed (see /join on the server and app/+native-intent.tsx).
 export function joinLink(code: string): string {
   return new URL(`join/${code.toUpperCase()}`, getApiUrl()).href;
 }
 
-// Invite text for a session code; used by the lobby and the in-game panel.
-export function shareSessionCode(code: string) {
-  const upper = code.toUpperCase();
-  return Share.share({
-    message: `Let's swipe right on dinner! Join my ForkIt room: ${joinLink(upper)}\n\nOr open ForkIt, tap Join Room and enter ${upper}.`,
-    title: "ForkIt - Swipe right on dinner",
-  });
+export async function shareSessionCode(code: string): Promise<string> {
+  const url = joinLink(code);
+  try {
+    if (Platform.OS === "web") {
+      if (navigator.share) {
+        await navigator.share({ title: "Swipe with me on ForkIt", url });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        return "Invite link copied.";
+      } else return "Share the room code with your friend.";
+    } else {
+      await Share.share({
+        title: "Swipe with me on ForkIt",
+        message: `Swipe with me on ForkIt! ${url}\n\nOr open Friends, tap Join with a code, and enter ${code.toUpperCase()}.`,
+      });
+    }
+    return "";
+  } catch (e) {
+    return e instanceof Error && e.name === "AbortError" ? "" : "You can share the room code above.";
+  }
 }

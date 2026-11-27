@@ -51,6 +51,7 @@ interface Session {
   // Dine-out only: one card per place (its dishes flipped through on it) or
   // one per dish. Cook-in is always one card per recipe.
   deck?: Deck;
+  radius?: number;
   // Set when a dine-out room fell back to the made-up DISHES restaurants:
   // the host sent no location, or Places found nothing (or failed).
   sample?: SampleReason;
@@ -103,6 +104,10 @@ function broadcastToSession(session: Session, message: object, excludeId?: strin
   });
 }
 
+function cleanMemberName(name: unknown): string {
+  return typeof name === "string" ? name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 24) || "Guest" : "Guest";
+}
+
 function getSessionState(session: Session) {
   return {
     code: session.code,
@@ -111,6 +116,7 @@ function getSessionState(session: Session) {
     mode: session.mode,
     meal: session.meal,
     deck: session.deck,
+    radius: session.radius,
     sample: session.sample,
     round: session.round,
     repeat: session.repeat,
@@ -152,7 +158,7 @@ function checkForMatch(session: Session): boolean {
   // Strict majority: more than half, not half. Math.ceil(n / 2) let exactly
   // half decide on every even group size — in a 2-person session a single
   // like ended the game before the other person had voted at all.
-  const majority = Math.floor(memberCount / 2) + 1;
+  const majority = Math.max(2, Math.floor(memberCount / 2) + 1);
 
   if (session.mode === "cook-in") {
     const dishLikes = new Map<string, { dish: Dish; likers: Set<string> }>();
@@ -344,7 +350,10 @@ async function dealNextRound(session: Session): Promise<{ dishes: Dish[]; repeat
     search.radius = radius;
     // A sample result means nothing new was found (or the lookup failed):
     // keep the real places from before rather than switch to made-up ones.
-    if (!sample && dishes.length > 0) return { dishes: dealDeck(dishes, session.deck), repeat: false };
+    if (!sample && dishes.length > 0) {
+      session.radius = radius;
+      return { dishes: dealDeck(dishes, session.deck), repeat: false };
+    }
   }
   return { dishes: dealDeck(session.dishes, session.deck), repeat: true };
 }
@@ -901,11 +910,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/sessions", async (req, res) => {
-    let code = generateCode();
-    while (sessions.has(code)) {
-      code = generateCode();
-    }
-
     const {
       lat,
       lng,
@@ -915,6 +919,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       deck: reqDeck,
       day,
       minutes,
+      swipeFirst,
+      recipeOrder,
     } = req.body || {};
     const mode: SessionMode = reqMode === "cook-in" ? "cook-in" : "dine-out";
     // Older app builds send no meal: they get dinner, as before.
@@ -934,8 +940,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (mode === "cook-in") {
       dishes = shuffleRecipes();
+      if (swipeFirst === true && recipeOrder !== undefined) {
+        // Keep this device's existing deck. Only the ordering comes from the
+        // client; names, photos and recipe contents come from our catalog.
+        const ranks = new Map<string, number>();
+        if (!Array.isArray(recipeOrder) || !recipeOrder.length || recipeOrder.length > dishes.length ||
+            recipeOrder.some((id) => !dishes.some((dish) => dish.id === id)) ||
+            new Set(recipeOrder).size !== recipeOrder.length) {
+          return res.status(400).json({ error: "This recipe deck cannot be shared." });
+        }
+        recipeOrder.forEach((id, i) => ranks.set(id, i));
+        // Recipes added on a newer server follow the client's existing cards.
+        dishes.sort((a, b) => (ranks.get(a.id) ?? ranks.size) - (ranks.get(b.id) ?? ranks.size));
+      }
       console.log(`Created cook-in session with ${dishes.length} recipes`);
-    } else if (lat && lng && radius) {
+    } else if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(radius) && radius > 0) {
       const radiusMeters = Math.min(Math.max(radius, 500), 50000);
       console.log(
         `Fetching ${meal} restaurants within ${radiusMeters}m`
@@ -949,15 +968,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     if (mode === "dine-out") dishes = dealDeck(dishes, deck);
 
+    let code = generateCode();
+    while (sessions.has(code)) code = generateCode();
     const session: Session = {
       code,
       hostId: "",
       members: new Map(),
       dishes,
-      status: "lobby",
+      status: swipeFirst === true ? "swiping" : "lobby",
       mode,
       meal: mode === "dine-out" ? meal : undefined,
       deck: mode === "dine-out" ? deck : undefined,
+      radius: mode === "dine-out" && Number.isFinite(radius) ? Math.min(Math.max(radius, 500), MAX_RADIUS_METERS) : undefined,
       sample,
       createdAt: Date.now(),
       lastActive: Date.now(),
@@ -969,7 +991,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     rememberPlaces(session);
 
     sessions.set(code, session);
-    res.json({ code, mode, dishCount: dishes.length });
+    res.json(swipeFirst === true
+      ? { code, session: getSessionState(session), dishes }
+      : { code, mode, dishCount: dishes.length });
   });
 
   app.get("/api/sessions/:code", (req, res) => {
@@ -1016,10 +1040,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             return;
           }
-          const cleanName =
-            typeof msg.name === "string"
-              ? msg.name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 24)
-              : "";
 
           memberId = msg.userId;
           sessionCode = session.code;
@@ -1043,10 +1063,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // while offline) replaces it.
           const replayed =
             (msg.round ?? 1) === session.round ? replayedSwipes(session, msg.swipes) : {};
-          const swipes = msg.swipes === undefined ? (existing?.swipes ?? {}) : replayed;
+          const swipes = msg.swipes === undefined || (msg.round ?? 1) !== session.round
+            ? (existing?.swipes ?? {}) : replayed;
           session.members.set(memberId, {
             id: memberId,
-            name: cleanName || "Guest",
+            name: cleanMemberName(msg.name),
             ws,
             supportsSwipeCounts: msg.supportsSwipeCounts === true,
             swipes,
@@ -1087,7 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           memberId = "";
         } else if (msg.type === "start") {
           const session = sessions.get(sessionCode);
-          if (!session || session.hostId !== memberId) return;
+          if (!session || session.status !== "lobby" || session.hostId !== memberId) return;
           if (session.members.size < 1) return;
 
           session.status = "swiping";
@@ -1151,6 +1172,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 dishes: session.dishes,
               });
             });
+        } else if (msg.type === "set_name") {
+          const session = sessions.get(sessionCode);
+          const member = session?.members.get(memberId);
+          if (!session || member?.ws !== ws || typeof msg.name !== "string") return;
+          member.name = cleanMemberName(msg.name);
+          broadcastToSession(session, { type: "member_joined", session: getSessionState(session) });
         } else if (msg.type === "push_token") {
           // Sent after join, once the device has a token (it can take a
           // while on iOS, or wait on the permission prompt).

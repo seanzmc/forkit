@@ -28,7 +28,7 @@ function RootLayoutNav() {
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
-      <Stack.Screen name="index" />
+      <Stack.Screen name="index" options={{ gestureEnabled: false }} />
       <Stack.Screen name="home" />
       <Stack.Screen name="session/[code]" />
       {/* Card swipes are horizontal pans; the stack's back gesture (full-screen
