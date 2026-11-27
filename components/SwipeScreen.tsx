@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
-import { DishCard } from "./DishCard";
+import { DishCard, type DishCardHandle } from "./DishCard";
 import { DineOptions } from "./DineOptions";
 import { HowItWorks } from "./HowItWorks";
 import { MatchActions } from "./MatchActions";
@@ -71,6 +71,8 @@ async function createDeck(body: object): Promise<{ code: string; dishes: Dish[];
 export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const focused = useIsFocused();
   const [deck, setDeck] = useState<DeckState>(() => (initialCode ? guestDeck(initialCode) : cookDeck()));
+  const card = useRef<DishCardHandle>(null);
+  const [outgoing, setOutgoing] = useState<{ dishes: Dish[]; index: number; key: string } | null>(null);
   const latest = useRef(deck);
   const personal = useRef<Partial<Record<SessionMode, DeckState>>>({});
   const mounted = useRef(true);
@@ -125,6 +127,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       const session = msg.session,
         round = session.round ?? 1;
       const restored = !previous.dishes.length && sent?.round === round ? sent.swipes : {};
+      if (round !== previous.round) setOutgoing(null);
       const known = new Map(msg.dishes.map((dish) => [dish.id, dish]));
       const history =
         previous.dishes.length && round === previous.round
@@ -266,6 +269,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     }
   }
   function switchDeck(next: DeckState) {
+    setOutgoing(null);
     sharePending.current = false;
     setLost(false);
     setLoadingRound(false);
@@ -391,26 +395,33 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const likes = deck.history.filter((s) => s.vote === "like");
   const waitingForHost = deck.session?.status === "lobby";
   const canVote = !!dish && !waitingForHost && !loadingRound;
+  const front = outgoing?.dishes ?? top;
+  const behind = outgoing ? top : remaining[1];
+  const cardKeyPrefix = deck.mode === "dine-out" ? `${deck.code}-${deck.round}-` : `cook-${deck.round}-`;
   function vote(direction: SwipeVote, item: Dish) {
     const current = latest.current;
     if (
-      !canVote ||
+      !canVote || outgoing ||
       panel ||
-      !top?.includes(item) ||
+      !top || !top.includes(item) ||
       current.code !== deck.code ||
       current.round !== deck.round ||
       current.history.some((s) => cardKey(s.dish, byDish) === cardKey(item, byDish))
     )
-      return;
+      return false;
+    // Count the vote immediately (including for an invite or reconnect) and
+    // keep its card in front until the slide has actually finished.
+    setOutgoing({ dishes: top, index: deck.dishIndex, key: cardKeyPrefix + top[0].id });
     const next = { ...current, history: [...current.history, { dish: item, vote: direction }], dishIndex: 0 };
     saveVotes(next);
     if (current.code) room.send({ type: "swipe", dishId: item.id, vote: direction, round: current.round });
     void Haptics.selectionAsync();
+    return true;
   }
   function undo() {
     const current = latest.current,
       last = current.history[current.history.length - 1];
-    if (!last || loadingRound) return;
+    if (!last || loadingRound || outgoing) return;
     const group = cards.find((c) => cardKey(c[0], byDish) === cardKey(last.dish, byDish));
     saveVotes({
       ...current,
@@ -522,37 +533,34 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
           </View>
         )}
         <View style={s.stack}>
-          {canVote && top ? (
+          {front && (canVote || outgoing) ? (
             <>
-              {remaining[1] && (
+              {behind && (
                 <DishCard
-                  key={"next-" + remaining[1][0].id}
-                  dishes={remaining[1]}
-                  onSwipe={() => {}}
+                  key={cardKeyPrefix + behind[0].id}
+                  dishes={behind}
                   isTop={false}
                   scale={0.96}
                   offset={3}
                 />
               )}
               <DishCard
-                key={top[0].id}
-                dishes={top}
-                index={deck.dishIndex}
+                key={outgoing?.key ?? cardKeyPrefix + front[0].id}
+                ref={card}
+                dishes={front}
+                index={outgoing?.index ?? deck.dishIndex}
                 onIndexChange={(index) => {
                   update({ ...latest.current, dishIndex: index });
                   setShowHint(false);
                 }}
                 showHint={showHint}
                 onSwipe={vote}
+                onSwipeEnd={finished => setOutgoing(current => current?.dishes === finished ? null : current)}
+                onViewRecipe={cook ? viewDetails : undefined}
                 isTop
                 scale={1}
                 offset={0}
               />
-              {cook && (
-                <Pressable style={s.recipe} accessibilityRole="button" onPress={() => viewDetails(dish)}>
-                  <Text style={s.recipeText}>View recipe</Text>
-                </Pressable>
-              )}
             </>
           ) : (
             <View style={s.empty}>
@@ -600,9 +608,9 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Pass"
-            disabled={!canVote}
+            disabled={!canVote || !!outgoing}
             style={[s.vote, !canVote && s.dim]}
-            onPress={() => dish && vote("pass", dish)}
+            onPress={() => card.current?.swipe("pass")}
           >
             <Ionicons name="close" size={23} color={Colors.red} />
             <Text style={s.actionText}>Pass</Text>
@@ -610,7 +618,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Undo last swipe"
-            disabled={!count || loadingRound}
+            disabled={!count || loadingRound || !!outgoing}
             style={[s.undo, (!count || loadingRound) && s.dim]}
             onPress={undo}
           >
@@ -619,9 +627,9 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Like"
-            disabled={!canVote}
+            disabled={!canVote || !!outgoing}
             style={[s.vote, !canVote && s.dim]}
-            onPress={() => dish && vote("like", dish)}
+            onPress={() => card.current?.swipe("like")}
           >
             <Ionicons name="heart" size={21} color={Colors.green} />
             <Text style={s.actionText}>Like</Text>
@@ -767,21 +775,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
     gap: 5,
   },
-  stack: { flex: 1, position: "relative", minHeight: 0 },
+  stack: { flex: 1, position: "relative", minHeight: 0, overflow: "hidden" },
   empty: { flex: 1, gap: 12, alignItems: "center", justifyContent: "center", padding: 12 },
   title: { color: Colors.text, fontSize: 20, fontFamily: "Poppins_700Bold", textAlign: "center" },
   status: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  recipe: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    borderRadius: 20,
-    minHeight: 44,
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(0,0,0,0.74)",
-    justifyContent: "center",
-  },
-  recipeText: { color: Colors.text, fontFamily: "Poppins_600SemiBold", fontSize: 13 },
   actions: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 4 },
   vote: {
     flex: 1,

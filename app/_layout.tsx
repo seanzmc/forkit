@@ -2,6 +2,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
@@ -12,8 +14,13 @@ import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
 import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 import { StatusBar } from "expo-status-bar";
 import { onMatchTapped } from "@/lib/push";
+import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
+
+// Expo Router supplies zero insets and a zero frame on web. Measure Safari's
+// viewport so controls stay clear of the Duo's camera and system buttons.
+const WebSafeArea = Platform.OS === "web" ? SafeAreaProvider : React.Fragment;
 
 function RootLayoutNav() {
   // A match notification tapped while the app is open or backgrounded. The
@@ -27,7 +34,7 @@ function RootLayoutNav() {
   );
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: Colors.background } }}>
       <Stack.Screen name="index" options={{ gestureEnabled: false }} />
       <Stack.Screen name="home" />
       <Stack.Screen name="session/[code]" />
@@ -58,9 +65,11 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <StatusBar style="light" />
-          <RootLayoutNav />
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
+          <WebSafeArea>
+            <StatusBar style="light" />
+            <RootLayoutNav />
+          </WebSafeArea>
         </GestureHandlerRootView>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -1,42 +1,50 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, PanResponder } from "react-native";
+import React, { useEffect, useImperativeHandle, useRef } from "react";
+import { View, Text, StyleSheet, Pressable, type GestureResponderEvent } from "react-native";
 import { Image } from "expo-image";
-import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withTiming, withRepeat,
-  withSequence, runOnJS, interpolate, Extrapolate,
+  useSharedValue, useAnimatedStyle, withTiming, withRepeat,
+  withSequence, runOnJS, Easing,
 } from "react-native-reanimated";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import type { Dish } from "@/lib/food-data";
+import type { SwipeVote } from "@/lib/swipe-review";
 import { PlacesAttribution } from "@/components/PlacesAttribution";
 import { SuggestedDishLabel } from "@/components/SuggestedDishLabel";
 import { GroundedSource } from "@/components/GroundedSource";
 import { resolveImageUrl } from "@/lib/query-client";
 
 const TAP_SLOP = 8;
+const SWIPE_FRACTION = 0.3;
+export type DishCardHandle = { swipe: (direction: SwipeVote) => void };
 
 // A restaurant's dishes, one at a time: tap the right half for the next
 // dish, the left half for the previous one. A swipe votes on the dish
 // showing, so a match still lands on a dish someone actually liked.
 export function DishCard({
+  ref,
   dishes,
   index = 0,
   onIndexChange,
   onSwipe,
+  onSwipeEnd,
+  onViewRecipe,
   isTop,
   scale,
   offset,
   showHint = false,
 }: {
+  ref?: React.Ref<DishCardHandle>;
   dishes: Dish[];
   // Which dish shows. Kept by the screen so its like and pass buttons vote
   // on the same dish.
   index?: number;
   onIndexChange?: (index: number) => void;
-  onSwipe: (vote: "like" | "pass", dish: Dish) => void;
+  onSwipe?: (vote: SwipeVote, dish: Dish) => boolean;
+  onSwipeEnd?: (dishes: Dish[]) => void;
+  onViewRecipe?: (dish: Dish) => void;
   isTop: boolean;
   scale: number;
   offset: number;
@@ -45,22 +53,21 @@ export function DishCard({
 }) {
   const dish = dishes[index] ?? dishes[0];
   const count = dishes.length;
-  const frame = useSafeAreaFrame();
-  const insets = useSafeAreaInsets();
-  const swipeWidth = Math.max(1, frame.width - insets.left - insets.right);
-  const swipeThreshold = swipeWidth * 0.3;
-  const cardCenterX = frame.x + insets.left + swipeWidth / 2;
+  const surface = useRef<React.ComponentRef<typeof View>>(null);
+  const width = useRef(0);
+  const leaving = useRef(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   // A slow pulse so the hint reads as something to act on.
   const hintPulse = useSharedValue(1);
   useEffect(() => {
     if (!showHint) return;
-    hintPulse.value = withRepeat(
+    hintPulse.set(withRepeat(
       withSequence(withTiming(1.06, { duration: 700 }), withTiming(1, { duration: 700 })),
       -1
-    );
+    ));
   }, [showHint, hintPulse]);
-  const hintStyle = useAnimatedStyle(() => ({ transform: [{ scale: hintPulse.value }] }));
+  const hintStyle = useAnimatedStyle(() => ({ transform: [{ scale: hintPulse.get() }] }));
 
   // Load the other dishes' photos now so flipping to them is instant.
   useEffect(() => {
@@ -73,72 +80,96 @@ export function DishCard({
   }, [isTop, dishes]);
 
   const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const rotation = useSharedValue(0);
-  const likeOpacity = useSharedValue(0);
-  const passOpacity = useSharedValue(0);
+  const progress = useSharedValue(0);
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => isTop,
-    onMoveShouldSetPanResponder: () => isTop,
-    onPanResponderMove: (_, gs) => {
-      translateX.value = gs.dx;
-      translateY.value = gs.dy * 0.4;
-      rotation.value = (gs.dx / swipeWidth) * 25;
-      likeOpacity.value = Math.max(0, gs.dx / swipeThreshold);
-      passOpacity.value = Math.max(0, -gs.dx / swipeThreshold);
-    },
-    onPanResponderRelease: (_, gs) => {
-      if (gs.dx > swipeThreshold) {
-        translateX.value = withTiming(swipeWidth * 1.5, { duration: 300 });
-        translateY.value = withTiming(gs.dy, { duration: 300 });
-        runOnJS(onSwipe)("like", dish);
-      } else if (gs.dx < -swipeThreshold) {
-        translateX.value = withTiming(-swipeWidth * 1.5, { duration: 300 });
-        translateY.value = withTiming(gs.dy, { duration: 300 });
-        runOnJS(onSwipe)("pass", dish);
-      } else if (
-        onIndexChange &&
-        count > 1 &&
-        Math.abs(gs.dx) < TAP_SLOP &&
-        Math.abs(gs.dy) < TAP_SLOP
-      ) {
-        // Wraps around, so tapping on always comes back to the first dish.
-        const step = gs.x0 < cardCenterX ? -1 : 1;
+  function recenter() {
+    if (leaving.current) return;
+    translateX.set(withTiming(0, { duration: 150 }));
+    progress.set(withTiming(0, { duration: 150 }));
+  }
+  function swipe(direction: SwipeVote) {
+    if (leaving.current) return;
+    if (!isTop || !width.current || !onSwipe?.(direction, dish)) {
+      recenter();
+      return;
+    }
+    leaving.current = true;
+    const sign = direction === "like" ? 1 : -1;
+    progress.set(withTiming(sign, { duration: 90 }));
+    const complete = () => onSwipeEnd?.(dishes);
+    translateX.set(withTiming(sign * width.current, { duration: 200, easing: Easing.out(Easing.quad) }, finished => {
+      if (finished) runOnJS(complete)();
+    }));
+  }
+  useImperativeHandle(ref, () => ({ swipe }));
+
+  function move({ nativeEvent }: GestureResponderEvent) {
+    if (leaving.current || !touchStart.current || !width.current) return;
+    if (nativeEvent.touches.length > 1) {
+      touchStart.current = null;
+      recenter();
+      return;
+    }
+    const dx = nativeEvent.pageX - touchStart.current.x;
+    translateX.set(dx);
+    progress.set(Math.max(-1, Math.min(1, dx / (width.current * SWIPE_FRACTION))));
+  }
+  function release({ nativeEvent }: GestureResponderEvent) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (leaving.current || !start) return;
+    const end = nativeEvent.changedTouches[0] ?? nativeEvent;
+    const dx = end.pageX - start.x;
+    const dy = end.pageY - start.y;
+    if (width.current > 0 && Math.abs(dx) > width.current * SWIPE_FRACTION && Math.abs(dx) > Math.abs(dy)) {
+      swipe(dx > 0 ? "like" : "pass");
+      return;
+    }
+    recenter();
+    if (onIndexChange && count > 1 && Math.abs(dx) < TAP_SLOP && Math.abs(dy) < TAP_SLOP) {
+      surface.current?.measureInWindow((left, _top, cardWidth) => {
+        if (!surface.current || !cardWidth || leaving.current) return;
+        const step = start.x < left + cardWidth / 2 ? -1 : 1;
         onIndexChange((index + step + count) % count);
-        Haptics.selectionAsync();
-      } else {
-        translateX.value = withSpring(0, { damping: 15 });
-        translateY.value = withSpring(0, { damping: 15 });
-        rotation.value = withSpring(0, { damping: 15 });
-        likeOpacity.value = withTiming(0);
-        passOpacity.value = withTiming(0);
-      }
-    },
-  });
+        void Haptics.selectionAsync();
+      });
+    }
+  }
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { rotate: `${rotation.value}deg` },
+      { translateX: translateX.get() },
       { scale: isTop ? 1 : scale },
     ],
     top: isTop ? 0 : offset,
   }));
 
   const likeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(likeOpacity.value, [0, 1], [0, 1], Extrapolate.CLAMP),
+    opacity: Math.max(0, progress.get()),
   }));
 
   const passStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(passOpacity.value, [0, 1], [0, 1], Extrapolate.CLAMP),
+    opacity: Math.max(0, -progress.get()),
   }));
 
   return (
     <Animated.View
+      ref={surface}
+      onLayout={({ nativeEvent }) => { width.current = nativeEvent.layout.width; }}
+      pointerEvents={isTop ? "auto" : "none"}
+      aria-hidden={!isTop}
+      importantForAccessibility={isTop ? "auto" : "no-hide-descendants"}
       style={[styles.card, cardStyle]}
-      {...(isTop ? panResponder.panHandlers : {})}
+      onStartShouldSetResponder={() => isTop && !leaving.current}
+      onResponderGrant={({ nativeEvent }) => {
+        touchStart.current = { x: nativeEvent.pageX, y: nativeEvent.pageY };
+      }}
+      onResponderMove={move}
+      onResponderRelease={release}
+      onResponderTerminate={() => {
+        touchStart.current = null;
+        recenter();
+      }}
     >
       {dish.image ? (
         <Image
@@ -277,6 +308,11 @@ export function DishCard({
         </View>
         <PlacesAttribution dish={dish} />
       </View>
+      {onViewRecipe && (
+        <Pressable style={styles.recipe} accessibilityRole="button" onPress={() => onViewRecipe(dish)}>
+          <Text style={styles.recipeText}>View recipe</Text>
+        </Pressable>
+      )}
     </Animated.View>
   );
 }
@@ -300,6 +336,11 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "absolute",
   },
+  recipe: {
+    position: "absolute", top: 10, right: 10, borderRadius: 20, minHeight: 44,
+    paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.74)", justifyContent: "center",
+  },
+  recipeText: { color: Colors.text, fontFamily: "Poppins_600SemiBold", fontSize: 13 },
   noPhoto: { alignItems: "center", paddingTop: 80 },
   dishPager: {
     position: "absolute",
