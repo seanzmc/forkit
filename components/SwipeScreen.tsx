@@ -417,7 +417,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     const next = { ...current, history: [...current.history, { dish: item, vote: direction }], dishIndex: 0 };
     saveVotes(next);
     if (current.code) room.send({ type: "swipe", dishId: item.id, vote: direction, round: current.round });
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(direction === "like" ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     return true;
   }
   function undo() {
@@ -550,7 +550,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                 ref={card}
                 dishes={front}
                 index={outgoing?.index ?? deck.dishIndex}
-                onIndexChange={(index) => {
+                onIndexChange={outgoing ? undefined : (index) => {
                   update({ ...latest.current, dishIndex: index });
                   setShowHint(false);
                 }}
@@ -609,7 +609,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             accessibilityRole="button"
             accessibilityLabel="Pass"
             disabled={!canVote || !!outgoing}
-            style={[s.vote, !canVote && s.dim]}
+            style={({ pressed }) => [s.vote, !canVote && s.dim, pressed && s.pressed]}
             onPress={() => card.current?.swipe("pass")}
           >
             <Ionicons name="close" size={23} color={Colors.red} />
@@ -619,7 +619,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             accessibilityRole="button"
             accessibilityLabel="Undo last swipe"
             disabled={!count || loadingRound || !!outgoing}
-            style={[s.undo, (!count || loadingRound) && s.dim]}
+            style={({ pressed }) => [s.undo, (!count || loadingRound) && s.dim, pressed && s.pressed]}
             onPress={undo}
           >
             <Ionicons name="arrow-undo" size={20} color={Colors.accentGold} />
@@ -628,7 +628,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             accessibilityRole="button"
             accessibilityLabel="Like"
             disabled={!canVote || !!outgoing}
-            style={[s.vote, !canVote && s.dim]}
+            style={({ pressed }) => [s.vote, !canVote && s.dim, pressed && s.pressed]}
             onPress={() => card.current?.swipe("like")}
           >
             <Ionicons name="heart" size={21} color={Colors.green} />
@@ -748,7 +748,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
-  inner: { flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, gap: 9 },
+  inner: { flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, gap: 9, overflow: "hidden" },
   compact: { gap: 3, paddingTop: 2 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4 },
   tabs: { flexDirection: "row", backgroundColor: Colors.surface, padding: 3, borderRadius: 15 },
@@ -775,11 +775,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
     gap: 5,
   },
-  stack: { flex: 1, position: "relative", minHeight: 0, overflow: "hidden" },
+  stack: { flex: 1, position: "relative", minHeight: 0 },
   empty: { flex: 1, gap: 12, alignItems: "center", justifyContent: "center", padding: 12 },
   title: { color: Colors.text, fontSize: 20, fontFamily: "Poppins_700Bold", textAlign: "center" },
   status: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   actions: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 4 },
+  pressed: { transform: [{ scale: 0.94 }] },
   vote: {
     flex: 1,
     maxWidth: 162,
