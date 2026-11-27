@@ -78,7 +78,7 @@ export default function MatchScreen() {
   const insets = useSafeAreaInsets();
   const { height } = useSafeAreaFrame();
   const heroMaxHeight = Math.min(280, (height - insets.top - insets.bottom) * 0.4);
-  const [swipes] = useState(getSwipes);
+  const [swipes] = useState(() => getSwipes(code));
 
   const initialDish: Dish | null = (() => {
     try { return JSON.parse(dishParam ?? "null"); } catch { return null; }
@@ -318,9 +318,11 @@ export default function MatchScreen() {
 
         <Animated.View entering={FadeInDown.delay(600)} style={styles.actions}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to Home"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.replace("/home");
+              router.dismissTo("/");
             }}
             style={({ pressed }) => [
               styles.primaryBtn,
@@ -339,9 +341,11 @@ export default function MatchScreen() {
           </Pressable>
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="New Session"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.replace("/home");
+              router.dismissTo("/");
             }}
             style={({ pressed }) => [
               styles.secondaryBtn,

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { on, once } from "node:events";
 import WebSocket from "ws";
 
-// Run against the local server started by CI, using only a new Cook In room.
+// Uses isolated local rooms. Sample restaurants avoid external lookups.
 const origin = "http://127.0.0.1:" + (process.env.PORT || "5055");
 const signal = AbortSignal.timeout(15000);
 const sockets = [];
@@ -42,7 +42,62 @@ function snapshotCount(message, memberId) {
   return message.session.members.find((member) => member.id === memberId)?.swiped;
 }
 
+async function instantRoom(body) {
+  const response = await fetch(origin + "/api/sessions", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ swipeFirst: true, ...body }), signal,
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.session.status, "swiping");
+  return result;
+}
+
+async function checkInviteAfterSwiping() {
+  const { code, dishes } = await instantRoom({ mode: "cook-in", recipeOrder: ["r3", "r1", "r2"] });
+  assert.deepEqual(dishes.slice(0, 3).map(dish => dish.id), ["r3", "r1", "r2"]);
+  const host = await join(code, "Host", { swipes: { r3: "pass", r1: "like" }, round: 1 });
+  assert.equal(snapshotCount(host.joined, host.id), 2);
+  host.send({ type: "swipe", dishId: "r2", vote: "like" });
+  host.send({ type: "ping" });
+  await host.next("pong");
+  const friend = await join(code, "Friend");
+  assert.equal(friend.joined.session.status, "swiping");
+  assert.equal(snapshotCount(friend.joined, host.id), 3);
+  assert.deepEqual(friend.joined.dishes, dishes);
+  friend.send({ type: "swipe", dishId: "r1", vote: "pass" });
+  await expectCount(host, friend.id, 1);
+  friend.send({ type: "leave" });
+  assert.equal((await host.next("member_left")).session.status, "swiping");
+  const other = await join(code, "Another friend");
+  other.send({ type: "swipe", dishId: "r1", vote: "like" });
+  await expectCount(host, other.id, 1);
+  assert.equal((await host.next("match")).dish.id, "r1");
+}
+
+async function checkRestaurantMajority() {
+  const { code, dishes } = await instantRoom({ mode: "dine-out", meal: "dinner", deck: "dishes" });
+  const samePlace = dishes.filter(d => d.restaurant === "The Grill House");
+  assert.ok(samePlace.length >= 2);
+  const host = await join(code, "Host");
+  for (const dish of samePlace) host.send({ type: "swipe", dishId: dish.id, vote: "like" });
+  host.send({ type: "ping" });
+  await host.next("pong");
+  const second = await join(code, "Second");
+  const third = await join(code, "Third");
+  await join(code, "Fourth");
+  second.send({ type: "swipe", dishId: samePlace[1].id, vote: "like" });
+  await expectCount(host, second.id, 1);
+  const state = await (await fetch(origin + "/api/sessions/" + code, { signal })).json();
+  assert.equal(state.status, "swiping"); // Two out of four is still a tie.
+  third.send({ type: "swipe", dishId: samePlace[0].id, vote: "like" });
+  await expectCount(host, third.id, 1);
+  assert.equal((await host.next("match")).dish.restaurant, samePlace[0].restaurant);
+}
+
 try {
+  await checkInviteAfterSwiping();
+  await checkRestaurantMajority();
   const response = await fetch(origin + "/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -89,7 +144,7 @@ try {
   const match = await build9.next("match");
   assert.equal(match.dish.id, first.id);
   assert.equal(match.session.status, "matched");
-  console.log("Private progress, build 9 compatibility, reconnect and matching passed.");
+  console.log("Invite handoff, two-voter minimum, restaurant majority, private progress, build 9 compatibility and reconnect passed.");
 } finally {
   for (const ws of sockets) ws.terminate();
 }

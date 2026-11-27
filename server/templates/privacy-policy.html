@@ -83,13 +83,13 @@
       <h2>What the app collects</h2>
       <ul>
         <li>
-          <strong>A display name.</strong> Whatever you type when you open the
-          app. It is stored on your own device and sent to our server so the
+          <strong>An optional display name.</strong> You can use Guest or enter
+          a name in Friends. It is stored on your own device and sent to our server so the
           other people in your session can see who joined.
         </li>
         <li>
           <strong>Your location, only in "dine out" mode.</strong>
-          If you grant location permission and create a room, your coordinates,
+          If you grant location permission and request nearby restaurants, your coordinates,
           chosen search radius and the day and time on your phone are sent to
           our server to look up nearby restaurants that are open. They are held
           in the server's memory while the room is open, so a new round can
@@ -98,13 +98,15 @@
         </li>
         <li>
           <strong>A random member ID.</strong> Created by the app the first
-          time you join a session and kept on your device, so if you leave
+          time you open the swipe screen and kept on your device, so if you leave
           the app and come back you rejoin as the same person. It is sent to
           our server only while you are in a session and is never saved there.
         </li>
         <li>
           <strong>Your swipes.</strong> Which dishes you liked or passed on
           during a session, so the app can work out what the group agrees on.
+          Cook In votes stay on your device until you invite someone.
+          Dine Out uses a server room from the first restaurant deck.
         </li>
         <li>
           <strong>A push notification token, only if you allow
@@ -119,7 +121,7 @@
         <li>No email address, phone number, or password — there are no accounts.</li>
         <li>No contacts, photos, calendar, or microphone data.</li>
         <li>No advertising identifiers.</li>
-        <li>No background or continuous location. Location is read only while the app is open on its home screen, and sent only when you create a room.</li>
+        <li>No background or continuous location. Location is read and sent when you request nearby restaurants in Dine Out.</li>
       </ul>
 
       <h2>How long it is kept</h2>
@@ -132,12 +134,13 @@
         with no activity, whichever comes first. A room that found a match
         stays until that hour is up, so people coming back still get the
         result. There is no
-        database and no backup, so once a session ends the data is gone.
+        database or backup of completed sessions on the server.
       </p>
       <p>
-        Your display name, preferred search radius and card style are also stored
-        locally on your device so you do not have to retype them. Deleting the app removes
-        them.
+        Your device remembers your display name, preferred search radius and card style.
+        On iPhone and Android, it also keeps your votes from your last room so
+        you can pick up where you left off. Voting in another room replaces that record.
+        Deleting the app removes these local records.
       </p>
 
       <h2>Who else sees it</h2>
