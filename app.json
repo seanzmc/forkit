@@ -2,7 +2,7 @@
   "expo": {
     "name": "ForkIt",
     "slug": "forkit",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "runtimeVersion": {
       "policy": "fingerprint"
     },
@@ -11,7 +11,7 @@
     "scheme": "forkit",
     "userInterfaceStyle": "dark",
     "ios": {
-      "version": "1.0.1",
+      "version": "1.0.2",
       "supportsTablet": false,
       "bundleIdentifier": "com.seandm.forkit",
       "infoPlist": {

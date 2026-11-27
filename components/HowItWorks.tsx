@@ -1,581 +1,188 @@
-import React, { useEffect, useState } from "react";
-import {
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
-import Animated, {
-  FadeIn,
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import React, { useRef, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import Animated, { useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import Colors from "@/constants/colors";
+import type { SwipeVote } from "@/lib/swipe-review";
+import { useDishCardMotion } from "./useDishCardMotion";
 
-type Step = {
-  title: string;
-  body: string;
-  art: React.ReactNode;
-};
-
-const STEPS: Step[] = [
-  {
-    title: "Pick what to swipe on",
-    body: "Start on a Cook In recipe, or tap Dine Out for nearby places. Tap the meal and distance to change the restaurant cards. Open Friends to invite someone to your deck or join with a code.",
-    art: <RoomArt />,
-  },
-  {
-    title: "Swipe on dishes",
-    body: "Swipe right on what you'd eat, left on what you wouldn't. On a By place card, tap either side of the photo to flip through more dishes from the same place. The middle button undoes a swipe, and Friends lets you invite more people. Nobody sees how you voted.",
-    art: <SwipeArt />,
-  },
-  {
-    title: "It's a match",
-    body: "When at least two people and more than half the group like the same restaurant, or the same recipe when cooking in, everyone gets the match, with directions, delivery and a call button, or the full recipe and a shopping list.",
-    art: <MatchArt />,
-  },
-  {
-    title: "No match? Go again",
-    body: "If everyone swipes through every card and nothing matches, anyone can start another round, with new places from further out when there are any.",
-    art: <RoundArt />,
-  },
+const lessons = [
+  "Try a swipe",
+  "Take a swipe back",
+  "Switch the menu",
+  "Invite from your deck",
 ];
 
-export function HowItWorks({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const insets = useSafeAreaInsets();
-  const { height } = useSafeAreaFrame();
-  // Shrinks on short phones (an SE gets ~240) so the text still fits above
-  // the buttons; anything left over scrolls.
-  const artHeight = Math.min(300, Math.max(236, Math.round(height * 0.36)));
-  const [step, setStep] = useState(0);
-  const last = step === STEPS.length - 1;
+const ramen = require("@/assets/dishes/miso-ramen.jpg");
+const salmon = require("@/assets/dishes/grilled-salmon.jpg");
 
-  // Start from the top each time it opens.
-  const [wasVisible, setWasVisible] = useState(visible);
-  if (visible !== wasVisible) {
-    setWasVisible(visible);
-    if (visible) setStep(0);
-  }
+type Icon = React.ComponentProps<typeof Ionicons>["name"];
 
-  const next = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (last) onClose();
-    else setStep(step + 1);
-  };
+function Action({ label, icon, onPress, primary, selected }: {
+  label: string;
+  icon?: Icon;
+  onPress: () => void;
+  primary?: boolean;
+  selected?: boolean;
+}) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={selected === undefined ? undefined : { selected }}
+      onPress={onPress} style={({ pressed }) => [s.action, (primary || selected) && s.active, pressed && s.pressed]}>
+      {icon && <Ionicons name={icon} size={19} color={primary || selected ? Colors.background : Colors.text} />}
+      <Text style={[s.actionText, (primary || selected) && s.activeText]}>{label}</Text>
+    </Pressable>
+  );
+}
 
-  const { title, body, art } = STEPS[step];
+function FoodPhoto({ fish = false, place = false }: { fish?: boolean; place?: boolean }) {
+  return (
+    <View style={s.photo} pointerEvents="none">
+      <Image source={fish ? salmon : ramen} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <LinearGradient colors={["transparent", "rgba(0,0,0,0.88)"]} style={s.photoCaption}>
+        <Text style={s.captionKind}>{place ? "Sample restaurant" : "Cook In · Recipe"}</Text>
+        <Text style={s.captionTitle}>{place ? "The Grill House" : fish ? "Lemon Herb Salmon" : "Homemade Ramen"}</Text>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function PracticeSwipe({ height, onVote }: { height: number; onVote: (vote: SwipeVote) => void }) {
+  const [width, setWidth] = useState(0);
+  const reveal = useSharedValue(0);
+  const choice = useRef<SwipeVote | null>(null);
+  const motion = useDishCardMotion(width, height, true, reveal, (vote) => {
+    choice.current = vote;
+    return true;
+  }, () => {
+    if (choice.current) onVote(choice.current);
+  });
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
-      <LinearGradient colors={["#0F0F0F", "#1A0A00", "#0F0F0F"]} style={styles.container}>
-        <View
-          style={[
-            styles.inner,
-            {
-              marginLeft: insets.left,
-              marginRight: insets.right,
-              paddingTop: insets.top + (Platform.OS === "web" ? 24 : 12),
-              paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
-            },
-          ]}
-        >
-          <View style={styles.topBar}>
-            <Text style={styles.topBarTitle}>How ForkIt works</Text>
-            {!last && (
-              <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
-                <Text style={styles.skip}>Skip</Text>
-              </Pressable>
-            )}
-          </View>
+    <>
+      <View style={[s.deck, { height }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        <FoodPhoto fish />
+        <GestureDetector gesture={motion.pan} touchAction="none" userSelect="none">
+          <Animated.View style={[StyleSheet.absoluteFill, motion.cardStyle]} testID="tutorial-swipe-card">
+            <FoodPhoto />
+          </Animated.View>
+        </GestureDetector>
+      </View>
+      <View style={s.row}>
+        <Action label="Pass" icon="close" onPress={() => motion.swipe("pass")} />
+        <Action label="Like" icon="heart" onPress={() => motion.swipe("like")} />
+      </View>
+    </>
+  );
+}
 
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-          >
-            <Animated.View key={step} entering={FadeIn.duration(250)} style={styles.stepBody}>
-              <View style={[styles.artBox, { height: artHeight }]}>{art}</View>
-              <Text style={styles.stepCount}>
-                STEP {step + 1} OF {STEPS.length}
-              </Text>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.body}>{body}</Text>
-            </Animated.View>
-          </ScrollView>
+export function HowItWorks({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState(0);
+  const [vote, setVote] = useState<SwipeVote>("like");
+  const [restored, setRestored] = useState(false);
+  const [diningOut, setDiningOut] = useState(false);
+  const [triedModes, setTriedModes] = useState(false);
+  const [invite, setInvite] = useState<"closed" | "friends" | "shared">("closed");
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const photoHeight = Math.max(112, Math.min(224, Math.round((height - insets.top - insets.bottom) * 0.26)));
+  const instructions = [
+    "Drag the practice card right to like it or left to pass. You can also tap the buttons.",
+    restored ? "Your first card is back. On a real recipe, tap View recipe for ingredients, servings and a shopping list."
+      : `You ${vote === "like" ? "liked" : "passed on"} the ramen. Tap Undo to bring it back.`,
+    "Cook In opens on recipes. Tap Dine Out to preview nearby restaurants. In your real deck, tap the meal and distance to change what you see.",
+    invite === "closed" ? "Already found a few favorites? Open Friends to invite someone to the deck you’re using."
+      : invite === "friends" ? "Try Invite a friend. In a real room you can send a link or give your friend the room code."
+        : "Your friend gets the same deck and your earlier swipes count. A match takes at least two people and more than half the group. Everyone’s votes stay private.",
+  ];
 
-          <View style={styles.dots}>
-            {STEPS.map((s, i) => (
-              <Pressable
-                key={s.title}
-                onPress={() => setStep(i)}
-                hitSlop={6}
-                accessibilityLabel={`Step ${i + 1}: ${s.title}`}
-                style={[styles.dot, i === step && styles.dotActive]}
-              />
-            ))}
-          </View>
+  function back() {
+    if (step === 1) setRestored(false);
+    if (step === 2) setTriedModes(false);
+    if (step === 3) setInvite("closed");
+    setStep(step - 1);
+  }
 
-          <View style={styles.buttons}>
-            {step > 0 && (
-              <Pressable
-                onPress={() => setStep(step - 1)}
-                style={styles.backBtn}
-                accessibilityLabel="Back"
-              >
-                <Ionicons name="arrow-back" size={22} color={Colors.text} />
-              </Pressable>
-            )}
-            <Pressable
-              onPress={next}
-              style={({ pressed }) => [
-                styles.nextBtn,
-                { opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
-              ]}
-            >
-              <LinearGradient
-                colors={[Colors.accent, Colors.accentDeep]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.nextGradient}
-              >
-                <Text style={styles.nextText}>{last ? "Got It" : "Next"}</Text>
-                <Ionicons name={last ? "checkmark" : "arrow-forward"} size={20} color="#fff" />
-              </LinearGradient>
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <GestureHandlerRootView style={[s.overlay, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8, paddingLeft: insets.left + 12, paddingRight: insets.right + 12 }]}>
+        <View style={s.sheet} accessibilityViewIsModal>
+          <View style={s.header}>
+            <Text style={s.step}>Practice · {step + 1} of {lessons.length}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close tutorial" onPress={onClose} style={s.close}>
+              <Ionicons name="close" size={23} color={Colors.text} />
             </Pressable>
           </View>
+          <ScrollView key={step} bounces={false} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
+            <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={s.title}>{lessons[step]}</Text>
+            <Text accessibilityLiveRegion="polite" style={s.description}>{instructions[step]}</Text>
+            {step === 0 && <PracticeSwipe height={photoHeight} onVote={(v) => { setVote(v); setRestored(false); setStep(1); }} />}
+            {step === 1 && (
+              <>
+                <View style={[s.deck, { height: photoHeight }]}><FoodPhoto fish={!restored} /></View>
+                {restored ? <Action primary label="Try the modes" onPress={() => { setDiningOut(false); setTriedModes(false); setStep(2); }} />
+                  : <Action label="Undo" icon="arrow-undo" onPress={() => setRestored(true)} />}
+              </>
+            )}
+            {step === 2 && (
+              <>
+                <View style={s.row}>
+                  <Action label="Cook In" selected={!diningOut} onPress={() => setDiningOut(false)} />
+                  <Action label="Dine Out" selected={diningOut} onPress={() => { setDiningOut(true); setTriedModes(true); }} />
+                </View>
+                <View style={[s.deck, { height: photoHeight }]}><FoodPhoto fish={diningOut} place={diningOut} /></View>
+                {triedModes && <Action primary label="Try inviting" onPress={() => { setInvite("closed"); setStep(3); }} />}
+              </>
+            )}
+            {step === 3 && (
+              <View style={s.preview}>
+                {invite === "closed" && <Action label="Friends" icon="people-outline" onPress={() => setInvite("friends")} />}
+                {invite === "friends" && <Action primary label="Invite a friend" icon="share-outline" onPress={() => setInvite("shared")} />}
+                {invite === "shared" && (
+                  <>
+                    <Text style={s.step}>Example room code</Text>
+                    <Text style={s.code}>K7Q2XM</Text>
+                    <Text style={s.description}>Joining someone? Open Friends and tap Join with a code.</Text>
+                    <Action primary label="Start swiping" onPress={onClose} />
+                  </>
+                )}
+              </View>
+            )}
+          </ScrollView>
+          {step > 0 && <Pressable accessibilityRole="button" onPress={back} style={s.back}>
+            <Ionicons name="chevron-back" size={16} color={Colors.textSecondary} /><Text style={s.backText}>Back</Text>
+          </Pressable>}
         </View>
-      </LinearGradient>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
-function RoomArt() {
-  return (
-    <View style={styles.artCenter}>
-      <View style={styles.codeCard}>
-        <Text style={styles.codeLabel}>SESSION CODE</Text>
-        <Text style={styles.code}>K7Q2XM</Text>
-        <View style={styles.shareRow}>
-          <Ionicons name="share-outline" size={14} color={Colors.accent} />
-          <Text style={styles.shareText}>Share invite</Text>
-        </View>
-      </View>
-      <View style={styles.avatars}>
-        {["A", "J", "S"].map((letter, i) => (
-          <View key={letter} style={[styles.avatar, i > 0 && styles.avatarOverlap]}>
-            <Text style={styles.avatarLetter}>{letter}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// A card that leans right (like), back, then left (pass), on a loop.
-function SwipeArt() {
-  const x = useSharedValue(0);
-  useEffect(() => {
-    const move = (to: number) => withTiming(to, { duration: 450 });
-    x.set(
-      withDelay(
-        400,
-        withRepeat(
-          withSequence(
-            move(70),
-            withDelay(500, move(0)),
-            withDelay(300, move(-70)),
-            withDelay(500, move(0)),
-            withDelay(500, move(0))
-          ),
-          -1
-        )
-      )
-    );
-    return () => cancelAnimation(x);
-  }, [x]);
-
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { rotate: `${x.value / 6}deg` }],
-  }));
-  const likeStyle = useAnimatedStyle(() => ({ opacity: Math.max(0, x.value / 70) }));
-  const passStyle = useAnimatedStyle(() => ({ opacity: Math.max(0, -x.value / 70) }));
-
-  return (
-    <View style={styles.artCenter}>
-      <Animated.View style={[styles.demoCard, cardStyle]}>
-        <LinearGradient
-          colors={["#3A1A08", "#1A1A1A"]}
-          style={styles.demoPhoto}
-        >
-          <MaterialCommunityIcons name="noodles" size={56} color={Colors.accentGold} />
-          <Ionicons name="chevron-back" size={16} color="rgba(255,255,255,0.5)" style={styles.flipLeft} />
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.5)" style={styles.flipRight} />
-        </LinearGradient>
-        <View style={styles.demoInfo}>
-          <Text style={styles.demoDish}>Spicy Ramen</Text>
-          <Text style={styles.demoPlace}>Noodle Bar · 0.4 mi</Text>
-        </View>
-        <Animated.View style={[styles.stamp, styles.stampLike, likeStyle]}>
-          <Text style={[styles.stampText, { color: Colors.green }]}>YUMMY</Text>
-        </Animated.View>
-        <Animated.View style={[styles.stamp, styles.stampPass, passStyle]}>
-          <Text style={[styles.stampText, { color: Colors.red }]}>NOPE</Text>
-        </Animated.View>
-      </Animated.View>
-      <View style={styles.voteRow}>
-        <View style={[styles.voteBtn, { borderColor: "rgba(244,67,54,0.4)" }]}>
-          <Ionicons name="close" size={24} color={Colors.red} />
-        </View>
-        <View style={[styles.voteBtn, styles.undoBtn]}>
-          <Ionicons name="arrow-undo" size={16} color={Colors.accentGold} />
-        </View>
-        <View style={[styles.voteBtn, { borderColor: "rgba(76,175,80,0.4)" }]}>
-          <Ionicons name="heart" size={24} color={Colors.green} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function MatchArt() {
-  return (
-    <View style={styles.artCenter}>
-      <View style={styles.matchBadge}>
-        <Ionicons name="heart" size={44} color="#fff" />
-      </View>
-      <Text style={styles.matchText}>{"It's a Match!"}</Text>
-      <View style={styles.tally}>
-        {[true, true, false].map((liked, i) => (
-          <Ionicons
-            key={i}
-            name={liked ? "heart" : "close"}
-            size={18}
-            color={liked ? Colors.green : Colors.textMuted}
-          />
-        ))}
-        <Text style={styles.tallyText}>2 of 3 is a match</Text>
-      </View>
-    </View>
-  );
-}
-
-function RoundArt() {
-  return (
-    <View style={styles.artCenter}>
-      <View style={styles.roundIcon}>
-        <Ionicons name="refresh" size={48} color={Colors.accent} />
-      </View>
-      <View style={styles.roundChip}>
-        <Ionicons name="search" size={14} color={Colors.text} />
-        <Text style={styles.roundChipText}>Find New Places</Text>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  inner: {
-    flex: 1,
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minHeight: 40,
-  },
-  topBarTitle: {
-    fontSize: 18,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.text,
-  },
-  skip: {
-    fontSize: 15,
-    fontFamily: "Poppins_500Medium",
-    color: Colors.textSecondary,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  stepBody: {
-    gap: 10,
-  },
-  artBox: {
-    marginBottom: 12,
-    borderRadius: 24,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
-  },
-  artCenter: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-  },
-  stepCount: {
-    fontSize: 12,
-    fontFamily: "Poppins_500Medium",
-    color: Colors.accent,
-    letterSpacing: 2,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.text,
-  },
-  body: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontFamily: "Poppins_400Regular",
-    color: Colors.textSecondary,
-  },
-  dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.border,
-  },
-  dotActive: {
-    width: 24,
-    backgroundColor: Colors.accent,
-  },
-  buttons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  backBtn: {
-    width: 56,
-    borderRadius: 16,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextBtn: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  nextGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 18,
-  },
-  nextText: {
-    fontSize: 17,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#fff",
-  },
-  codeCard: {
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-    borderRadius: 20,
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: "rgba(255,107,53,0.25)",
-  },
-  codeLabel: {
-    fontSize: 11,
-    fontFamily: "Poppins_500Medium",
-    color: Colors.textSecondary,
-    letterSpacing: 3,
-  },
-  code: {
-    fontSize: 32,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.accent,
-    letterSpacing: 6,
-  },
-  shareRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  shareText: {
-    fontSize: 13,
-    fontFamily: "Poppins_500Medium",
-    color: Colors.accent,
-  },
-  avatars: {
-    flexDirection: "row",
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#3A1F12",
-    borderWidth: 2,
-    borderColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarOverlap: {
-    marginLeft: -10,
-  },
-  avatarLetter: {
-    fontSize: 15,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.accent,
-  },
-  demoCard: {
-    width: 170,
-    borderRadius: 18,
-    backgroundColor: Colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
-  },
-  demoPhoto: {
-    height: 110,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  flipLeft: {
-    position: "absolute",
-    left: 6,
-  },
-  flipRight: {
-    position: "absolute",
-    right: 6,
-  },
-  demoInfo: {
-    padding: 10,
-  },
-  demoDish: {
-    fontSize: 15,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.text,
-  },
-  demoPlace: {
-    fontSize: 12,
-    fontFamily: "Poppins_400Regular",
-    color: Colors.textSecondary,
-  },
-  stamp: {
-    position: "absolute",
-    top: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 2,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  stampLike: {
-    left: 12,
-    borderColor: Colors.green,
-    transform: [{ rotate: "-12deg" }],
-  },
-  stampPass: {
-    right: 12,
-    borderColor: Colors.red,
-    transform: [{ rotate: "12deg" }],
-  },
-  stampText: {
-    fontSize: 16,
-    fontFamily: "Poppins_700Bold",
-    letterSpacing: 1,
-  },
-  voteRow: {
-    flexDirection: "row",
-    gap: 28,
-    alignItems: "center",
-  },
-  undoBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderColor: "rgba(255,179,71,0.4)",
-  },
-  voteBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    backgroundColor: Colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  matchBadge: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: Colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  matchText: {
-    fontSize: 26,
-    fontFamily: "Poppins_700Bold",
-    color: Colors.text,
-  },
-  tally: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: Colors.background,
-  },
-  tallyText: {
-    marginLeft: 4,
-    fontSize: 13,
-    fontFamily: "Poppins_500Medium",
-    color: Colors.textSecondary,
-  },
-  roundIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 2,
-    borderColor: "rgba(255,107,53,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  roundChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 14,
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  roundChipText: {
-    fontSize: 14,
-    fontFamily: "Poppins_600SemiBold",
-    color: Colors.text,
-  },
+const s = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.74)" },
+  sheet: { width: "100%", maxWidth: 420, maxHeight: "100%", flexShrink: 1, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, overflow: "hidden" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingLeft: 20, paddingRight: 8, paddingTop: 4 },
+  step: { color: Colors.accentGold, fontFamily: "Poppins_600SemiBold", fontSize: 13 },
+  close: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  body: { paddingHorizontal: 20, paddingBottom: 18, gap: 12 },
+  title: { fontFamily: "Poppins_700Bold", fontSize: 25, lineHeight: 33, color: Colors.text },
+  description: { fontFamily: "Poppins_400Regular", fontSize: 15, lineHeight: 22, color: "#D8D8D8" },
+  deck: { borderRadius: 16, overflow: "hidden" },
+  photo: { flex: 1, borderRadius: 16, overflow: "hidden", justifyContent: "flex-end", backgroundColor: Colors.surfaceElevated },
+  photoCaption: { padding: 12, paddingTop: 28 },
+  captionKind: { color: "#FFE0AA", fontFamily: "Poppins_600SemiBold", fontSize: 12 },
+  captionTitle: { color: Colors.text, fontFamily: "Poppins_700Bold", fontSize: 20 },
+  row: { flexDirection: "row", gap: 10 },
+  action: { flexGrow: 1, minHeight: 46, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surfaceElevated, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", padding: 8 },
+  pressed: { opacity: 0.8 },
+  active: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  actionText: { color: Colors.text, fontFamily: "Poppins_600SemiBold", fontSize: 15 },
+  activeText: { color: Colors.background },
+  preview: { borderRadius: 16, padding: 16, backgroundColor: Colors.background, gap: 12 },
+  code: { fontSize: 32, letterSpacing: 5, fontFamily: "Poppins_700Bold", color: Colors.accent },
+  back: { flexDirection: "row", minHeight: 44, paddingHorizontal: 16, gap: 4, alignItems: "center", alignSelf: "flex-start" },
+  backText: { color: Colors.textSecondary, fontFamily: "Poppins_500Medium", fontSize: 14 },
 });

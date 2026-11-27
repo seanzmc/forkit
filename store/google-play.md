@@ -13,40 +13,33 @@ content. Character counts are in brackets; run
 ForkIt: Swipe to Decide
 ```
 
-**Short description** [75 / 80]
+**Short description** [80 / 80]
 
 ```
-Swipe on dishes with your group. When most of you agree, dinner is decided.
+Swipe on recipes or nearby restaurants. Invite friends to the deck you're using.
 ```
 
-**Full description** [1893 / 4000]
+**Full description** [1758 / 4000]
 
 Play's metadata policy frowns on all-caps text, so this is the App Store
 text with sentence-case headings.
 
 ```
-Can't agree on where to eat? ForkIt turns "I don't know, what do you want?" into a quick game.
-
-Start a room, share the code with your group, and everyone swipes on dishes from restaurants nearby. Swipe right on the ones you'd eat, left on the ones you wouldn't. As soon as most of the group likes something at the same place, ForkIt calls the match and shows you where to go.
-
-How it works
-• Start a room and share the 6-character code or invite link
-• Everyone swipes on dishes at the same time, on their own phone
-• When a majority likes the same restaurant, it's a match
-• Get directions, call, open the website, or find it on DoorDash or Uber Eats right from the match screen
-• No match? Anyone can start another round, with new places from farther out when there are any
-
-Dine out
-Pick breakfast, lunch or dinner and a search radius. ForkIt finds places near you that are open for that meal and shows dishes at each one: popular dishes and real menu items where we can find them, and suggestions based on the cuisine where we can't. Choose how to swipe: by place, with one card per restaurant that you tap through for its dishes, or by dish, where every dish gets its own card.
+Can't agree on where to eat or what to cook? Open ForkIt and swipe on a recipe. See something you'd make tonight? Swipe right. Swipe left to pass, or tap Undo to bring the last card back. You can browse on your own and invite someone when you're ready.
 
 Cook in
-Staying home? Swipe on recipes instead, and the group lands on something to make together. The match comes with the full recipe: set the servings, tick off ingredients and share a shopping list. No location needed.
+Tap View recipe on any card to read the steps before you decide. Adjust the servings, check off ingredients you already have, and share the shopping list. Open Your likes to revisit your picks for this round. You can explore recipes without sharing your location.
 
-Made for groups
-Friends, roommates, family, a date: anyone with the app can join with the code or invite link, even after swiping has started. Majority wins, so nobody has to be the one who decides, and nobody sees how you voted. Swiped too fast? Undo it. Step away and you're still in the room, and you'll get a notification when your group finds a match.
+Dine out
+Tap Dine Out for restaurants near you. Choose breakfast, lunch or dinner, set the distance, and browse by place or by dish. Tap the sides of a restaurant card to see more of its dishes. ForkIt checks opening hours when available and labels suggested dishes and sample places. From a real restaurant match you can get directions, search for delivery, or call or visit its website when those details are available.
 
-No account needed
-Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear on their own once everyone's gone.
+Invite when you're ready
+Open Friends to send a link or share a six-character room code. Your friend gets the same deck, and the likes and passes you've already made count. You can join as Guest or add a name. See how far everyone has swiped while each person's votes stay private.
+
+When it's a match
+At least two people and more than half the group must agree. For Cook In, that's the same recipe. For Dine Out, you can like the pad thai and your friend can like the curry at the same restaurant. If everyone finishes without a match, deal another round. Turn on notifications after you vote in a shared room to hear when the group decides.
+
+A short, optional practice tour shows you how to swipe, undo, switch modes and invite. Close it with the X at any time, or replay it from Friends under How it works.
 ```
 
 **App category:** Food & Drink
@@ -91,5 +84,5 @@ Just type a name and go. No sign-up, no ads, no tracking. Rooms disappear on the
 - **Release notes** for the testing track (500 chars each language):
 
   ```
-  First test build. Start a room, share the code, and swipe on dishes from restaurants near you. Please try a match with at least one other person, and tell us if the notification or the invite link didn't work.
+  ForkIt now opens on a recipe. Try the optional practice tour, undo a swipe, switch to Dine Out, and invite a friend after voting. Join by link or code and test a match with another person.
   ```

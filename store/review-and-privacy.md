@@ -32,7 +32,7 @@ background location, no database. All traffic is HTTPS / WSS.
 **Notes**
 
 ```
-ForkIt opens directly on a Cook In recipe. Swipe right to like it, left to pass, or tap View recipe for the ingredients and method. There is no sign-in. Friends lets you optionally add a name and open How it works.
+On first launch or upgrade, an optional four-step practice tour opens over the deck. Try the controls, or tap the X at any step. Practice does not send votes or invites. The deck opens on a Cook In recipe. Swipe right to like it, left to pass, or tap View recipe for the ingredients and method. There is no sign-in. Friends lets you optionally add a name and open How it works.
 
 To test a match, use two devices.
 1. On the first device, like the first Cook In recipe. Open Friends and tap Invite a friend.
