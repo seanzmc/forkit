@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { router, useIsFocused } from "expo-router";
 import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSharedValue } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
@@ -72,6 +73,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const focused = useIsFocused();
   const [deck, setDeck] = useState<DeckState>(() => (initialCode ? guestDeck(initialCode) : cookDeck()));
   const card = useRef<DishCardHandle>(null);
+  const reveal = useSharedValue(0);
   const [outgoing, setOutgoing] = useState<{ dishes: Dish[]; index: number; key: string } | null>(null);
   const latest = useRef(deck);
   const personal = useRef<Partial<Record<SessionMode, DeckState>>>({});
@@ -415,7 +417,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     const next = { ...current, history: [...current.history, { dish: item, vote: direction }], dishIndex: 0 };
     saveVotes(next);
     if (current.code) room.send({ type: "swipe", dishId: item.id, vote: direction, round: current.round });
-    void Haptics.selectionAsync();
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     return true;
   }
   function undo() {
@@ -540,8 +542,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                   key={cardKeyPrefix + behind[0].id}
                   dishes={behind}
                   isTop={false}
-                  scale={0.96}
-                  offset={3}
+                  reveal={reveal}
                 />
               )}
               <DishCard
@@ -558,8 +559,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                 onSwipeEnd={finished => setOutgoing(current => current?.dishes === finished ? null : current)}
                 onViewRecipe={cook ? viewDetails : undefined}
                 isTop
-                scale={1}
-                offset={0}
+                reveal={reveal}
               />
             </>
           ) : (
