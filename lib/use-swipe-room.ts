@@ -48,6 +48,9 @@ export function useSwipeRoom(
       const saved = handlers.current.getJoin().votes ?? (await ownVotesFor(code, userId));
       connecting = false;
       if (closed) return;
+      // A socket that was closing when this reconnect began never reaches
+      // dropped(), so stop its heartbeat here before it can touch the new one.
+      clearInterval(heartbeat);
       let ws: WebSocket;
       try {
         ws = new WebSocket(getWsUrl());
@@ -66,7 +69,11 @@ export function useSwipeRoom(
         );
         lastHeard = Date.now();
         let lastTick = lastHeard;
-        heartbeat = setInterval(() => {
+        const beat = setInterval(() => {
+          if (socket.current !== ws) {
+            clearInterval(beat);
+            return;
+          }
           const now = Date.now();
           if (now - lastTick > PING_MS * 1.5) lastHeard = now;
           lastTick = now;
@@ -77,6 +84,7 @@ export function useSwipeRoom(
             dropped();
           } else if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
         }, PING_MS);
+        heartbeat = beat;
       };
       ws.onmessage = (event) => {
         if (closed || socket.current !== ws) return;

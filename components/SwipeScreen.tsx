@@ -88,6 +88,9 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const [userId, setUserId] = useState("");
   const [name, setName] = useState("");
   const nameRef = useRef("");
+  // The name last written to storage and sent to the room, so blur,
+  // submit and closing the sheet save it once.
+  const savedName = useRef("");
   const [showHint, setShowHint] = useState(true);
   const [loadingRound, setLoadingRound] = useState(false);
   const insets = useSafeAreaInsets();
@@ -100,6 +103,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       if (!active) return;
       if (!nameRef.current) {
         nameRef.current = stored ?? "";
+        savedName.current = nameRef.current.trim();
         setName(nameRef.current);
       }
       setUserId(id);
@@ -118,6 +122,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     if (next.code && userId) rememberSwipes(next.code, userId, next.round, next.history);
   }
   function open(which: Panel) {
+    if (panel === "friends" && which !== "friends") saveName();
     if (which !== "friends") sharePending.current = false;
     setNotice("");
     setPanel(which);
@@ -220,10 +225,10 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const connected =
     focused && room.status === "connected" && !!deck.session?.members.some((m) => m.id === userId) && !lost;
   const send = room.send;
-  useEffect(() => {
-    if (connected && deck.session?.status === "lobby" && deck.session.hostId === userId)
-      send({ type: "start" });
-  }, [connected, deck.session?.status, deck.session?.hostId, send, userId]);
+  // Only rooms from older apps wait in a lobby (this app's rooms start
+  // swiping when created). Hosting one can fall to this device when the old
+  // host steps away, so starting is left to a tap: others may still be joining.
+  const canStart = connected && deck.session?.status === "lobby" && deck.session.hostId === userId;
   const count = deck.history.length;
   useEffect(() => {
     if (!deck.code || !deck.shared || !connected || !sharePending.current || panel !== "friends") return;
@@ -385,6 +390,8 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   }
   function saveName() {
     const clean = nameRef.current.trim();
+    if (clean === savedName.current) return;
+    savedName.current = clean;
     void AsyncStorage.setItem("userName", clean).catch(() => {});
     if (deck.code) room.send({ type: "set_name", name: clean || "Guest" });
   }
@@ -570,7 +577,15 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                   <Text style={s.hint}>{loadingRound ? "Dealing the next round…" : "Joining the room…"}</Text>
                 </>
               ) : waitingForHost ? (
-                <Text style={s.title}>Waiting for the host to start</Text>
+                canStart ? (
+                  <>
+                    <Text style={s.title}>You’re the host</Text>
+                    <Text style={s.hint}>Start once everyone has joined.</Text>
+                    <SheetButton primary label="Start swiping" onPress={() => send({ type: "start" })} />
+                  </>
+                ) : (
+                  <Text style={s.title}>Waiting for the host to start</Text>
+                )
               ) : lost && !deck.dishes.length ? (
                 <SheetButton label="Back to swiping" onPress={leaveGroup} />
               ) : (

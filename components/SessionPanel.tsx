@@ -91,7 +91,10 @@ export function SessionPanel({
         placeholderTextColor={Colors.textSecondary}
         value={name}
         onChangeText={onName}
-        onEndEditing={onSaveName}
+        // onBlur, not onEndEditing: react-native-web ignores onEndEditing.
+        // Closing the sheet also saves, for a field that never loses focus.
+        onBlur={onSaveName}
+        onSubmitEditing={onSaveName}
         maxLength={24}
         returnKeyType="done"
         style={s.input}
