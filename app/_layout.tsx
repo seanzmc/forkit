@@ -14,6 +14,7 @@ import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
 import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 import { StatusBar } from "expo-status-bar";
 import { onMatchTapped } from "@/lib/push";
+import { warmSounds } from "@/lib/sounds";
 import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +24,7 @@ SplashScreen.preventAutoHideAsync();
 const WebSafeArea = Platform.OS === "web" ? SafeAreaProvider : React.Fragment;
 
 function RootLayoutNav() {
+  useEffect(warmSounds, []);
   // A match notification tapped while the app is open or backgrounded. The
   // one that cold-starts the app is picked up by the start screen instead.
   useEffect(

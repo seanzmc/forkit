@@ -2,6 +2,8 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type * as NotificationsModule from "expo-notifications";
 import { DISHES, RECIPES, matchPlaceReference, type Dish, type Meal, type SampleReason } from "./food-data";
+import { BELL_CHANNEL, MATCH_SOUND_FILE, type MatchChannel } from "../shared/match-sound";
+import { ringForMatch } from "./sounds";
 
 // expo-notifications needs native code. Builds made before it was added (and
 // the web build) don't have it, so load it defensively and treat push as
@@ -20,35 +22,52 @@ if (Platform.OS !== "web") {
 // so a banner on top would just repeat it.
 try {
   Notifications?.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: false,
-      shouldShowList: false,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async ({ request }) => {
+      const data = request.content.data;
+      if (data?.type === "match" && typeof data.code === "string") ringForMatch(data.code);
+      return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
+    },
   });
 } catch {
   // Importable but missing its native side: push stays off.
   Notifications = null;
 }
 
-let tokenPromise: Promise<string | null> | null = null;
+type Registration = { pushToken: string; matchChannel: MatchChannel };
+let tokenPromise: Promise<Registration | null> | null = null;
 
-// Asks for notification permission the first time (iOS shows its prompt
-// once), then returns this device's Expo push token, or null if push isn't
-// available or allowed. Never throws.
-export function getPushToken(): Promise<string | null> {
+// Register the token and the channel this installation can actually use.
+// Permission denial and unavailable push both leave the swipe flow usable.
+export function getMatchPushRegistration(): Promise<Registration | null> {
   if (!tokenPromise) {
     tokenPromise = (async () => {
       if (!Notifications) return null;
       try {
         // Android 13+ shows the permission prompt only once a channel
         // exists, and Expo needs one before it will issue a token.
+        let matchChannel: MatchChannel = "default";
         if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("default", {
-            name: "Matches",
-            importance: Notifications.AndroidImportance.HIGH,
-          });
+          const legacy = await Notifications.getNotificationChannelAsync("default");
+          // Android fixes the sound when a channel is created. Upgrade the
+          // original stock channel, preserving silenced or customized ones.
+          if (legacy?.sound === "default" && legacy.importance === Notifications.AndroidImportance.HIGH) {
+            matchChannel = BELL_CHANNEL;
+          }
+          if (!legacy || matchChannel === BELL_CHANNEL) {
+            await Notifications.setNotificationChannelAsync(matchChannel, {
+              name: "Matches",
+              importance: Notifications.AndroidImportance.HIGH,
+              sound: MATCH_SOUND_FILE,
+              ...(legacy && {
+                enableVibrate: legacy.enableVibrate,
+                vibrationPattern: legacy.vibrationPattern,
+                showBadge: legacy.showBadge,
+                lockscreenVisibility: legacy.lockscreenVisibility,
+                enableLights: legacy.enableLights,
+                lightColor: legacy.lightColor,
+              }),
+            });
+          }
         }
         let { status, canAskAgain } = await Notifications.getPermissionsAsync();
         if (status !== "granted" && canAskAgain) {
@@ -57,7 +76,7 @@ export function getPushToken(): Promise<string | null> {
         if (status !== "granted") return null;
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
-        return data;
+        return { pushToken: data, matchChannel };
       } catch {
         return null;
       }
