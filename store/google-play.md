@@ -19,7 +19,7 @@ ForkIt: Swipe to Decide
 Swipe on recipes or nearby restaurants. Invite friends to the deck you're using.
 ```
 
-**Full description** [1751 / 4000]
+**Full description** [1758 / 4000]
 
 Play's metadata policy frowns on all-caps text, so this is the App Store
 text with sentence-case headings.
@@ -28,7 +28,7 @@ text with sentence-case headings.
 Can't agree on where to eat or what to cook? Open ForkIt and swipe on a recipe. See something you'd make tonight? Swipe right. Swipe left to pass, or tap Undo to bring the last card back. You can browse on your own and invite someone when you're ready.
 
 Cook in
-Tap View recipe on any card to read the steps before you decide. Adjust the servings, check off ingredients you already have, and share the shopping list. Your likes collects your picks for this round. You can explore recipes without sharing your location.
+Tap View recipe on any card to read the steps before you decide. Adjust the servings, check off ingredients you already have, and share the shopping list. Open Your likes to revisit your picks for this round. You can explore recipes without sharing your location.
 
 Dine out
 Tap Dine Out for restaurants near you. Choose breakfast, lunch or dinner, set the distance, and browse by place or by dish. Tap the sides of a restaurant card to see more of its dishes. ForkIt checks opening hours when available and labels suggested dishes and sample places. From a real restaurant match you can get directions, search for delivery, or call or visit its website when those details are available.
