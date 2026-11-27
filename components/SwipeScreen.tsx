@@ -38,6 +38,21 @@ type DeckState = {
   settings?: DineSettings;
 };
 type Panel = "friends" | "settings" | "round" | "likes" | "history" | "detail" | "sample" | "help" | null;
+// Independent of the old room-first walkthrough and of routine app/OTA versions.
+const TOUR_KEY = "seenSwipeFirstTourV1";
+let tourDismissed = false;
+
+async function needsSwipeTour() {
+  if (tourDismissed) return false;
+  const seen = await AsyncStorage.getItem(TOUR_KEY);
+  return !seen && !tourDismissed;
+}
+
+function rememberTourDismissal() {
+  tourDismissed = true;
+  void AsyncStorage.setItem(TOUR_KEY, "1").catch(() => {});
+}
+
 const INITIAL_SETTINGS: DineSettings = { meal: "dinner", deck: "places", radius: 8047 };
 function cookDeck(): DeckState {
   return { mode: "cook-in", dishes: shuffleRecipes(), history: [], dishIndex: 0, shared: false, round: 1 };
@@ -113,6 +128,19 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (!focused) return;
+    let active = true;
+    needsSwipeTour().then((needed) => {
+      if (active && needed) setPanel((current) => current ?? "help");
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [focused]);
+
+  function closeTutorial() {
+    rememberTourDismissal();
+    open(null);
+  }
   function update(next: DeckState) {
     latest.current = next;
     setDeck(next);
@@ -471,7 +499,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   };
   return (
     <SafeAreaView style={s.screen}>
-      <View style={[s.inner, compact && s.compact]}>
+      <View style={[s.inner, compact && s.compact]} aria-hidden={panel === "help"} importantForAccessibility={panel === "help" ? "no-hide-descendants" : "auto"}>
         <View style={s.header}>
           <View style={s.tabs}>
             {(["cook-in", "dine-out"] as const).map((mode) => (
@@ -667,7 +695,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
         </View>
       </View>
       {panel === "help" ? (
-        <HowItWorks visible onClose={() => open(null)} />
+        focused && <HowItWorks onClose={closeTutorial} />
       ) : (
         panel && (
           <SwipeSheet title={titles[panel]} onClose={() => open(null)}>
