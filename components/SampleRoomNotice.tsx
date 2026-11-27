@@ -23,16 +23,16 @@ export function SampleRoomNotice({
         : "No open restaurants were found near the host"
       : reason === "no-location"
         ? isHost
-          ? "Your location was off when you made this room"
-          : "The host's location was off when they made this room"
+          ? "Your location was unavailable"
+          : "The host’s location was unavailable"
         : // A notification from an older server, which sent no reason.
           "This room couldn't find real restaurants nearby";
   const fix =
     reason === "lookup-failed"
-      ? "Try a new room in a little while for real places nearby."
+      ? "Try Dine Out again in a little while."
       : reason === "no-restaurants"
-        ? "Try a bigger distance in a new room for real places nearby."
-        : "Make a new room with location on for real places nearby.";
+        ? "Try a larger distance in Dine Out for more places."
+        : "Allow location in Dine Out to see places nearby.";
 
   return (
     <View style={styles.card}>
@@ -40,7 +40,7 @@ export function SampleRoomNotice({
       <View style={styles.textCol}>
         <Text style={styles.title}>Sample restaurants</Text>
         <Text style={styles.body}>
-          {why}, so it uses made-up places to try the app. They have no
+          {why}. These are example places to try the app. They have no
           address, phone or directions. {fix}
         </Text>
       </View>

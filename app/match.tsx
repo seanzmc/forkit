@@ -35,6 +35,7 @@ import { RECIPE_DETAILS } from "@/lib/recipes";
 import { SampleRoomNotice } from "@/components/SampleRoomNotice";
 import { SwipeReview } from "@/components/SwipeReview";
 import { getSwipes } from "@/lib/swipe-review";
+import { useReviewPrompt } from "@/lib/store-review";
 import { getApiUrl, resolveImageUrl } from "@/lib/query-client";
 
 function ConfettiDot({ delay, x, color }: { delay: number; x: number; color: string }) {
@@ -73,10 +74,11 @@ export default function MatchScreen() {
     meal?: Meal;
     sample?: SampleReason;
   }>();
+  useReviewPrompt(code);
   const insets = useSafeAreaInsets();
   const { height } = useSafeAreaFrame();
   const heroMaxHeight = Math.min(280, (height - insets.top - insets.bottom) * 0.4);
-  const [swipes] = useState(getSwipes);
+  const [swipes] = useState(() => getSwipes(code));
 
   const initialDish: Dish | null = (() => {
     try { return JSON.parse(dishParam ?? "null"); } catch { return null; }
@@ -316,9 +318,11 @@ export default function MatchScreen() {
 
         <Animated.View entering={FadeInDown.delay(600)} style={styles.actions}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to Home"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.replace("/home");
+              router.dismissTo("/");
             }}
             style={({ pressed }) => [
               styles.primaryBtn,
@@ -337,9 +341,11 @@ export default function MatchScreen() {
           </Pressable>
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="New Session"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.replace("/home");
+              router.dismissTo("/");
             }}
             style={({ pressed }) => [
               styles.secondaryBtn,

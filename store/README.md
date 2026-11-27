@@ -12,19 +12,6 @@ a PR alongside the app changes that make them necessary.
 | [review-and-privacy.md](review-and-privacy.md) | App Review notes, Apple privacy labels, Play Data safety, age ratings |
 | [check-lengths.js](check-lengths.js) | `node store/check-lengths.js --fix` updates the character counts and fails if a field is over its limit |
 
-## Still to do
-
-- **Retake Play screenshots 02-home and 03-lobby.** Taken before the Cards
-  picker (By place / By dish), the ? button and the deck on the lobby badge.
-- **iPhone screenshots.** The Play screenshots, icon and feature graphic are
-  done (see below). Still needed: iPhone 6.9" (1320 × 2868). Apple rejects
-  screenshots that don't match the app, so retake them if the UI changes
-  before release.
-- **Copyright line and App Review contact** in App Store Connect: fill in the
-  developer's legal name and phone.
-- **Store URLs on the home page.** Once a listing is live, set
-  `APP_STORE_URL` / `PLAY_STORE_URL` on Railway.
-
 ## Play icon and feature graphic
 
 [graphics/](graphics/) holds what the Play listing uses besides screenshots:
@@ -37,16 +24,13 @@ a PR alongside the app changes that make them necessary.
 
 ## Screenshots
 
-[screenshots/play/](screenshots/play/) holds the Play phone screenshots,
-uploaded in file-name order: 1080 × 1920 PNG (9:16, which Play needs before
-it will feature an app), from Android build 6 on an emulator. Play takes only
-JPEG or 24-bit PNG with no alpha, and `adb screencap` writes RGBA, so flatten
-retakes with `magick in.png -alpha off -define png:color-type=2 out.png`.
+The English (U.S.) galleries show the swipe-first flow in version 1.0.2. Upload the opaque PNG files in filename order.
 
-The swipe and match shots use a room built from the made-up sample
-restaurants, not real ones: a real room shows a real business's name,
-address and Google rating, which we don't want in marketing. A sample
-room's match screen shows a notice instead of the Directions/Call/Website
-buttons, so it isn't in the set. Take future screenshots (iOS included) the
-same way: create the room with no location (`POST /api/sessions` without
-`lat`/`lng`) and join it on the device through `/join/CODE`.
+| Gallery | Native image size | Views |
+| --- | --- | --- |
+| [iPhone large](screenshots/iphone-1320x2868/) | 1320 × 2868 | Recipes, Dine Out, Friends, group match, tutorial |
+| [iPhone medium](screenshots/iphone-1206x2622/) | 1206 × 2622 | Same five views |
+| [iPhone Duo](screenshots/iphone-duo/) | 1398 × 2034 (cover display) | Same five views |
+| [Google Play phone](screenshots/play/) | 1080 × 1920 | Recipes, ingredients, Your likes, Dine Out, Friends, group match, tutorial |
+
+For retakes, use sample places in Dine Out. For Friends and the match, use a local Cook In room with two members who like the same recipe. Dismiss system permission prompts before capture. Render the Play feature graphic again when the swipe or match image changes.

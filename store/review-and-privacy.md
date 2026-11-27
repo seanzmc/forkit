@@ -15,7 +15,7 @@ Facts the answers below rest on. Verify them again before submitting.
 | Random member ID (app-generated UUID, not tied to the device or any account) | AsyncStorage on the device; server memory while in a room | On the device until the app is deleted; on the server session only |
 | Location (lat/lng, `Accuracy.Balanced`), dine-out only, from whoever creates the room | Server, then Google Places, at creation and on each new round. Never sent to Gemini, which gets only the restaurants' names, addresses and coordinates | Server memory while the room is open (`session.search`, for the next round's search); never logged or written to disk |
 | Local weekday and time of day, dine-out only | Server, to check opening hours | Same as location |
-| Swipes | Server memory | Session only |
+| Swipes | Personal Cook In votes stay on the device until an invite. Dine Out and shared Cook In votes go to server memory. Native also keeps the last room’s votes on the device for reconnects. | On the server for the session. The local record is replaced by the next room or removed when the app is deleted. |
 | Push token, if allowed | Server memory, then Expo push → APNs / FCM | Session only (kept after disconnect until the session is swept) |
 | Display name, search radius, card style (By place / By dish), walkthrough seen | AsyncStorage on the device | Until the app is deleted |
 | Update check: app version, platform, random install ID (expo-updates) | Expo's update service (EAS Update), on each launch | Held by Expo; never reaches our server |
@@ -32,24 +32,16 @@ background location, no database. All traffic is HTTPS / WSS.
 **Notes**
 
 ```
-ForkIt has no accounts. Type any name on the first screen and tap "Let's Eat". A short "How ForkIt works" walkthrough opens the first time; tap "Skip" or go through it (the ? button on the home screen reopens it).
+On first launch or upgrade, an optional four-step practice tour opens over the deck. Try the controls, or tap the X at any step. Practice does not send votes or invites. The deck opens on a Cook In recipe. Swipe right to like it, left to pass, or tap View recipe for the ingredients and method. There is no sign-in. Friends lets you optionally add a name and open How it works.
 
-ForkIt is a group app: everyone in a room swipes on dishes, and it's a match when most of the room likes the same restaurant (dine out) or recipe (cook in). You can test it with one device, because a one-person room matches on your first right swipe.
+To test a match, use two devices.
+1. On the first device, like the first Cook In recipe. Open Friends and tap Invite a friend.
+2. On the second device, open the invite, or open Friends, tap Join with a code, and enter the displayed code. You can start swiping immediately.
+3. Like the same recipe on the second device. Both devices show the match and its recipe. A match needs at least two different people and a strict majority of the room.
 
-Quickest test, no location needed:
-1. On the home screen choose "Cook In", then tap "Create Room".
-2. In the waiting room tap "Start Swiping".
-3. Swipe right on any recipe. The match screen appears.
+For Dine Out, tap Dine Out and allow location to see nearby restaurants. Tap the meal and distance to change the meal, radius or card style. By place lets you tap the sides of a photo to flip through dishes from that restaurant. The middle button undoes the last swipe. The same Friends flow shares the current restaurant deck. When the group likes a place, the match offers directions and the contact options available for that restaurant.
 
-Dine out:
-1. Choose "Dine Out", tap "Enable Location" and allow it. Location is sent to Google Places to find restaurants near you, and our server discards it when the room closes.
-2. Pick a meal, a card style ("By place" or "By dish") and a radius, then tap "Create Room". Building the room takes up to about 10 seconds while we look up nearby restaurants and their dishes.
-3. Tap "Start Swiping". In a "By place" room, tap the right or left side of a card's photo to flip through that restaurant's dishes; swipe to vote on the dish showing. The button between X and the heart undoes a swipe.
-4. Swipe right on a dish to get a match, with Directions, Order delivery and Google Maps buttons, plus Call and Website when the restaurant lists them.
-
-If nothing matches once everyone has swiped every card, any member can start another round.
-
-To try it as a group, use a second device: tap the share button at the top of the waiting room, tap "Join Room" on the other device and enter the code, then start. Match notifications arrive only if you allow notifications and have left the app when the match happens.
+If everyone finishes with no match, a member can start another round. After voting in a shared room, you can allow notifications to hear about the match while the app is in the background.
 ```
 
 ## Apple App Privacy (App Store Connect → App Privacy)
@@ -123,6 +115,9 @@ Notes:
   search until it closes.
 - **Device or other IDs** also covers the random install ID expo-updates
   sends to Expo when checking for updates; no extra row.
+- **Store reviews add no row.** The rating card after a second match is
+  Google's own (Play In-App Review): the rating goes from the person to Google
+  Play, and neither the app nor our server sees it.
 
 ## Age rating
 
