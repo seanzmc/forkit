@@ -46,7 +46,7 @@ they are left out here.
 food,restaurant,group,friends,where to eat,what to eat,menu,dish,date night,lunch,picker,recipe,vote
 ```
 
-**Description** [1758 / 4000]
+**Description** [1811 / 4000]
 
 ```
 Can't agree on where to eat or what to cook? Open ForkIt and swipe on a recipe. See something you'd make tonight? Swipe right. Swipe left to pass, or tap Undo to bring the last card back. You can browse on your own and invite someone when you're ready.
@@ -63,7 +63,7 @@ Open Friends to send a link or share a six-character room code. Your friend gets
 WHEN IT'S A MATCH
 At least two people and more than half the group must agree. For Cook In, that's the same recipe. For Dine Out, you can like the pad thai and your friend can like the curry at the same restaurant. If everyone finishes without a match, deal another round. Turn on notifications after you vote in a shared room to hear when the group decides.
 
-A short, optional practice tour shows you how to swipe, undo, switch modes and invite. Close it with the X at any time, or replay it from Friends under How it works.
+An optional tour points out the controls on your swipe screen. Try a swipe and watch the card edge turn green for a like or red for a pass. Close it with the X at any time, or replay it from Friends under How it works.
 ```
 
 **Support URL**
@@ -107,7 +107,8 @@ Start on a recipe, try the optional swipe tutorial, or switch to nearby restaura
 **What to Test**
 
 ```
-• On a first launch or upgrade, try a swipe, Undo, Dine Out and Friends in the practice tour. Try the X and reopen How it works from Friends.
+• Follow the cues on the actual card, Undo, Dine Out and Friends. Try the X, then replay from Friends under How it works.
+• During normal swiping, slowly drag right and left. The whole card edge should turn green or red alongside YUMMY or NOPE, and fade away as it returns to center.
 • Browse Cook In alone. Open a recipe, adjust servings and share the shopping list.
 • Like a card before inviting. Open Friends, share the link, and join on a second device. Check that the earlier vote counts and both devices see the match.
 • Try a Dine Out deck by place and by dish. Check directions, delivery, maps, call and website actions where offered.

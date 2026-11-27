@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { router, useIsFocused } from "expo-router";
 import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSharedValue } from "react-native-reanimated";
@@ -9,7 +9,7 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { DishCard, type DishCardHandle } from "./DishCard";
 import { DineOptions } from "./DineOptions";
-import { HowItWorks } from "./HowItWorks";
+import { HowItWorks, type TourStep } from "./HowItWorks";
 import { MatchActions } from "./MatchActions";
 import { RecipeDetails } from "./RecipeDetails";
 import { SampleRoomNotice } from "./SampleRoomNotice";
@@ -17,7 +17,7 @@ import { SessionPanel } from "./SessionPanel";
 import { SheetButton, SwipeSheet, sheetStyles } from "./SwipeSheet";
 import { SwipeReview } from "./SwipeReview";
 import { dineRequest, preferredDineSettings, rememberDineSettings, type DineSettings } from "@/lib/dine-out";
-import { mealForTime, shuffleRecipes, type Dish, type SessionMode } from "@/lib/food-data";
+import { mealForTime, shuffleDishes, shuffleRecipes, type Dish, type SessionMode } from "@/lib/food-data";
 import { getMemberId } from "@/lib/member-id";
 import { getPushToken } from "@/lib/push";
 import { apiRequest } from "@/lib/query-client";
@@ -37,9 +37,9 @@ type DeckState = {
   session?: SessionState;
   settings?: DineSettings;
 };
-type Panel = "friends" | "settings" | "round" | "likes" | "history" | "detail" | "sample" | "help" | null;
-// Independent of the old room-first walkthrough and of routine app/OTA versions.
-const TOUR_KEY = "seenSwipeFirstTourV1";
+type Panel = "friends" | "settings" | "round" | "likes" | "history" | "detail" | "sample" | null;
+type Tour = { step: TourStep; deck: DeckState };
+const TOUR_KEY = "seenOnScreenSwipeTourV2";
 let tourDismissed = false;
 
 async function needsSwipeTour() {
@@ -86,11 +86,15 @@ async function createDeck(body: object): Promise<{ code: string; dishes: Dish[];
 
 export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const focused = useIsFocused();
-  const [deck, setDeck] = useState<DeckState>(() => (initialCode ? guestDeck(initialCode) : cookDeck()));
+  const [liveDeck, setDeck] = useState<DeckState>(() => (initialCode ? guestDeck(initialCode) : cookDeck()));
+  const [tour, setTour] = useState<Tour | null>(null);
+  const tourHistory = useRef<Tour[]>([]);
+  const target = useRef<React.ComponentRef<typeof View>>(null);
+  const deck = tour?.deck ?? liveDeck;
   const card = useRef<DishCardHandle>(null);
   const reveal = useSharedValue(0);
   const [outgoing, setOutgoing] = useState<{ dishes: Dish[]; index: number; key: string } | null>(null);
-  const latest = useRef(deck);
+  const latest = useRef(liveDeck);
   const personal = useRef<Partial<Record<SessionMode, DeckState>>>({});
   const mounted = useRef(true);
   const locked = useRef(false);
@@ -128,19 +132,61 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       mounted.current = false;
     };
   }, []);
+  const startTour = useCallback(() => {
+    const current = latest.current;
+    // Keep the current card and group visible. A completed deck needs a card
+    // to practice on. Room updates continue to go to the live deck throughout.
+    const byDish = (current.session?.deck ?? current.settings?.deck) === "dishes";
+    const votes = new Set(current.history.map(({ dish }) => cardKey(dish, byDish)));
+    const available = current.dishes.some(dish => !votes.has(cardKey(dish, byDish)));
+    const practice = !current.dishes.length ? cookDeck() : available ? current : { ...current, history: [], dishIndex: 0 };
+    setOutgoing(null);
+    setNotice("");
+    setPanel(null);
+    sharePending.current = false;
+    tourHistory.current = [];
+    setTour({ step: "swipe", deck: practice });
+  }, []);
+  const waitingForDeck = !!liveDeck.code && (!liveDeck.dishes.length || liveDeck.session?.status === "lobby");
   useEffect(() => {
-    if (!focused) return;
+    if (!focused || tour || panel || busy || waitingForDeck) return;
     let active = true;
     needsSwipeTour().then((needed) => {
-      if (active && needed) setPanel((current) => current ?? "help");
+      if (active && needed) startTour();
     }).catch(() => {});
     return () => { active = false; };
-  }, [focused]);
+  }, [focused, tour, panel, busy, waitingForDeck, startTour]);
 
-  function closeTutorial() {
+  const closeTutorial = useCallback(() => {
     rememberTourDismissal();
-    open(null);
+    tourHistory.current = [];
+    setOutgoing(null);
+    setPanel(null);
+    setTour(null);
+  }, []);
+  function advanceTour(step: TourStep, practiceDeck = deck) {
+    if (!tour) return;
+    tourHistory.current.push(tour);
+    setTour({ step, deck: practiceDeck });
   }
+  function backInTour() {
+    const previous = tourHistory.current.pop();
+    if (!previous) return;
+    setOutgoing(null);
+    setPanel(previous.step === "round" ? "round" : null);
+    setTour(previous);
+  }
+  const touring = !!tour;
+  useEffect(() => {
+    if (!touring || !focused || panel) return;
+    if (Platform.OS === "web") {
+      const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeTutorial(); };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => { closeTutorial(); return true; });
+    return () => sub.remove();
+  }, [touring, focused, panel, closeTutorial]);
   function update(next: DeckState) {
     latest.current = next;
     setDeck(next);
@@ -204,6 +250,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       setLoadingRound(true);
     } else if (msg.type === "match") {
       sharePending.current = false;
+      setTour(null);
       setPanel(null);
       if (previous.dishes.length && previous.code)
         rememberSwipes(previous.code, userId, previous.round, previous.history);
@@ -239,7 +286,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     }
   }
   const room = useSwipeRoom(
-    focused ? deck.code : undefined,
+    focused ? liveDeck.code : undefined,
     userId,
     () => {
       const current = latest.current;
@@ -251,7 +298,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     receive
   );
   const connected =
-    focused && room.status === "connected" && !!deck.session?.members.some((m) => m.id === userId) && !lost;
+    focused && room.status === "connected" && !!liveDeck.session?.members.some((m) => m.id === userId) && !lost;
   const send = room.send;
   // Only rooms from older apps wait in a lobby (this app's rooms start
   // swiping when created). Hosting one can fall to this device when the old
@@ -259,16 +306,16 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const canStart = connected && deck.session?.status === "lobby" && deck.session.hostId === userId;
   const count = deck.history.length;
   useEffect(() => {
-    if (!deck.code || !deck.shared || !connected || !sharePending.current || panel !== "friends") return;
+    if (touring || !liveDeck.code || !liveDeck.shared || !connected || !sharePending.current || panel !== "friends") return;
     sharePending.current = false;
-    const code = deck.code;
+    const code = liveDeck.code;
     void shareSessionCode(code).then((hint) => {
       if (mounted.current && latest.current.code === code) setNotice(hint);
     });
-  }, [connected, deck.code, deck.shared, panel]);
-  const hasVotes = count > 0;
+  }, [connected, liveDeck.code, liveDeck.shared, panel, touring]);
+  const hasVotes = liveDeck.history.length > 0;
   useEffect(() => {
-    if (!deck.shared || !connected || !hasVotes || panel) return;
+    if (touring || !liveDeck.shared || !connected || !hasVotes || panel) return;
     let active = true;
     getPushToken().then((token) => {
       if (active && token) send({ type: "push_token", pushToken: token });
@@ -276,7 +323,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     return () => {
       active = false;
     };
-  }, [connected, deck.code, deck.shared, hasVotes, panel, send]);
+  }, [connected, liveDeck.code, liveDeck.shared, hasVotes, panel, send, touring]);
   useEffect(() => {
     if (!loadingRound) return;
     const timer = setTimeout(() => setLoadingRound(false), 40000);
@@ -334,6 +381,20 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   }
   function selectMode(mode: SessionMode) {
     if (locked.current || mode === deck.mode) return;
+    if (tour) {
+      if (tour.step !== "mode") return;
+      if (deck.shared) {
+        advanceTour("round");
+        setPanel("round");
+      } else {
+        const settings = { ...INITIAL_SETTINGS, meal: mealForTime(new Date()) };
+        const next = personal.current[mode] ?? (mode === "cook-in" ? cookDeck() : {
+          mode, dishes: shuffleDishes(settings.meal), settings, history: [], dishIndex: 0, round: 1, shared: false,
+        });
+        advanceTour("friends", next);
+      }
+      return;
+    }
     if (deck.shared) {
       open("round");
       return;
@@ -434,11 +495,11 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const canVote = !!dish && !waitingForHost && !loadingRound;
   const front = outgoing?.dishes ?? top;
   const behind = outgoing ? top : remaining[1];
-  const cardKeyPrefix = deck.mode === "dine-out" ? `${deck.code}-${deck.round}-` : `cook-${deck.round}-`;
+  const cardKeyPrefix = (tour ? "practice-" : "") + (deck.mode === "dine-out" ? `${deck.code}-${deck.round}-` : `cook-${deck.round}-`);
   function vote(direction: SwipeVote, item: Dish) {
-    const current = latest.current;
+    const current = tour?.deck ?? latest.current;
     if (
-      !canVote || outgoing ||
+      !canVote || outgoing || (tour && tour.step !== "swipe") ||
       panel ||
       !top || !top.includes(item) ||
       current.code !== deck.code ||
@@ -450,22 +511,31 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
     // keep its card in front until the slide has actually finished.
     setOutgoing({ dishes: top, index: deck.dishIndex, key: cardKeyPrefix + top[0].id });
     const next = { ...current, history: [...current.history, { dish: item, vote: direction }], dishIndex: 0 };
-    saveVotes(next);
-    if (current.code) room.send({ type: "swipe", dishId: item.id, vote: direction, round: current.round });
+    if (tour) {
+      advanceTour("undo", next);
+    } else {
+      saveVotes(next);
+      if (current.code) room.send({ type: "swipe", dishId: item.id, vote: direction, round: current.round });
+    }
     void Haptics.impactAsync(direction === "like" ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     return true;
   }
   function undo() {
-    const current = latest.current,
+    const current = tour?.deck ?? latest.current,
       last = current.history[current.history.length - 1];
-    if (!last || loadingRound || outgoing) return;
+    if (!last || loadingRound || outgoing || (tour && tour.step !== "undo")) return;
     const group = cards.find((c) => cardKey(c[0], byDish) === cardKey(last.dish, byDish));
-    saveVotes({
+    const restored = {
       ...current,
       history: current.history.slice(0, -1),
       dishIndex: Math.max(0, group?.findIndex((d) => d.id === last.dish.id) ?? 0),
-    });
-    if (current.code) room.send({ type: "undo", dishId: last.dish.id, round: current.round });
+    };
+    if (tour) {
+      advanceTour("mode", restored);
+    } else {
+      saveVotes(restored);
+      if (current.code) room.send({ type: "undo", dishId: last.dish.id, round: current.round });
+    }
     void Haptics.selectionAsync();
   }
   function newRound() {
@@ -488,6 +558,9 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   const radiusLabel = Math.round(settings.radius / 1609) + " mi";
   const cook = deck.mode === "cook-in";
   const groupLabel = deck.shared && members.length ? `Friends (${members.length})` : "Friends";
+  const guide = focused && tour && <HowItWorks key={tour.step} step={tour.step} target={target}
+    cook={cook} shared={deck.shared} onBack={tour.step !== "swipe" && !outgoing ? backInTour : undefined} onClose={closeTutorial} />;
+  const practiceCard = !tour || tour.step === "swipe";
   const titles = {
     history: "Your swipes",
     friends: deck.shared ? "Your group" : "Swipe together",
@@ -499,15 +572,16 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   };
   return (
     <SafeAreaView style={s.screen}>
-      <View style={[s.inner, compact && s.compact]} aria-hidden={panel === "help"} importantForAccessibility={panel === "help" ? "no-hide-descendants" : "auto"}>
+      <View style={[s.inner, compact && s.compact]}>
         <View style={s.header}>
           <View style={s.tabs}>
             {(["cook-in", "dine-out"] as const).map((mode) => (
               <Pressable
                 key={mode}
+                ref={tour?.step === "mode" && mode !== deck.mode ? target : undefined}
                 accessibilityRole="button"
                 accessibilityState={{ selected: mode === deck.mode }}
-                disabled={busy}
+                disabled={busy || (!!tour && (tour.step !== "mode" || mode === deck.mode))}
                 onPress={() => selectMode(mode)}
                 style={[s.tab, mode === deck.mode && s.activeTab]}
               >
@@ -518,19 +592,23 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             ))}
           </View>
           <Pressable
+            ref={tour?.step === "friends" ? target : undefined}
             accessibilityRole="button"
             accessibilityLabel={groupLabel}
-            disabled={busy}
+            disabled={busy || (!!tour && tour.step !== "friends")}
             style={s.friends}
-            onPress={() => open("friends")}
+            onPress={() => {
+              if (tour) advanceTour("invite");
+              open("friends");
+            }}
           >
             <Ionicons name="people-outline" size={19} color={Colors.accent} />
             <Text style={s.link}>{groupLabel}</Text>
           </Pressable>
         </View>
         {!cook && (
-          <View style={s.context}>
-            {deck.session?.sample ? (
+          <View pointerEvents={tour ? "none" : "auto"} aria-hidden={!!tour} style={s.context}>
+            {deck.session?.sample || (tour && !deck.code) ? (
               <Pressable accessibilityRole="button" onPress={() => open("sample")} style={s.quiet}>
                 <Text style={s.sample}>Sample places</Text>
               </Pressable>
@@ -561,7 +639,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             {notice}
           </Text>
         )}
-        {deck.code && !lost && (room.status === "offline" || room.status === "reconnecting") && (
+        {!tour && deck.code && !lost && (room.status === "offline" || room.status === "reconnecting") && (
           <View style={s.context}>
             <Text style={s.hint}>{room.status === "offline" ? "Room offline" : "Reconnecting…"}</Text>
             <Pressable accessibilityRole="button" style={s.quiet} onPress={room.retry}>
@@ -569,7 +647,8 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             </Pressable>
           </View>
         )}
-        <View style={s.stack}>
+        <View ref={tour?.step === "swipe" ? target : undefined} collapsable={false} style={s.stack}
+          pointerEvents={practiceCard ? "auto" : "none"} aria-hidden={!practiceCard} importantForAccessibility={practiceCard ? "auto" : "no-hide-descendants"}>
           {front && (canVote || outgoing) ? (
             <>
               {behind && (
@@ -585,7 +664,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                 ref={card}
                 dishes={front}
                 index={outgoing?.index ?? deck.dishIndex}
-                onIndexChange={outgoing ? undefined : (index) => {
+                onIndexChange={outgoing || tour ? undefined : (index) => {
                   update({ ...latest.current, dishIndex: index });
                   setShowHint(false);
                 }}
@@ -593,6 +672,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                 onSwipe={vote}
                 onSwipeEnd={finished => setOutgoing(current => current?.dishes === finished ? null : current)}
                 onViewRecipe={cook ? viewDetails : undefined}
+                recipeDisabled={!!tour}
                 isTop
                 reveal={reveal}
               />
@@ -651,7 +731,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Pass"
-            disabled={!canVote || !!outgoing}
+            disabled={!canVote || !!outgoing || !practiceCard}
             style={({ pressed }) => [s.vote, !canVote && s.dim, pressed && s.pressed]}
             onPress={() => card.current?.swipe("pass")}
           >
@@ -659,9 +739,10 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             <Text style={s.actionText}>Pass</Text>
           </Pressable>
           <Pressable
+            ref={tour?.step === "undo" ? target : undefined}
             accessibilityRole="button"
             accessibilityLabel="Undo last swipe"
-            disabled={!count || loadingRound || !!outgoing}
+            disabled={!count || loadingRound || !!outgoing || (!!tour && tour.step !== "undo")}
             style={({ pressed }) => [s.undo, (!count || loadingRound) && s.dim, pressed && s.pressed]}
             onPress={undo}
           >
@@ -670,7 +751,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Like"
-            disabled={!canVote || !!outgoing}
+            disabled={!canVote || !!outgoing || !practiceCard}
             style={({ pressed }) => [s.vote, !canVote && s.dim, pressed && s.pressed]}
             onPress={() => card.current?.swipe("like")}
           >
@@ -678,7 +759,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             <Text style={s.actionText}>Like</Text>
           </Pressable>
         </View>
-        <View style={s.footer}>
+        <View pointerEvents={tour ? "none" : "auto"} aria-hidden={!!tour} style={s.footer}>
           {deck.shared && cards.length > 0 && (
             <Text style={s.hint}>
               {deck.round > 1 ? "Round " + deck.round + " · " : ""}
@@ -693,12 +774,10 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
             !deck.shared && <Text style={s.hint}>Swipe left to pass, right to like.</Text>
           )}
         </View>
+        {!panel && guide}
       </View>
-      {panel === "help" ? (
-        focused && <HowItWorks onClose={closeTutorial} />
-      ) : (
-        panel && (
-          <SwipeSheet title={titles[panel]} onClose={() => open(null)}>
+      {panel && (
+          <SwipeSheet title={titles[panel]} onClose={tour ? closeTutorial : () => open(null)} overlay={guide}>
             {!!notice && (
               <Text accessibilityLiveRegion="polite" style={sheetStyles.error}>
                 {notice}
@@ -708,23 +787,25 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
               <SessionPanel
                 session={deck.session ?? null}
                 shared={deck.shared}
-                connected={connected}
+                connected={tour ? true : connected}
                 userId={userId}
                 name={name}
                 total={cards.length}
                 count={count}
-                busy={busy || !userId}
+                busy={!tour && (busy || !userId)}
+                tourTarget={tour?.step === "invite" ? target : undefined}
                 onName={(value) => {
                   nameRef.current = value;
                   setName(value);
                 }}
                 onSaveName={saveName}
                 onInvite={() => {
-                  void invite();
+                  if (tour) closeTutorial();
+                  else void invite();
                 }}
                 onJoin={join}
                 onLeave={leaveGroup}
-                onHelp={() => open("help")}
+                onHelp={() => { open(null); startTour(); }}
                 onHistory={() => open("history")}
                 onClose={() => open(null)}
               />
@@ -749,8 +830,11 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
                 <Text style={sheetStyles.secondary}>
                   Everyone in your group swipes on this deck. Leave the group to choose a different one.
                 </Text>
-                <SheetButton label="Keep swiping" onPress={() => open(null)} />
-                <SheetButton label="Leave group" onPress={leaveGroup} />
+                <SheetButton ref={tour?.step === "round" ? target : undefined} label="Keep swiping" onPress={() => {
+                  if (tour) advanceTour("friends");
+                  open(null);
+                }} />
+                <SheetButton label="Leave group" onPress={leaveGroup} disabled={!!tour} />
               </>
             )}
             {panel === "likes" &&
@@ -783,7 +867,6 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
               </>
             )}
           </SwipeSheet>
-        )
       )}
     </SafeAreaView>
   );

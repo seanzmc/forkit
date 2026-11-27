@@ -7,6 +7,7 @@ import {
 } from "react-native-reanimated";
 import { scheduleOnRN, scheduleOnUI } from "react-native-worklets";
 import type { SwipeVote } from "@/lib/swipe-review";
+import Colors from "@/constants/colors";
 
 // The original ForkIt card used this spring, 40% vertical travel, and 25° of
 // tilt per screen width. Measure the card itself so the web and Duo agree.
@@ -172,6 +173,10 @@ export function useDishCardMotion(
   });
   const likeStyle = useAnimatedStyle(() => ({ opacity: clamp(fraction.get() / VOTE_FRACTION, 0, 1) }));
   const passStyle = useAnimatedStyle(() => ({ opacity: clamp(-fraction.get() / VOTE_FRACTION, 0, 1) }));
+  const outlineStyle = useAnimatedStyle(() => {
+    const offset = fraction.get();
+    return { borderColor: offset < 0 ? Colors.red : Colors.green, opacity: clamp(Math.abs(offset) / VOTE_FRACTION, 0, 1) };
+  });
   function swipe(direction: SwipeVote) {
     if (!isTop || !width || recorded.current || exitEdge.get()) return;
     // A button already runs on the React thread. An immediate invite must
@@ -179,5 +184,5 @@ export function useDishCardMotion(
     recorded.current = vote(direction);
     if (recorded.current) scheduleOnUI(throwCard, direction, 0, 0);
   }
-  return { pan, cardStyle, likeStyle, passStyle, swipe };
+  return { pan, cardStyle, likeStyle, passStyle, outlineStyle, swipe };
 }

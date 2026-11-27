@@ -19,7 +19,7 @@ ForkIt: Swipe to Decide
 Swipe on recipes or nearby restaurants. Invite friends to the deck you're using.
 ```
 
-**Full description** [1758 / 4000]
+**Full description** [1811 / 4000]
 
 Play's metadata policy frowns on all-caps text, so this is the App Store
 text with sentence-case headings.
@@ -39,7 +39,7 @@ Open Friends to send a link or share a six-character room code. Your friend gets
 When it's a match
 At least two people and more than half the group must agree. For Cook In, that's the same recipe. For Dine Out, you can like the pad thai and your friend can like the curry at the same restaurant. If everyone finishes without a match, deal another round. Turn on notifications after you vote in a shared room to hear when the group decides.
 
-A short, optional practice tour shows you how to swipe, undo, switch modes and invite. Close it with the X at any time, or replay it from Friends under How it works.
+An optional tour points out the controls on your swipe screen. Try a swipe and watch the card edge turn green for a like or red for a pass. Close it with the X at any time, or replay it from Friends under How it works.
 ```
 
 **App category:** Food & Drink

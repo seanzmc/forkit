@@ -106,7 +106,7 @@ The swipe screen keeps personal Cook In and Dine Out decks when switching modes.
 
 **Screens** (`app/`, expo-router file-based, typedRoutes enabled): `index` opens a local Cook In deck immediately. It and `swipe/[code]` use `components/SwipeScreen.tsx`. Right likes, left passes, and View recipe opens the ingredients and method. Dine Out requests location when selected. Friends handles invitations, room codes, names and membership. The server starts rooms created with `swipeFirst: true` immediately and keeps the lobby protocol for older clients.
 
-**Swipe tutorial**: The first visit to a swipe screen after installing or upgrading shows a four-step practice tour. Dismissing or finishing writes `seenSwipeFirstTourV1`. Friends → How it works replays it. Practice swipes, mode changes and invitations stay local to the tutorial.
+**Swipe tutorial**: The first visit to a swipe screen after installing or upgrading guides the user on the actual swipe card, Undo, mode tabs and Friends invitation. Dismissing or finishing writes `seenOnScreenSwipeTourV2`. Friends → How it works replays it. Practice swipes, mode changes and invitations stay local to the tutorial.
 
 ## Server-as-Expo-host
 
