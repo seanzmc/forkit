@@ -8,10 +8,12 @@ export function SwipeSheet({
   title,
   onClose,
   children,
+  overlay,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  overlay?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -44,17 +46,20 @@ export function SwipeSheet({
             {children}
           </ScrollView>
         </View>
+        {overlay}
       </View>
     </Modal>
   );
 }
 
 export function SheetButton({
+  ref,
   label,
   onPress,
   primary,
   disabled,
 }: {
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
   label: string;
   onPress: () => void;
   primary?: boolean;
@@ -62,6 +67,7 @@ export function SheetButton({
 }) {
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}

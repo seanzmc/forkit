@@ -31,6 +31,7 @@ export function DishCard({
   onSwipe,
   onSwipeEnd,
   onViewRecipe,
+  recipeDisabled = false,
   isTop,
   reveal,
   showHint = false,
@@ -44,6 +45,7 @@ export function DishCard({
   onSwipe?: (vote: SwipeVote, dish: Dish) => boolean;
   onSwipeEnd?: (dishes: Dish[]) => void;
   onViewRecipe?: (dish: Dish) => void;
+  recipeDisabled?: boolean;
   isTop: boolean;
   reveal: SharedValue<number>;
   // Show the "tap the sides" hint (until the first flip).
@@ -53,7 +55,7 @@ export function DishCard({
   const count = dishes.length;
   const surface = useRef<React.ComponentRef<typeof View>>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const { pan, cardStyle, likeStyle, passStyle, swipe } = useDishCardMotion(
+  const { pan, cardStyle, likeStyle, passStyle, outlineStyle, swipe } = useDishCardMotion(
     size.width, size.height, isTop, reveal,
     direction => onSwipe?.(direction, dish) ?? false,
     () => onSwipeEnd?.(dishes),
@@ -232,7 +234,7 @@ export function DishCard({
         <PlacesAttribution dish={dish} />
       </View>
       {onViewRecipe && (
-        <Pressable style={styles.recipe} accessibilityRole="button" onPress={() => onViewRecipe(dish)}>
+        <Pressable style={styles.recipe} accessibilityRole="button" disabled={recipeDisabled} onPress={() => onViewRecipe(dish)}>
           <Text style={styles.recipeText}>View recipe</Text>
         </Pressable>
       )}
@@ -242,6 +244,7 @@ export function DishCard({
   return (
     <GestureDetector gesture={pan} touchAction="none" userSelect="none">
       <Animated.View
+        testID={isTop ? "swipe-card" : undefined}
         onLayout={({ nativeEvent: { layout } }) => {
           setSize(previous => previous.width === layout.width && previous.height === layout.height
             ? previous : { width: layout.width, height: layout.height });
@@ -258,6 +261,7 @@ export function DishCard({
         ) : (
           <View style={styles.face}>{content}</View>
         )}
+        {isTop && <Animated.View testID="swipe-vote-outline" pointerEvents="none" aria-hidden style={[styles.voteOutline, outlineStyle]} />}
       </Animated.View>
     </GestureDetector>
   );
@@ -277,6 +281,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   face: { flex: 1, borderRadius: 24, overflow: "hidden" },
+  voteOutline: { ...StyleSheet.absoluteFill, borderRadius: 24, borderWidth: 4 },
   cardImage: {
     width: "100%",
     height: "100%",
