@@ -151,7 +151,7 @@ section > .sub { color: var(--muted); }
 .share-card h3 { font-size: 18px; font-weight: 600; }
 .share-card p { color: var(--muted); }
 .copybox { display: flex; flex-direction: column; gap: 8px; }
-.copytext { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 15px; color: var(--fg); white-space: pre-wrap; user-select: all; -webkit-user-select: all; }
+.copytext { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 15px; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
 button.btn { border: 0; width: 100%; cursor: pointer; font: inherit; }
 .copied { font-size: 14px; color: var(--good); min-height: 1.4em; text-align: center; }
 
@@ -203,13 +203,13 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <div class="facts">
       <span class="fact">Android phones</span>
       <span class="fact">Free</span>
-      <span class="fact">About 5 minutes</span>
+      <span class="fact">Sign up with Google</span>
       <span class="fact">Uses your Google account</span>
     </div>
     <div class="heads">
       <span class="i" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5.5 5"/></svg></span>
       <div>
-        <p><b>ForkIt isn't on Google Play for everyone yet.</b> Google only lets it go public after at least 12 people have tested it for 14 days in a row. You're one of those people.</p>
+        <p><b>ForkIt isn't on Google Play for everyone yet.</b> We can apply for public release once at least 12 people have stayed opted in to the closed test for 14 consecutive days.</p>
         <p>Only people who join this test can install it. Everyone you want to swipe with needs to set it up first: see <a href="#share">Invite friends to test</a>.</p>
       </div>
     </div>
@@ -218,10 +218,10 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
   <nav class="toc" aria-labelledby="toc-title">
     <h2 id="toc-title">Contents</h2>
     <ol>
-      <li><a href="#install"><span class="n">1</span><span class="t">Install the app<small>Join the group, opt in, install</small></span><span class="go" aria-hidden="true">›</span></a></li>
+      <li><a href="#install"><span class="n">1</span><span class="t">Install the app<small>Sign up, then use your install email</small></span><span class="go" aria-hidden="true">›</span></a></li>
       <li><a href="#use"><span class="n">2</span><span class="t">Using the App<small>Make a room, swipe, match</small></span><span class="go" aria-hidden="true">›</span></a></li>
       <li><a href="#feedback"><span class="n">3</span><span class="t">Give Sean Feedback<small>What to look for and how to send it</small></span><span class="go" aria-hidden="true">›</span></a></li>
-      <li><a href="#share"><span class="n q">+</span><span class="t">Invite friends to test<small>Share this page so they can set up too</small></span><span class="go" aria-hidden="true">›</span></a></li>
+      <li><a href="#share"><span class="n q">+</span><span class="t">Invite friends to test<small>Share the Android signup form</small></span><span class="go" aria-hidden="true">›</span></a></li>
       <li><a href="#help"><span class="n q">?</span><span class="t">If something goes wrong</span><span class="go" aria-hidden="true">›</span></a></li>
     </ol>
   </nav>
@@ -229,31 +229,29 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
   <section id="install" aria-labelledby="install-h">
     <p class="part">Part 1</p>
     <h2 id="install-h">Install the app</h2>
-    <p class="sub">Do these on your Android phone, in this order. Each button opens a new page, so come back here after each one.</p>
+    <p class="sub">New testers start with the signup form. If your ForkIt install email has arrived, go straight to step 2 on your Android phone.</p>
     <div class="callout"><span class="i" aria-hidden="true">&#9432;</span><span>Use the <b>same Google account</b> for every step: the one your phone's Play Store uses. If you have more than one, check which one the Play Store shows when you tap your profile picture.</span></div>
     <ol class="steps">
       <li class="step">
-        <div class="step-head"><h3>Join the ForkIt testers group</h3></div>
-        <p>This is how Google knows you're allowed to test. Tap the button, sign in if asked, then tap <span class="tap">Join group</span>.</p>
-        <a class="btn invite" href="https://groups.google.com/g/forkit-testers">
+        <div class="step-head"><h3>Request your test link</h3></div>
+        <p>Open the form with the Google account you use in the Play Store. Confirm the two testing questions and submit.</p>
+        <a class="btn invite" href="https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform">
           <span class="ic" aria-hidden="true"><img src="__ICON__" alt="" style="width:40px;height:40px;border-radius:10px"></span>
-          <span class="lbl"><strong>Join the testers group</strong><span>Opens Google Groups</span></span>
+          <span class="lbl"><strong>Sign up for the Android test</strong><span>Opens Google Forms</span></span>
           <span class="arr" aria-hidden="true">›</span>
         </a>
-        <p class="linktext">groups.google.com/g/forkit-testers</p>
-        <p>You won't get emails from it. It's only a guest list.</p>
-        <p class="after">&#8617; Then come back here for step 2</p>
+        <p>Sean will add your account, and then your install email goes out. Look for <b>Your ForkIt Android test link</b>. Continue when it arrives.</p>
       </li>
       <li class="step">
         <div class="step-head"><h3>Become a tester</h3></div>
-        <p>Tap the button, then tap <span class="tap">Become a tester</span> on the page that opens.</p>
+        <p>After your install email arrives, open its link and tap <span class="tap">Become a tester</span>. You can also use this button.</p>
         <a class="btn invite" href="https://play.google.com/apps/testing/com.seandm.forkit">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
           <span class="lbl"><strong>Opt in to the test</strong><span>Opens Google Play in your browser</span></span>
           <span class="arr" aria-hidden="true">›</span>
         </a>
         <p class="linktext">play.google.com/apps/testing/com.seandm.forkit</p>
-        <p>If it says the app isn't available, wait a few minutes after joining the group and try again.</p>
+        <p>If it says the app isn't available, wait a few minutes and try again.</p>
         <div class="callout"><span class="i" aria-hidden="true">&#9432;</span><span><b>Once it says you're a tester, wait about 5 minutes before step 3.</b> Google needs a moment to let you in. If you open the Play Store too soon, it can get stuck on "Item not found".</span></div>
         <p class="after">&#8617; Then come back here for step 3</p>
       </li>
@@ -268,7 +266,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
         <div class="comeback" role="note">
           <p class="cb-kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>Says "Item not found"?</p>
           <p class="cb-big">That's normal. <mark>The Play Store needs a refresh.</mark></p>
-          <p>It remembered "not found" from before you were let in. To clear it:</p>
+          <p>It can keep showing "not found" from before you were let in. To clear it:</p>
           <p class="cb-how"><b>1.</b> Open <b>Settings</b>, tap <b>Apps</b>, then <b>Google Play Store</b>, then <b>Force stop</b>.<br><b>2.</b> Come back here and tap the green button again.</p>
           <p class="cb-how">Still not found? Check that the Play Store is signed in to the same Google account you used in steps 1 and 2 (tap your profile picture in the Play Store). If it is, wait half an hour and try again.</p>
         </div>
@@ -277,9 +275,9 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
         <div class="step-head"><h3>Keep it for 14 days</h3></div>
         <div class="comeback" role="note">
           <p class="cb-kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>This part matters most</p>
-          <p class="cb-big">Please <mark>keep ForkIt installed for at least 14 days.</mark></p>
-          <p>Google counts how many testers stay in the test for 14 days in a row. If people drop out, the count starts over and ForkIt can't go public yet.</p>
-          <p class="cb-how"><b>So for two weeks:</b> don't uninstall it, don't leave the group, and don't tap <b>Leave the program</b>. Opening it every few days helps too.</p>
+          <p class="cb-big">Please <mark>keep ForkIt installed and stay opted in for at least 14 days.</mark></p>
+          <p>Google counts testers who stay opted in continuously for the full 14 days after they join.</p>
+          <p class="cb-how"><b>So for two weeks:</b> keep the app on your phone and avoid tapping <b>Leave the program</b>. Opening it every few days helps too.</p>
         </div>
       </li>
     </ol>
@@ -304,7 +302,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
         <div class="step-head"><h3>Invite a friend</h3></div>
         <p>Open <span class="tap">Friends</span> and tap <span class="tap">Invite a friend</span>. Your friend gets the same deck, and the swipes you already made count. You can both add a name in Friends.</p>
         <p>Your friend can open the invite, or tap <span class="tap">Friends</span>, choose <span class="tap">Join with a code</span> and enter the code.</p>
-        <p>Everyone in the room needs ForkIt installed from the test. If someone doesn't have it yet, <a href="#share">send them this page</a> first.</p>
+        <p>Everyone in the room needs ForkIt installed from the test. If someone doesn't have it yet, <a href="https://docs.google.com/forms/d/e/1FAIpQLSdT20TuugOF8F2Axs1h2ID_9IR5RMJs584phhH9FrKOma3EMA/viewform">send them the signup form</a> first.</p>
       </li>
       <li class="step">
         <div class="step-head"><h3>Allow notifications</h3></div>
@@ -367,11 +365,11 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
 
   <section id="share" aria-labelledby="share-h">
     <h2 id="share-h">Invite friends to test</h2>
-    <p class="sub">ForkIt needs at least 12 Android testers to go public, so every friend helps. Send them this page so they get the same setup steps.</p>
+    <p class="sub">ForkIt needs at least 12 Android testers to go public, so every friend helps. Send them the signup form so their own Google account can be added.</p>
     <div class="share-card">
-      <h3>Copy the link to this page</h3>
+      <h3>Copy the Android signup link</h3>
       <div class="copybox">
-        <div class="copytext" id="guideLink">https://claude.ai/artifact/6Ms4rcaMnd1xgWxJr29myU</div>
+        <div class="copytext" id="guideLink">https://forms.gle/HQDqUTusrjjmu6kP6</div>
         <button class="btn invite" type="button" data-copy="guideLink">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
           <span class="lbl"><strong>Copy link</strong><span>Then paste it into a text</span></span>
@@ -382,7 +380,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
     <div class="share-card">
       <h3>Or copy a ready-made message</h3>
       <div class="copybox">
-        <div class="copytext" id="guideMsg">Help test ForkIt, an Android app that settles where to eat. Swipe right on dinner! Setup takes about 5 minutes, and it needs to stay installed for 14 days: https://claude.ai/artifact/6Ms4rcaMnd1xgWxJr29myU</div>
+        <div class="copytext" id="guideMsg">Help test ForkIt, an Android app that settles where to eat. Sign up with your Play Store account and we’ll email your install link. Please stay in the test for 14 days. https://forms.gle/HQDqUTusrjjmu6kP6</div>
         <button class="btn invite" type="button" data-copy="guideMsg">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
           <span class="lbl"><strong>Copy message</strong><span>Paste it into Messages or a group chat</span></span>
@@ -397,8 +395,8 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
   <section id="help" aria-labelledby="help-h">
     <h2 id="help-h">If something goes wrong</h2>
     <div class="faq">
-      <details><summary>"Become a tester" says the app isn't available</summary><p>Make sure you joined the testers group in step 1 with the same Google account you're signed in with now. Then wait a few minutes and open the step 2 link again.</p></details>
-      <details><summary>The Play Store says "Item not found"</summary><p>Force stop the Play Store (<b>Settings</b>, <b>Apps</b>, <b>Google Play Store</b>, <b>Force stop</b>) and tap the install button again. If that doesn't work, tap your profile picture in the Play Store and check it's the account you joined the group with. If it is, wait half an hour and try again.</p></details>
+      <details><summary>"Become a tester" says the app isn't available</summary><p>Wait for your install email and check that your browser and Play Store both use the account you submitted. Wait a few minutes and open the email link again. If it still fails, reply to the email so Sean can check your access.</p></details>
+      <details><summary>The Play Store says "Item not found"</summary><p>Force stop the Play Store (<b>Settings</b>, <b>Apps</b>, <b>Google Play Store</b>, <b>Force stop</b>) and tap the install button again. If that doesn't work, tap your profile picture in the Play Store and check it’s the account you used on the signup form. If it is, wait half an hour and try again, or reply to the install email for help.</p></details>
       <details><summary>The cards say "Sample restaurant"</summary><p>Those are made-up places, shown when ForkIt can't use real ones. Location may be off for ForkIt. Open <b>Settings</b>, tap <b>Apps</b>, then <b>ForkIt</b>, <b>Permissions</b>, <b>Location</b>, and choose <b>Allow only while using the app</b>. On your own Dine Out deck, tap the meal and distance and choose <b>Find nearby places</b>. If nothing is open nearby, try a larger distance.</p></details>
       <details><summary>I left the app in the middle of a room</summary><p>You stay in the room for 15 minutes and your swipes still count, so just go back to ForkIt. If the app closed, tap the invite link again, or open <span class="tap">Friends</span>, choose <span class="tap">Join with a code</span> and enter the code.</p></details>
       <details><summary>I can't find the app on my phone</summary><p>Swipe up from the bottom of your home screen to see all your apps, and search "ForkIt". You can also open it from its page in the Play Store.</p></details>
@@ -409,7 +407,7 @@ footer { color: var(--muted); font-size: 14px; text-align: center; }
   </section>
 
   <div class="signoff"><img class="splash" src="__SPLASH__" alt=""><p class="motto">Thanks for swiping right on dinner.</p></div>
-  <footer>ForkIt needs no account, just a first name. Your location is used to find nearby restaurants and isn't saved. Your Google account is only used by Google Play to let you into the test.</footer>
+  <footer>ForkIt uses your first name in the app. Your location is used to find nearby restaurants and isn't saved. Your signup email is used to arrange access to the Play test and send your install link.</footer>
 </div>
 <script>
 // In-page links: scroll inside the page instead of relying on hash navigation,
