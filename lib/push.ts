@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type * as NotificationsModule from "expo-notifications";
@@ -33,6 +34,42 @@ try {
   Notifications = null;
 }
 
+// Set once this install has created "default" with the bell, so a user who
+// later picks the system sound for it isn't mistaken for an older install.
+const BELL_DEFAULT_KEY = "matchChannelHasBell";
+
+// Android fixes a channel's sound when it is created, so the bell needs a
+// channel of its own on installs that made the stock "default" one before.
+async function androidMatchChannel(n: typeof NotificationsModule): Promise<MatchChannel> {
+  if (await n.getNotificationChannelAsync(BELL_CHANNEL)) return BELL_CHANNEL;
+  const legacy = await n.getNotificationChannelAsync("default");
+  const bell = { name: "Matches", importance: n.AndroidImportance.HIGH, sound: MATCH_SOUND_FILE };
+  if (!legacy) {
+    await n.setNotificationChannelAsync("default", bell);
+    await AsyncStorage.setItem(BELL_DEFAULT_KEY, "1").catch(() => {});
+    return "default";
+  }
+  // Leave a channel the user silenced, lowered or gave another sound alone.
+  const stock = legacy.sound === "default" && legacy.importance === n.AndroidImportance.HIGH;
+  if (!stock || (await AsyncStorage.getItem(BELL_DEFAULT_KEY).catch(() => null))) return "default";
+  await n.setNotificationChannelAsync(BELL_CHANNEL, {
+    ...bell,
+    enableVibrate: legacy.enableVibrate,
+    vibrationPattern: legacy.vibrationPattern,
+    showBadge: legacy.showBadge,
+    enableLights: legacy.enableLights,
+    lightColor: legacy.lightColor,
+    // UNKNOWN is "no override"; written back it would become PUBLIC and show
+    // the match on a lock screen set to hide sensitive content.
+    ...(legacy.lockscreenVisibility !== n.AndroidNotificationVisibility.UNKNOWN && {
+      lockscreenVisibility: legacy.lockscreenVisibility,
+    }),
+  });
+  // Otherwise settings list two "Matches" channels, one of which does nothing.
+  await n.deleteNotificationChannelAsync("default").catch(() => {});
+  return BELL_CHANNEL;
+}
+
 type Registration = { pushToken: string; matchChannel: MatchChannel };
 let tokenPromise: Promise<Registration | null> | null = null;
 
@@ -45,30 +82,7 @@ export function getMatchPushRegistration(): Promise<Registration | null> {
       try {
         // Android 13+ shows the permission prompt only once a channel
         // exists, and Expo needs one before it will issue a token.
-        let matchChannel: MatchChannel = "default";
-        if (Platform.OS === "android") {
-          const legacy = await Notifications.getNotificationChannelAsync("default");
-          // Android fixes the sound when a channel is created. Upgrade the
-          // original stock channel, preserving silenced or customized ones.
-          if (legacy?.sound === "default" && legacy.importance === Notifications.AndroidImportance.HIGH) {
-            matchChannel = BELL_CHANNEL;
-          }
-          if (!legacy || matchChannel === BELL_CHANNEL) {
-            await Notifications.setNotificationChannelAsync(matchChannel, {
-              name: "Matches",
-              importance: Notifications.AndroidImportance.HIGH,
-              sound: MATCH_SOUND_FILE,
-              ...(legacy && {
-                enableVibrate: legacy.enableVibrate,
-                vibrationPattern: legacy.vibrationPattern,
-                showBadge: legacy.showBadge,
-                lockscreenVisibility: legacy.lockscreenVisibility,
-                enableLights: legacy.enableLights,
-                lightColor: legacy.lightColor,
-              }),
-            });
-          }
-        }
+        const matchChannel = Platform.OS === "android" ? await androidMatchChannel(Notifications) : "default";
         let { status, canAskAgain } = await Notifications.getPermissionsAsync();
         if (status !== "granted" && canAskAgain) {
           ({ status } = await Notifications.requestPermissionsAsync());
