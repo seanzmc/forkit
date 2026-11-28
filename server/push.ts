@@ -6,6 +6,7 @@
 // turned on for the Expo project, which then requires it on every send.
 
 import { matchPlaceReference, type Dish, type Meal, type SampleReason } from "../lib/food-data";
+import { BELL_CHANNEL, MATCH_SOUND_FILE, type MatchChannel } from "../shared/match-sound";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN || "";
@@ -14,8 +15,11 @@ const MAX_DATA_BYTES = 3000;
 
 const TOKEN_PATTERN = /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,100}\]$/;
 
-export function isExpoPushToken(value: unknown): value is string {
-  return typeof value === "string" && TOKEN_PATTERN.test(value);
+export type PushTarget = { token: string; matchChannel?: MatchChannel };
+
+export function matchPushTarget(token: unknown, channel: unknown): PushTarget | undefined {
+  if (typeof token !== "string" || !TOKEN_PATTERN.test(token)) return;
+  return { token, matchChannel: channel === "default" || channel === BELL_CHANNEL ? channel : undefined };
 }
 
 const MEAL_TITLE: Record<Meal, string> = {
@@ -49,24 +53,23 @@ function dishForPayload(dish: Dish): Partial<Dish> {
 }
 
 export async function sendMatchPush(
-  tokens: Iterable<string>,
+  targets: Iterable<PushTarget>,
   code: string,
   dish: Dish,
   meal: Meal = "dinner",
   sample?: SampleReason
 ): Promise<void> {
-  const to = [...new Set(tokens)];
-  if (to.length === 0) return;
+  const recipients = new Map<string, PushTarget>();
+  for (const target of targets) recipients.set(target.token, target);
+  if (!recipients.size) return;
   const { title, body } = matchText(dish, meal);
-  const messages = to.map((token) => ({
+  const messages = [...recipients.values()].map(({ token, matchChannel }) => ({
     to: token,
     title,
     body,
-    sound: "default",
-    // The high-importance "Matches" channel lib/push.ts creates. Without it
-    // Android files the push under FCM's fallback channel, which shows no
-    // heads-up banner.
-    channelId: "default",
+    // Older binaries have neither the sound file nor a versioned channel.
+    sound: matchChannel ? MATCH_SOUND_FILE : "default",
+    channelId: matchChannel ?? "default",
     // sample lets the match screen say why a sample room's places are made up.
     data: { type: "match", code, meal, sample, dish: dishForPayload(dish) },
   }));
@@ -88,7 +91,7 @@ export async function sendMatchPush(
     const failed = tickets.filter((t) => t.status !== "ok");
     if (!res.ok || failed.length) {
       console.warn(
-        `Match push: HTTP ${res.status}, ${failed.length}/${to.length} failed` +
+        `Match push: HTTP ${res.status}, ${failed.length}/${messages.length} failed` +
           (failed.length ? ` (${[...new Set(failed.map((t) => t.details?.error || "unknown"))].join(", ")})` : "")
       );
     }

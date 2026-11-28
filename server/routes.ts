@@ -8,7 +8,7 @@ import {
   menuGroundingEnabled,
   type GroundedMenu,
 } from "./menu-grounding";
-import { isExpoPushToken, sendMatchPush } from "./push";
+import { matchPushTarget, sendMatchPush, type PushTarget } from "./push";
 import { CUISINE_DISHES } from "./cuisine-dishes";
 import { examplePhotoFor, type DishPhoto } from "./dish-photos";
 import { chainMenusEnabled, fetchChainDishes, type ChainDish } from "./chain-menus";
@@ -62,7 +62,7 @@ interface Session {
   lastActive: number;
   // Expo push tokens by member id. Kept when a member disconnects, since the
   // members who left the app are the ones a match notification is for.
-  pushTokens: Map<string, string>;
+  pushTokens: Map<string, PushTarget>;
   // Starts at 1; a room where everyone swiped through without a match can
   // ask for another round with fresh places (or the same deck reshuffled).
   round: number;
@@ -1027,6 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ws.send(
               JSON.stringify({
                 type: "match",
+                replayed: true,
                 session: getSessionState(session),
                 dish: session.matchedDish,
               })
@@ -1044,9 +1045,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           memberId = msg.userId;
           sessionCode = session.code;
           session.lastActive = Date.now();
-          if (isExpoPushToken(msg.pushToken)) {
-            session.pushTokens.set(memberId, msg.pushToken);
-          }
+          const target = matchPushTarget(msg.pushToken, msg.matchChannel);
+          if (target) session.pushTokens.set(memberId, target);
 
           const existing = session.members.get(memberId);
           clearTimeout(existing?.awayTimer);
@@ -1182,9 +1182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Sent after join, once the device has a token (it can take a
           // while on iOS, or wait on the permission prompt).
           const session = sessions.get(sessionCode);
-          if (session && memberId && isExpoPushToken(msg.pushToken)) {
-            session.pushTokens.set(memberId, msg.pushToken);
-          }
+          const target = matchPushTarget(msg.pushToken, msg.matchChannel);
+          if (session && memberId && target) session.pushTokens.set(memberId, target);
         } else if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         }

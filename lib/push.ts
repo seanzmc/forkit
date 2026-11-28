@@ -1,7 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type * as NotificationsModule from "expo-notifications";
 import { DISHES, RECIPES, matchPlaceReference, type Dish, type Meal, type SampleReason } from "./food-data";
+import { BELL_CHANNEL, MATCH_SOUND_FILE, type MatchChannel } from "../shared/match-sound";
+import { ringForMatch } from "./sounds";
 
 // expo-notifications needs native code. Builds made before it was added (and
 // the web build) don't have it, so load it defensively and treat push as
@@ -20,36 +23,66 @@ if (Platform.OS !== "web") {
 // so a banner on top would just repeat it.
 try {
   Notifications?.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: false,
-      shouldShowList: false,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async ({ request }) => {
+      const data = request.content.data;
+      if (data?.type === "match" && typeof data.code === "string") ringForMatch(data.code);
+      return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
+    },
   });
 } catch {
   // Importable but missing its native side: push stays off.
   Notifications = null;
 }
 
-let tokenPromise: Promise<string | null> | null = null;
+// Set once this install has created "default" with the bell, so a user who
+// later picks the system sound for it isn't mistaken for an older install.
+const BELL_DEFAULT_KEY = "matchChannelHasBell";
 
-// Asks for notification permission the first time (iOS shows its prompt
-// once), then returns this device's Expo push token, or null if push isn't
-// available or allowed. Never throws.
-export function getPushToken(): Promise<string | null> {
+// Android fixes a channel's sound when it is created, so the bell needs a
+// channel of its own on installs that made the stock "default" one before.
+async function androidMatchChannel(n: typeof NotificationsModule): Promise<MatchChannel> {
+  if (await n.getNotificationChannelAsync(BELL_CHANNEL)) return BELL_CHANNEL;
+  const legacy = await n.getNotificationChannelAsync("default");
+  const bell = { name: "Matches", importance: n.AndroidImportance.HIGH, sound: MATCH_SOUND_FILE };
+  if (!legacy) {
+    await n.setNotificationChannelAsync("default", bell);
+    await AsyncStorage.setItem(BELL_DEFAULT_KEY, "1").catch(() => {});
+    return "default";
+  }
+  // Leave a channel the user silenced, lowered or gave another sound alone.
+  const stock = legacy.sound === "default" && legacy.importance === n.AndroidImportance.HIGH;
+  if (!stock || (await AsyncStorage.getItem(BELL_DEFAULT_KEY).catch(() => null))) return "default";
+  await n.setNotificationChannelAsync(BELL_CHANNEL, {
+    ...bell,
+    enableVibrate: legacy.enableVibrate,
+    vibrationPattern: legacy.vibrationPattern,
+    showBadge: legacy.showBadge,
+    enableLights: legacy.enableLights,
+    lightColor: legacy.lightColor,
+    // UNKNOWN is "no override"; written back it would become PUBLIC and show
+    // the match on a lock screen set to hide sensitive content.
+    ...(legacy.lockscreenVisibility !== n.AndroidNotificationVisibility.UNKNOWN && {
+      lockscreenVisibility: legacy.lockscreenVisibility,
+    }),
+  });
+  // Otherwise settings list two "Matches" channels, one of which does nothing.
+  await n.deleteNotificationChannelAsync("default").catch(() => {});
+  return BELL_CHANNEL;
+}
+
+type Registration = { pushToken: string; matchChannel: MatchChannel };
+let tokenPromise: Promise<Registration | null> | null = null;
+
+// Register the token and the channel this installation can actually use.
+// Permission denial and unavailable push both leave the swipe flow usable.
+export function getMatchPushRegistration(): Promise<Registration | null> {
   if (!tokenPromise) {
     tokenPromise = (async () => {
       if (!Notifications) return null;
       try {
         // Android 13+ shows the permission prompt only once a channel
         // exists, and Expo needs one before it will issue a token.
-        if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("default", {
-            name: "Matches",
-            importance: Notifications.AndroidImportance.HIGH,
-          });
-        }
+        const matchChannel = Platform.OS === "android" ? await androidMatchChannel(Notifications) : "default";
         let { status, canAskAgain } = await Notifications.getPermissionsAsync();
         if (status !== "granted" && canAskAgain) {
           ({ status } = await Notifications.requestPermissionsAsync());
@@ -57,7 +90,7 @@ export function getPushToken(): Promise<string | null> {
         if (status !== "granted") return null;
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
-        return data;
+        return { pushToken: data, matchChannel };
       } catch {
         return null;
       }

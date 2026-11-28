@@ -34,6 +34,7 @@ export type SessionState = {
 };
 
 // On join the client sends its code, userId, name and optional pushToken.
+// New push_token registrations also send matchChannel for the bundled bell.
 // The swipe screen asks for absolute counts with supportsSwipeCounts. On
 // reconnect it can also send its own private swipes and their round.
 // Other client messages: set_name (the current member only), push_token, start, swipe and undo (each with its round, so a vote on an
@@ -48,7 +49,7 @@ export type WsMessage =
   | { type: "swipe_update"; memberId: string; swiped: number }
   // Older servers used deltas. Read them during a rolling update.
   | { type: "swipe_update"; memberId: string; vote: "like" | "pass" | "undo" }
-  | { type: "match"; session: SessionState; dish: import("./food-data").Dish }
+  | { type: "match"; session: SessionState; dish: import("./food-data").Dish; replayed?: boolean }
   // Someone asked for another round; its deck follows in new_round.
   | { type: "round_loading" }
   | { type: "new_round"; session: SessionState; dishes: import("./food-data").Dish[] }

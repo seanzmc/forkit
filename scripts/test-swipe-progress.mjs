@@ -72,7 +72,11 @@ async function checkInviteAfterSwiping() {
   const other = await join(code, "Another friend");
   other.send({ type: "swipe", dishId: "r1", vote: "like" });
   await expectCount(host, other.id, 1);
-  assert.equal((await host.next("match")).dish.id, "r1");
+  const liveMatch = await host.next("match");
+  assert.equal(liveMatch.dish.id, "r1");
+  assert.ok(!liveMatch.replayed);
+  host.send({ type: "join", code, userId: host.id, name: "Host" });
+  assert.equal((await host.next("match")).replayed, true);
 }
 
 async function checkRestaurantMajority() {

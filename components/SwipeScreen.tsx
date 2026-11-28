@@ -19,7 +19,8 @@ import { SwipeReview } from "./SwipeReview";
 import { dineRequest, preferredDineSettings, rememberDineSettings, type DineSettings } from "@/lib/dine-out";
 import { mealForTime, shuffleDishes, shuffleRecipes, type Dish, type SessionMode } from "@/lib/food-data";
 import { getMemberId } from "@/lib/member-id";
-import { getPushToken } from "@/lib/push";
+import { getMatchPushRegistration } from "@/lib/push";
+import { playCue, ringForMatch } from "@/lib/sounds";
 import { apiRequest } from "@/lib/query-client";
 import { shareSessionCode } from "@/lib/share-session";
 import { rememberSwipes, type OwnVotes, type ReviewedSwipe, type SwipeVote } from "@/lib/swipe-review";
@@ -254,6 +255,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       setPanel(null);
       if (previous.dishes.length && previous.code)
         rememberSwipes(previous.code, userId, previous.round, previous.history);
+      if (!msg.replayed) ringForMatch(msg.session.code);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({
         pathname: "/match",
@@ -317,8 +319,8 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
   useEffect(() => {
     if (touring || !liveDeck.shared || !connected || !hasVotes || panel) return;
     let active = true;
-    getPushToken().then((token) => {
-      if (active && token) send({ type: "push_token", pushToken: token });
+    getMatchPushRegistration().then((registration) => {
+      if (active && registration) send({ type: "push_token", ...registration });
     });
     return () => {
       active = false;
@@ -517,6 +519,7 @@ export function SwipeScreen({ initialCode }: { initialCode?: string }) {
       saveVotes(next);
       if (current.code) room.send({ type: "swipe", dishId: item.id, vote: direction, round: current.round });
     }
+    playCue(direction);
     void Haptics.impactAsync(direction === "like" ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     return true;
   }
