@@ -2,8 +2,9 @@
 
 The playbook for ForkIt's social accounts: who we are online, what we post,
 and how each post gets made. Ready-to-post launch content is in
-[posts/](posts/); `posts/*.html` are the sources, rendered to PNG with headless
-Chrome (command in each file's header).
+[posts/](posts/): `posts/slide.html` is the slide template, `social/render.sh`
+renders every carousel slide to `posts/out/` with headless Chrome, and
+`posts/shots/` holds the app screenshots the slides show.
 
 ## The account
 
@@ -151,6 +152,29 @@ Every video is the same three parts:
 - Don't build ForkIt content on the Riley characters; scenes are generated
   without a character, or with ForkIt-only characters if we ever want a
   recurring cast.
+
+### App screenshots for slides
+
+`posts/shots/` are iPhone 18 Pro Simulator captures (1206 × 2622, JPEG) of
+version 1.0.2, retaken 2026-11-27 for its swipe-first screens: Cook In and Dine
+Out open straight onto the deck, and Friends → Invite a friend starts the room.
+To retake them:
+
+- Run the server with no Places key (`PORT=5055 npm run server:dev`), so every
+  Dine Out room is sample restaurants, and Metro with
+  `EXPO_PUBLIC_DOMAIN=localhost:5055` against a development build.
+- `xcrun simctl status_bar <sim> override --time 9:41 --batteryState discharging --batteryLevel 100`,
+  hide the dev client's Tools button (dev menu), name yourself Alex in Friends.
+- Extra members are WebSocket clients joined to the room by code (Maya, Sam,
+  Jordan, Priya, Leo); for a match, have some of them like the card on screen,
+  then tap Like.
+- Cover the dev build's version label under Friends, and the Dynamic Island in
+  captures that show it, with the background color.
+- Match slides use `low=1` so the sample match's "Sample restaurants" notice
+  stays below the slide edge; the card's own "Sample restaurant · not a real
+  place" label stays visible.
+
+Then run `social/render.sh` from the repo root.
 
 ### Rules that keep the account safe
 

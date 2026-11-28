@@ -3,9 +3,13 @@
   One carousel slide, 1080 x 1350 (Instagram 4:5). The slide is chosen by the
   query string, so social/render.sh renders every slide from this one file:
     ?type=hook&img=img/couple.jpg&title=...&sub=...    generated scene + headline
-    ?type=app&shot=04-swipe-card&title=...&sub=...     real app screenshot
+    ?type=app&shot=dine-out&title=...&sub=...          real app screenshot
+    ?type=app&shot=match-dinner&low=1&...              same, phone set lower
     ?type=cta&title=...                                 logo + where to get it
-  Needs node_modules installed (Poppins) and the Play screenshots.
+  Shots are shots/<name>.jpg, iPhone captures (see social/README.md). The phone
+  sits just under the headline and runs off the bottom edge; low=1 sets it
+  lower, which keeps a sample match's "Sample restaurants" notice off the
+  slide. Write + in a title as %2B. Needs node_modules installed (Poppins).
 -->
 <html>
 <head>
@@ -33,12 +37,13 @@
 
   /* app */
   .app { background: radial-gradient(700px 600px at 540px 1000px, rgba(255, 107, 53, 0.30), transparent 70%), #0F0F0F; }
-  .app .copy { position: absolute; left: 64px; right: 64px; top: 170px; }
-  .app h1 { font-size: 64px; line-height: 1.1; font-weight: 700; letter-spacing: -1px; }
-  .app p { margin-top: 16px; font-size: 32px; line-height: 1.4; font-weight: 500; color: #B8B8B8; }
+  .app .copy { position: absolute; left: 64px; right: 64px; top: 150px; }
+  .app h1 { font-size: 60px; line-height: 1.1; font-weight: 700; letter-spacing: -1px; }
+  .app p { margin-top: 14px; font-size: 30px; line-height: 1.4; font-weight: 500; color: #B8B8B8; }
+  /* 1206 x 2622 captures: 500 px wide inside the bezel. top is set below. */
   .app .phone {
-    position: absolute; left: 50%; transform: translateX(-50%); top: 470px;
-    width: 540px; height: 960px; border-radius: 56px; overflow: hidden;
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 520px; height: 1107px; border-radius: 70px; overflow: hidden;
     border: 10px solid #242424; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
   }
   .app .phone img { width: 100%; display: block; }
@@ -60,14 +65,20 @@
   // *word* in a title turns that word orange.
   const fmt = (s) => esc(s).replace(/\*([^*]+)\*/g, "<em>$1</em>");
   const tag = '<div class="tag"><img src="../../assets/images/icon.png"><span>ForkIt</span></div>';
-  document.body.className = type;
+  document.body.className = type + (q.get("low") ? " low" : "");
   if (type === "hook") {
     document.body.innerHTML = `<img class="bg" src="${esc(q.get("img"))}"><div class="shade"></div>${tag}
       <div class="copy"><h1>${fmt(q.get("title"))}</h1>${q.get("sub") ? `<p>${fmt(q.get("sub"))}</p>` : ""}</div>
       <div class="swipe">swipe →</div>`;
   } else if (type === "app") {
     document.body.innerHTML = `${tag}<div class="copy"><h1>${fmt(q.get("title"))}</h1>${q.get("sub") ? `<p>${fmt(q.get("sub"))}</p>` : ""}</div>
-      <div class="phone"><img src="../../store/screenshots/play/${esc(q.get("shot"))}.png"></div>`;
+      <div class="phone"><img src="shots/${esc(q.get("shot"))}.jpg"></div>`;
+    // 48 px under the headline; a low phone shows the screen only down to
+    // about y = 2190 of 2622.
+    document.fonts.ready.then(() => {
+      const copy = document.querySelector(".copy").getBoundingClientRect().bottom;
+      document.querySelector(".phone").style.top = Math.max(copy + 48, q.get("low") ? 450 : 0) + "px";
+    });
   } else {
     document.body.innerHTML = `<img class="logo" src="../../assets/images/icon.png"><div class="name">ForkIt</div>
       <h1>${fmt(q.get("title") || "Swipe right on dinner")}</h1>
